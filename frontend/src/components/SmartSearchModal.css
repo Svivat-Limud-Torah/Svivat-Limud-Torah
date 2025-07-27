@@ -1,0 +1,156 @@
+/* frontend/src/components/SmartSearchModal.css */
+.smart-search-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050; /* Ensure it's above other content */
+  direction: rtl; /* Right-to-left for Hebrew */
+}
+
+.smart-search-modal-content {
+  background-color: #2d3748; /* Dark background */
+  color: #e2e8f0; /* Light text */
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 600px; /* Max width for the modal */
+  max-height: 80vh; /* Max height */
+  overflow-y: auto; /* Scroll if content overflows */
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between elements */
+}
+
+.smart-search-modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #90cdf4; /* Light blue for title */
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.smart-search-input {
+  width: calc(100% - 20px); /* Full width minus padding */
+  padding: 10px;
+  border: 1px solid #4a5568; /* Darker border */
+  border-radius: 4px;
+  background-color: #1a202c; /* Very dark input background */
+  color: #e2e8f0; /* Light text */
+  font-size: 1rem;
+  font-family: inherit; /* Use system/inherited font */
+  resize: vertical; /* Allow vertical resize */
+}
+
+.smart-search-input:focus {
+  outline: none;
+  border-color: #63b3ed; /* Lighter blue on focus */
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.3);
+}
+
+.smart-search-modal-actions {
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the end (left in RTL) */
+  gap: 10px; /* Space between buttons */
+  margin-top: 10px;
+}
+
+/* General button styling within modal actions */
+.smart-search-modal-actions .btn {
+  padding: 8px 15px;
+  border-radius: 4px;
+  border: 1px solid #4a5568; /* Default border */
+  background-color: #3a4556; /* Slightly lighter than modal bg */
+  color: #e2e8f0; /* Light text */
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.smart-search-modal-actions .btn:hover {
+  background-color: #4a5568; /* Darken on hover */
+  border-color: #63b3ed; /* Highlight border on hover - can remove if too blue */
+}
+
+.smart-search-modal-actions .btn:disabled {
+  background-color: #2d3748; /* More muted when disabled */
+  color: #718096;
+  cursor: not-allowed;
+  border-color: #4a5568;
+}
+
+/* Override for btn-primary to make it "normal" - not blue */
+.smart-search-modal-actions .btn-primary {
+  background-color: #4a5568; /* A neutral dark gray */
+  border-color: #718096; /* Slightly lighter border */
+  color: #e2e8f0;
+}
+
+.smart-search-modal-actions .btn-primary:hover {
+  background-color: #5a6578;
+  border-color: #90cdf4; /* Lighter blue for hover, still subtle */
+}
+
+/* Style for btn-secondary (e.g., Close button) */
+.smart-search-modal-actions .btn-secondary {
+  background-color: transparent; /* Make it less prominent */
+  border: 1px solid #4a5568;
+  color: #a0aec0; /* Lighter gray text */
+}
+
+.smart-search-modal-actions .btn-secondary:hover {
+  background-color: #353f50;
+  color: #e2e8f0;
+  border-color: #718096;
+}
+
+
+.smart-search-results-area {
+  margin-top: 15px;
+  padding: 15px;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  background-color: #1a202c;
+  min-height: 100px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.smart-search-results-area p {
+  margin: 0 0 10px 0;
+  line-height: 1.6;
+}
+
+.smart-search-results-area strong {
+  color: #68d391; /* Green for emphasis */
+}
+
+.smart-search-error {
+  color: #fc8181; /* Red for errors */
+  font-weight: bold;
+}
+
+.smart-search-approximate i {
+  color: #f6e05e; /* Yellow for approximate notes */
+}
+
+.smart-search-spinner {
+  border: 4px solid #f3f3f330; /* Light grey */
+  border-top: 4px solid #63b3ed; /* Blue */
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

@@ -1,0 +1,238 @@
+/* FontSelectionModal.css */
+.font-selection-modal {
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  direction: rtl;
+}
+
+.font-tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.tab-button {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tab-button:hover {
+  color: var(--theme-text-primary);
+  background: var(--theme-bg-secondary);
+}
+
+.tab-button.active {
+  color: var(--theme-accent-primary);
+  border-bottom-color: var(--theme-accent-primary);
+  background: var(--theme-bg-secondary);
+}
+
+.font-category {
+  margin-bottom: 25px;
+}
+
+.font-category h3 {
+  margin: 0 0 15px 0;
+  color: var(--theme-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--theme-border-color);
+  padding-bottom: 8px;
+}
+
+.font-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.font-preview-item {
+  padding: 12px 15px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--theme-bg-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.font-preview-item:hover {
+  border-color: var(--theme-accent-secondary);
+  background: var(--theme-bg-secondary);
+}
+
+.font-preview-item.selected {
+  border-color: var(--theme-accent-primary);
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+
+.font-preview-item.selected:hover {
+  border-color: var(--theme-accent-secondary);
+  background: var(--theme-accent-secondary);
+}
+
+.font-name {
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 150px;
+  text-align: right;
+}
+
+.font-sample {
+  font-size: 13px;
+  opacity: 0.8;
+  flex-grow: 1;
+  text-align: left;
+  margin-left: 20px;
+}
+
+.font-selection-modal .selected .font-sample {
+  opacity: 1;
+}
+
+.custom-font-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-font-item .font-preview-item {
+  flex-grow: 1;
+  margin-left: 10px;
+}
+
+.remove-font-btn {
+  background: var(--theme-danger);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.remove-font-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.custom-font-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.font-name-input {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.font-name-input input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  font-size: 14px;
+}
+
+.font-name-input input:focus {
+  outline: none;
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.font-name-input button {
+  padding: 8px 16px;
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.font-name-input button:hover:not(:disabled) {
+  background: var(--theme-accent-secondary);
+}
+
+.font-name-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.font-file-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.font-file-upload button {
+  padding: 10px 16px;
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.font-file-upload button:hover {
+  background: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+}
+
+.font-file-upload small {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* התאמות למסכים קטנים */
+@media (max-width: 600px) {
+  .font-selection-modal {
+    max-width: 95vw;
+    margin: 20px auto;
+  }
+  
+  .font-preview-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .font-sample {
+    margin-left: 0;
+    text-align: right;
+  }
+  
+  .font-name-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

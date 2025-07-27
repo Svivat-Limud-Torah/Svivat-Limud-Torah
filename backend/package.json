@@ -1,0 +1,71 @@
+{
+  "name": "torah-ide-be",
+  "version": "1.0.0",
+  "description": "Backend for Torah IDE",
+  "main": "electron.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "electron": "electron .",
+    "electron:build": "electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.19.2",
+    "fast-glob": "^3.3.3",
+    "node-cron": "^4.0.3",
+    "node-fetch": "^2.7.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.12",
+    "nodemon": "^3.1.10"
+  },
+  "build": {
+    "appId": "com.torahide.app",
+    "productName": "סביבת לימוד תורה",
+    "directories": {
+      "output": "dist_electron",
+      "buildResources": "build_resources"
+    },
+    "files": [
+      "electron.js",
+      "preload.js",
+      "server.js",
+      "database.js",
+      "searchLogicV2.js",
+      "routes/**/*",
+      "services/**/*",
+      "node_modules/**/*",
+      "!node_modules/@electron/**/node_modules/**",
+      "!node_modules/.bin",
+      "!**/*.{map,pdb,exp,lib}",
+      "!**/node_modules/**/*.{txt,md,html,png,jpg,jpeg,gif,svg,css,map,test.js,*.yml,*.yaml,.*ignore,.*rc,.*.json,CHANGELOG,README,LICENSE,license,NOTICE,readme}",
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist",
+        "filter": ["**/*"]
+      }
+    ],
+    "extraResources": [
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build_resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build_resources/icon.ico",
+      "uninstallerIcon": "build_resources/icon.ico",
+      "shortcutName": "סביבת לימוד תורה"
+    }
+  }
+}

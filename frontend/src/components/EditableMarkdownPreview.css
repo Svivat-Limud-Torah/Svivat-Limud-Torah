@@ -1,0 +1,455 @@
+/* EditableMarkdownPreview.css */
+.editable-markdown-preview {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  direction: rtl;
+  font-family: inherit;
+}
+
+.preview-content {
+  height: 100%;
+  position: relative;
+}
+
+.edit-instructions {
+  position: sticky;
+  top: 0;
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-secondary);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--theme-border-color);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-icon {
+  font-size: 16px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.clickable-content {
+  padding: 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* סגנונות Markdown */
+.clickable-content h1,
+.clickable-content h2,
+.clickable-content h3,
+.clickable-content h4,
+.clickable-content h5,
+.clickable-content h6 {
+  color: var(--theme-text-primary);
+  margin: 16px 0 12px 0;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-content h1:hover,
+.clickable-content h2:hover,
+.clickable-content h3:hover,
+.clickable-content h4:hover,
+.clickable-content h5:hover,
+.clickable-content h6:hover {
+  background: var(--theme-bg-secondary);
+  transform: translateX(-5px);
+}
+
+.clickable-content h1::before,
+.clickable-content h2::before,
+.clickable-content h3::before,
+.clickable-content h4::before,
+.clickable-content h5::before,
+.clickable-content h6::before {
+  content: 'ערוך';
+  position: absolute;
+  right: -40px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 10px;
+  background: var(--theme-accent-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.clickable-content h1:hover::before,
+.clickable-content h2:hover::before,
+.clickable-content h3:hover::before,
+.clickable-content h4:hover::before,
+.clickable-content h5:hover::before,
+.clickable-content h6:hover::before {
+  opacity: 1;
+}
+
+.clickable-content p {
+  margin: 12px 0;
+  line-height: 1.6;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-content p:hover {
+  background: var(--theme-bg-secondary);
+  transform: translateX(-3px);
+}
+
+.clickable-content p::before {
+  content: 'ערוך';
+  position: absolute;
+  right: -35px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 10px;
+  background: var(--theme-accent-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.clickable-content p:hover::before {
+  opacity: 1;
+}
+
+.clickable-content strong {
+  color: var(--theme-text-primary);
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-content strong:hover {
+  background: var(--theme-bg-secondary);
+  transform: scale(1.05);
+}
+
+.clickable-content em {
+  color: var(--theme-text-primary);
+  font-style: italic;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.clickable-content em:hover {
+  background: var(--theme-bg-secondary);
+  transform: scale(1.05);
+}
+
+.clickable-content code {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-accent-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  border: 1px solid var(--theme-border-color);
+  transition: all 0.2s ease;
+}
+
+.clickable-content code:hover {
+  background: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+  transform: scale(1.05);
+}
+
+.clickable-content ul,
+.clickable-content ol {
+  margin: 12px 0;
+  padding-right: 20px;
+}
+
+.clickable-content li {
+  margin: 8px 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-content li:hover {
+  background: var(--theme-bg-secondary);
+  transform: translateX(-3px);
+}
+
+.clickable-content li::before {
+  content: 'ערוך';
+  position: absolute;
+  right: -35px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 10px;
+  background: var(--theme-accent-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.clickable-content li:hover::before {
+  opacity: 1;
+}
+
+.clickable-content blockquote {
+  border-right: 4px solid var(--theme-accent-primary);
+  background: var(--theme-bg-secondary);
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-style: italic;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-content blockquote:hover {
+  background: var(--theme-border-color);
+  transform: translateX(-5px);
+}
+
+.clickable-content blockquote::before {
+  content: 'ערוך';
+  position: absolute;
+  right: -40px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 10px;
+  background: var(--theme-accent-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.clickable-content blockquote:hover::before {
+  opacity: 1;
+}
+
+.clickable-content a {
+  color: var(--theme-accent-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.clickable-content a:hover {
+  color: var(--theme-accent-secondary);
+  border-bottom-color: var(--theme-accent-primary);
+  background: var(--theme-bg-secondary);
+  transform: scale(1.05);
+}
+
+/* כפתורי עריכה מהירה */
+.quick-style-toolbar {
+  background: var(--theme-bg-secondary);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--theme-border-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-label {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.quick-style-btn {
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: auto;
+  height: auto;
+  min-height: 28px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.quick-style-btn:hover {
+  background: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+}
+
+.bold-btn {
+  font-weight: 700;
+}
+
+.italic-btn {
+  font-style: italic;
+}
+
+.code-btn {
+  font-family: 'Courier New', monospace;
+}
+
+/* מצב עריכה */
+.editing-mode {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-bg-primary);
+}
+
+.editing-header {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.editing-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--theme-text-primary);
+}
+
+.editing-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.save-btn,
+.cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn {
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+
+.save-btn:hover {
+  background: var(--theme-accent-secondary);
+}
+
+.cancel-btn {
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+}
+
+.cancel-btn:hover {
+  background: var(--theme-border-color);
+}
+
+.edit-textarea {
+  flex: 1;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  padding: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  direction: rtl;
+  text-align: right;
+  border-radius: 0;
+}
+
+.edit-textarea:focus {
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.editing-tips {
+  background: var(--theme-bg-secondary);
+  padding: 8px 16px;
+  border-top: 1px solid var(--theme-border-color);
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+}
+
+/* רספונסיביות */
+@media (max-width: 768px) {
+  .editing-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .editing-controls {
+    justify-content: center;
+  }
+  
+  .save-btn, .cancel-btn {
+    flex: 1;
+  }
+}
+
+/* אנימציות */
+.editing-mode {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* עיצוב נוסף לאינטראקטיביות */
+.clickable-content * {
+  transition: all 0.2s ease;
+}
+
+.clickable-content *:hover {
+  cursor: pointer;
+}
+
+/* הודעות עזר */
+.edit-instructions::after {
+  content: " - הוובר מעל אלמנט כדי לראות את אפשרות העריכה";
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .edit-instructions::after {
+    display: none;
+  }
+}

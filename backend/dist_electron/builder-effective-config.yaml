@@ -1,0 +1,34 @@
+directories:
+  output: dist_electron
+  buildResources: build_resources
+appId: com.torahide.app
+productName: סביבת לימוד תורה
+files:
+  - filter:
+      - electron.js
+      - preload.js
+      - server.js
+      - database.js
+      - searchLogicV2.js
+      - routes/**/*
+      - services/**/*
+      - node_modules/**/*
+      - '!node_modules/@electron/**/node_modules/**'
+      - '!node_modules/.bin'
+      - '!**/*.{map,pdb,exp,lib}'
+      - '!**/node_modules/**/*.{txt,md,html,png,jpg,jpeg,gif,svg,css,map,test.js,*.yml,*.yaml,.*ignore,.*rc,.*.json,CHANGELOG,README,LICENSE,license,NOTICE,readme}'
+  - from: ../frontend/dist
+    to: frontend/dist
+    filter:
+      - '**/*'
+extraResources: []
+win:
+  target: nsis
+  icon: build_resources/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build_resources/icon.ico
+  uninstallerIcon: build_resources/icon.ico
+  shortcutName: סביבת לימוד תורה
+electronVersion: 37.2.3

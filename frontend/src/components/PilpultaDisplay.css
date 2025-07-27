@@ -1,0 +1,160 @@
+/* frontend/src/components/PilpultaDisplay.css */
+.pilpulta-window {
+  position: fixed; /* Use fixed to keep it in view even when scrolling */
+  top: 100px; /* Default starting position */
+  left: 100px; /* Default starting position */
+  width: 450px; /* Default width */
+  min-width: 250px; /* Minimum width */
+  max-width: 80vw; /* Max width relative to viewport */
+  height: 350px; /* Default height */
+  min-height: 200px; /* Minimum height */
+  max-height: 70vh; /* Max height relative to viewport */
+  background-color: #2d3748; /* Dark background */
+  border: 1px solid #4a5568; /* Border */
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1500; /* Ensure it's above most other elements */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Hide overflow during resize/drag */
+  color: #e2e8f0; /* Light text */
+  font-size: 14px; /* Base font size */
+}
+
+.pilpulta-header {
+  background-color: #1a202c; /* Even darker header */
+  color: #cbd5e0;
+  padding: 6px 12px;
+  cursor: move; /* Indicate draggable */
+  border-bottom: 1px solid #4a5568;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.pilpulta-title {
+  flex-grow: 1;
+  text-align: center; /* Center title */
+}
+
+.pilpulta-close-button {
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.pilpulta-close-button:hover {
+  color: #fc8181; /* Red on hover */
+}
+
+.pilpulta-content {
+  padding: 15px;
+  overflow-y: auto; /* Allow vertical scrolling for content */
+  flex-grow: 1; /* Take remaining height */
+  background-color: #23272c; /* Slightly lighter content area */
+}
+
+.pilpulta-item {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #4a5568; /* Separator */
+}
+
+.pilpulta-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.pilpulta-question {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #a0aec0; /* Slightly dimmer question text */
+}
+
+.pilpulta-source {
+  font-style: italic;
+  margin-left: 10px;
+  color: #718096; /* Even dimmer source text */
+  white-space: pre-wrap; /* Preserve line breaks in source */
+}
+
+/* react-resizable styles */
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  padding: 0 3px 3px 0;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2IDYiIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiNibGFjayIgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSI2cHgiIGhlaWdodD0iNnB4Ij48ZyBvcGFjaXR5PSIwLjMwMiI+PHBhdGggZD0iTTUgNiAyIDYgMiA1IDMgNSAzIDQgNCA0IDQgMyA1IDMgNSAyIDYgMiA2IDV6IiBmaWxsPSJ3aGl0ZSIvPjwvZz48L3N2Zz4='); /* Simple resize grip */
+  background-position: bottom right;
+  opacity: 0.7;
+}
+
+.react-resizable-handle-sw {
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+  transform: rotate(90deg);
+}
+
+.react-resizable-handle-se {
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+
+.react-resizable-handle-nw {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+  transform: rotate(180deg);
+}
+
+.react-resizable-handle-ne {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+  transform: rotate(270deg);
+}
+
+.react-resizable-handle-w,
+.react-resizable-handle-e {
+  top: 50%;
+  margin-top: -10px;
+  cursor: ew-resize;
+}
+
+.react-resizable-handle-w {
+  left: 0;
+  transform: rotate(135deg);
+}
+
+.react-resizable-handle-e {
+  right: 0;
+  transform: rotate(315deg);
+}
+
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  left: 50%;
+  margin-left: -10px;
+  cursor: ns-resize;
+}
+
+.react-resizable-handle-n {
+  top: 0;
+  transform: rotate(225deg);
+}
+
+.react-resizable-handle-s {
+  bottom: 0;
+  transform: rotate(45deg);
+}

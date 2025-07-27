@@ -1,0 +1,104 @@
+/* frontend/src/components/TreeItem.css */
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--theme-text-primary); /* Default text color for items */
+  transition: background-color 0.15s ease-in-out;
+  user-select: none; /* Prevent text selection during drag attempts */
+}
+
+.tree-item:hover {
+  background-color: var(--theme-bg-secondary); /* Slightly darker on hover */
+}
+
+.tree-item.drag-over-folder {
+  background-color: var(--theme-accent-primary); /* Highlight when dragging over a folder */
+  outline: 1px dashed var(--theme-accent-secondary);
+}
+
+.tree-item-toggle-icon {
+  margin-right: 6px; /* RTL: should be marginLeft */
+  margin-left: 0; /* RTL support */
+  display: inline-flex; /* Helps align icon better */
+  align-items: center;
+  color: var(--theme-text-secondary); /* Chevron icon color */
+}
+[dir="rtl"] .tree-item-toggle-icon {
+  margin-left: 6px;
+  margin-right: 0;
+}
+
+
+.tree-item-icon {
+  margin-right: 6px; /* RTL: should be marginLeft */
+  margin-left: 0; /* RTL: default */
+  color: var(--theme-text-secondary); /* Default icon color */
+}
+[dir="rtl"] .tree-item-icon {
+   margin-left: 6px;
+   margin-right: 0;
+}
+
+/* Removed specific color for .tree-folder and .tree-file icons to allow react-icons default colors */
+/* .tree-folder .tree-item-icon { ... } */
+/* .tree-file .tree-item-icon { ... } */
+
+/* Example for specific icon styling if needed in future, e.g. via data-attributes */
+/* .tree-item[data-item-type="image"] .tree-item-icon {
+  color: var(--some-theme-color-for-images);
+} */
+
+
+.tree-item-name {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[dir="rtl"] .tree-item-name {
+  text-align: right;
+}
+
+.tree-item-search-button {
+  background: none;
+  border: none;
+  color: var(--theme-text-secondary); /* Lighter, less prominent color */
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: auto; /* Pushes button to the end */
+  margin-right: 0; /* RTL support */
+  display: none; /* Initially hidden */
+  line-height: 1; /* Ensure icon is vertically centered if text is larger */
+}
+[dir="rtl"] .tree-item-search-button {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+
+.tree-item:hover .tree-item-search-button {
+  display: inline-block; /* Show on hover of the tree item */
+}
+
+.tree-item-search-button:hover {
+  color: var(--theme-text-primary); /* Slightly brighter on hover */
+}
+
+.tree-item-children {
+  /* Optional: slight indent for children, but level prop handles main indent */
+}
+
+.tree-item-rename-input {
+  flex-grow: 1;
+  padding: 2px 4px;
+  font-size: inherit;
+  border: 1px solid var(--theme-accent-primary); /* Highlight with accent color */
+  background-color: var(--theme-bg-primary); /* Dark background */
+  color: var(--theme-text-primary); /* Light text color */
+  border-radius: 3px;
+  outline: none; /* Remove default browser outline */
+  box-sizing: border-box; /* Ensure padding and border are within width */
+}

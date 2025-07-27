@@ -1,0 +1,161 @@
+/* frontend/src/components/RepetitionItem.css */
+.repetition-item {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  padding: 15px 20px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.repetition-item:hover {
+  border-color: var(--theme-accent-secondary);
+  background-color: var(--theme-bg-primary); /* Slightly change bg on hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.repetition-item.overdue {
+  border-left: 5px solid var(--theme-accent-secondary); /* Use theme accent for overdue items */
+  /* background-color: #313b4d; /* Slightly different shade for overdue - remove specific bg */
+}
+.repetition-item.overdue .detail-next-reminder.overdue-text {
+    color: var(--theme-accent-secondary); /* Use theme accent for overdue date text */
+    font-weight: bold;
+}
+
+
+.repetition-item.completed-repetition {
+  /* background-color: #22272e; /* Darker, muted background for completed */
+  border-color: var(--theme-border-color);
+  opacity: 0.7; /* Slightly more muted */
+}
+.repetition-item.completed-repetition .repetition-name {
+    text-decoration: line-through;
+    color: var(--theme-text-secondary);
+}
+
+
+.repetition-item-main {
+  flex-grow: 1;
+}
+
+.repetition-name {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1.25em;
+  color: var(--theme-accent-secondary); /* Use theme accent for name */
+}
+
+.repetition-content {
+  font-size: 0.95em;
+  color: var(--theme-text-primary);
+  margin-bottom: 10px;
+  white-space: pre-wrap; /* Preserve line breaks in content */
+  max-height: 100px; /* Limit height */
+  overflow-y: auto; /* Allow scrolling for long content */
+  background-color: var(--theme-bg-primary); /* Use primary bg for contrast */
+  padding: 5px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-border-color);
+}
+
+.repetition-details {
+  font-size: 0.85em;
+  color: var(--theme-text-secondary);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive columns */
+  gap: 8px 15px; /* Row and column gap */
+}
+
+.repetition-details p {
+  margin: 3px 0;
+}
+
+.repetition-details strong {
+  color: var(--theme-text-primary); /* Use primary text for labels */
+}
+
+.repetition-item-actions {
+  display: flex;
+  flex-wrap: wrap; /* Allow actions to wrap on smaller screens */
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--theme-border-color);
+  margin-top: 10px;
+}
+
+/* Base action button style - align with .btn */
+.action-button {
+  padding: 6px 12px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+}
+
+/* Disabled state */
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-secondary);
+  border-color: var(--theme-border-color);
+}
+
+/* Specific button types */
+.action-button.complete-button {
+  background-color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+.action-button.complete-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+/* Mute button - subtle */
+.action-button.mute-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+  color: var(--theme-button-text-color);
+}
+.action-button.mute-button.unmute {
+  background-color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+.action-button.mute-button.unmute:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+
+/* Edit button - primary accent */
+.action-button.edit-button {
+  background-color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+.action-button.edit-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+/* Delete button - danger */
+.action-button.delete-button {
+  background-color: var(--theme-bg-secondary);
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-primary);
+}
+.action-button.delete-button:hover:not(:disabled) {
+  background-color: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+}

@@ -1,0 +1,220 @@
+:root {
+  /* Added "Assistant" for better Hebrew rendering */
+  font-family: Inter, "Assistant", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  /* color: rgba(255, 255, 255, 0.87); */
+  /* background-color: #242424; */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* New Theme Colors */
+  --theme-bg-primary: #18181B;
+  --theme-bg-secondary: #27272A;
+  --theme-text-primary: #E4E4E7;
+  --theme-text-secondary: #A1A1AA;
+  --theme-accent-primary: #2563EB;
+  --theme-accent-secondary: #60A5FA;
+  --theme-border-color: #3F3F46;
+  --theme-button-text-color: #FFFFFF;
+
+  /* Base application styling using new theme colors */
+  color: var(--theme-text-primary);
+  background-color: var(--theme-bg-primary);
+}
+
+a {
+  font-weight: 500;
+  color: var(--theme-accent-primary);
+  text-decoration: inherit;
+}
+a:hover {
+  color: var(--theme-accent-secondary);
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  font-size: 14px; /* Set a base font size for easier rem calculations */
+}
+
+/* Typography Scale */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600; /* Slightly bolder for headings */
+  line-height: 1.2;
+  color: var(--theme-text-primary);
+}
+
+h1 { font-size: 2.25rem; } /* Approx 36px */
+h2 { font-size: 1.875rem; } /* Approx 30px */
+h3 { font-size: 1.5rem; }  /* Approx 24px */
+h4 { font-size: 1.25rem; } /* Approx 20px */
+h5 { font-size: 1rem; }    /* Approx 16px */
+h6 { font-size: 0.875rem; } /* Approx 14px */
+
+p {
+  margin-top: 0;
+  margin-bottom: 1rem; /* Default paragraph spacing */
+  line-height: 1.6; /* Slightly more line height for readability */
+  color: var(--theme-text-primary);
+}
+
+/* Generic button styles removed, rely on .btn classes now */
+
+/* Standard Button Classes */
+.btn {
+  border-radius: 6px; /* Slightly less rounded than default for a sharper look */
+  padding: 0.5em 1em; /* Adjusted padding */
+  font-size: 0.9em;   /* Slightly smaller base font for buttons */
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out;
+  border: 1px solid transparent;
+  line-height: 1.4; /* Ensure text is centered vertically */
+  text-align: center;
+  display: inline-flex; /* For aligning icons if added */
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:focus,
+.btn:focus-visible {
+  outline: 2px auto var(--theme-accent-primary); /* Themed focus outline */
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Default Button (subtle) */
+.btn {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border-color: var(--theme-border-color);
+}
+.btn:hover:not(:disabled) {
+  background-color: var(--theme-border-color); /* Darken slightly */
+  border-color: var(--theme-accent-secondary);
+}
+
+/* Primary Button */
+.btn-primary {
+  background-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+  border-color: var(--theme-accent-primary);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+/* Secondary Button (Outline) */
+.btn-secondary {
+  background-color: transparent;
+  color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+
+/* Danger Button */
+.btn-danger {
+  background-color: #dc2626; /* Tailwind Red-600 */
+  color: var(--theme-button-text-color);
+  border-color: #dc2626;
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: #b91c1c; /* Tailwind Red-700 */
+  border-color: #b91c1c;
+}
+
+/* Subtle Button (alternative to default .btn if more distinction is needed) */
+.btn-subtle {
+  background-color: transparent;
+  color: var(--theme-text-secondary);
+  border-color: var(--theme-border-color);
+}
+.btn-subtle:hover:not(:disabled) {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border-color: var(--theme-accent-secondary);
+}
+
+/* Icon Button (minimal styling, for buttons that are just icons) */
+.btn-icon {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--theme-text-secondary);
+  padding: 0.4em;
+}
+.btn-icon:hover:not(:disabled) {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-accent-primary);
+}
+
+
+/* Ensure the app container takes full viewport height */
+#root {
+  width: 100%;
+  height: 100vh; /* Changed from 100% to 100vh for full viewport height */
+  margin: 0 auto;
+  /* padding: 2rem; */ /* Removing default padding to allow components to control it */
+  text-align: center;
+  display: flex; /* Added to make App.jsx fill height */
+  flex-direction: column; /* Added to make App.jsx fill height */
+}
+
+/* @media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+} */
+
+/* Basic scrollbar styling for a more modern look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-bg-secondary);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-border-color);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-accent-secondary);
+}
+
+/* CodeMirror Editor Font Override */
+.cm-editor .cm-content {
+  font-family: 'Segoe UI', sans-serif; /* Added Segoe UI, kept sans-serif as fallback */
+  font-size: 11px;
+}

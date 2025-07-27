@@ -1,0 +1,106 @@
+/* frontend/src/components/RepetitionListView.css */
+.repetition-list-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill available space */
+  background-color: var(--theme-bg-primary); /* Use theme primary background */
+  color: var(--theme-text-primary); /* Use theme primary text */
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: hidden; /* Prevent double scrollbars initially */
+}
+
+.repetition-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--theme-border-color); /* Use theme border color */
+}
+
+.repetition-list-header h1 {
+  margin: 0;
+  font-size: 1.8em;
+  color: var(--theme-text-primary); /* Use theme primary text */
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Apply .btn styles */
+.header-actions .add-repetition-button,
+.header-actions .close-view-button {
+  padding: 8px 15px;
+  border: 1px solid transparent; /* Base border */
+  border-radius: 5px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  color: var(--theme-button-text-color); /* Use theme button text color */
+}
+
+.header-actions .add-repetition-button {
+  background-color: #22c55e; /* Keep Green */
+  border-color: #16a34a;
+}
+.header-actions .add-repetition-button:hover:not(:disabled) {
+  background-color: #16a34a;
+  border-color: #15803d;
+}
+
+.header-actions .close-view-button {
+  background-color: var(--theme-bg-secondary); /* Use theme secondary background */
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-primary);
+}
+.header-actions .close-view-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+  color: var(--theme-button-text-color);
+}
+
+.header-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--theme-bg-secondary);
+    color: var(--theme-text-secondary);
+    border-color: var(--theme-border-color);
+}
+
+
+.loading-text,
+.no-repetitions-message {
+  text-align: center;
+  font-size: 1.1em;
+  color: var(--theme-text-secondary); /* Use theme secondary text */
+  margin-top: 30px;
+}
+
+.error-message.main-error {
+  background-color: rgba(239, 68, 68, 0.1); /* Use red with alpha */
+  color: #ef4444; /* Keep red text */
+  border: 1px solid #ef4444; /* Red border */
+  padding: 10px 15px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.repetitions-container {
+  flex-grow: 1;
+  overflow-y: auto; /* Enable scrolling for the list of items */
+  /* Remove scrollbar padding/margin, rely on global styles */
+  /* padding-right: 10px; */
+  /* margin-right: -10px; */
+}
+
+/* Custom Scrollbar styles removed - rely on global styles from index.css */
+/*
+.repetitions-container::-webkit-scrollbar { ... }
+.repetitions-container::-webkit-scrollbar-track { ... }
+.repetitions-container::-webkit-scrollbar-thumb { ... }
+.repetitions-container::-webkit-scrollbar-thumb:hover { ... }
+*/

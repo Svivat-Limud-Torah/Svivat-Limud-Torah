@@ -1,0 +1,156 @@
+/* frontend/src/components/SourceResultsDisplay.css */
+.source-results-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: hidden; /* Overall container doesn't scroll, content area does */
+}
+
+.source-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.source-results-header h2 {
+  margin: 0;
+  font-size: 1.4em;
+  color: var(--theme-accent-secondary); /* Use theme accent */
+}
+
+/* Apply .btn styles */
+.source-results-close-editor-button {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.source-results-close-editor-button:hover {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+  color: var(--theme-button-text-color);
+}
+
+.source-results-message,
+.source-results-error {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.1em;
+  color: var(--theme-text-secondary);
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.source-results-error {
+  color: var(--theme-text-secondary); /* Use theme text for error text */
+}
+
+.source-results-error p {
+  margin-bottom: 15px;
+}
+
+.source-results-content-area {
+  flex-grow: 1;
+  overflow-y: auto; /* Make this area scrollable */
+  background-color: var(--theme-bg-secondary);
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid var(--theme-border-color);
+  margin-bottom: 20px; /* Space before action buttons */
+}
+
+.source-results-content-area h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+  color: var(--theme-text-primary); /* Use primary text for subheadings */
+}
+
+.source-results-text-preview {
+  white-space: pre-wrap; /* Preserve line breaks and spaces */
+  word-wrap: break-word; /* Break long words to prevent overflow */
+  font-family: inherit; /* Use the app's default font or a monospace font if preferred */
+  font-size: 1em; /* Adjust as needed */
+  line-height: 1.6;
+  color: var(--theme-text-primary);
+  direction: rtl; /* Ensure text within pre is also RTL */
+  text-align: right; /* Align text to the right */
+}
+
+.source-results-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--theme-border-color);
+  flex-shrink: 0;
+}
+
+/* Apply .btn styles */
+.source-results-button {
+  padding: 10px 20px;
+  border: 1px solid transparent; /* Base border */
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 500;
+  transition: background-color 0.2s, transform 0.1s, border-color 0.2s, color 0.2s;
+  color: var(--theme-button-text-color); /* Default button text color */
+}
+
+.source-results-button:hover:not(:disabled) {
+  opacity: 0.9; /* Keep hover effect */
+}
+.source-results-button:active:not(:disabled) {
+  transform: scale(0.97); /* Keep active effect */
+}
+
+
+.save-button {
+  background-color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+}
+.save-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+.save-button:disabled {
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-secondary);
+  border-color: var(--theme-border-color);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.redo-button, .retry-button {
+  background-color: var(--theme-accent-primary); /* Use theme primary accent */
+  border-color: var(--theme-accent-primary);
+}
+.redo-button:hover:not(:disabled), .retry-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+.discard-button {
+  background-color: var(--theme-bg-secondary);
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-primary);
+}
+.discard-button:hover:not(:disabled) {
+  background-color: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+}

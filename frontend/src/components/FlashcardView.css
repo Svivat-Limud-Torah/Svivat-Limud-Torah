@@ -1,0 +1,137 @@
+/* frontend/src/components/FlashcardView.css */
+.flashcard-view-container {
+  padding: 20px;
+  background-color: var(--theme-bg-primary); /* Use theme primary background */
+  color: var(--theme-text-primary); /* Use theme primary text color */
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.flashcard-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--theme-border-color); /* Use theme border color */
+}
+
+.flashcard-view-header h2 {
+  margin: 0;
+  font-size: 1.6em;
+  color: var(--theme-text-secondary); /* Use theme secondary text for header */
+}
+
+/* Consider refactoring to use .btn .btn-primary from index.css */
+.flashcard-button {
+  background-color: var(--theme-accent-primary); /* Use theme primary accent */
+  color: var(--theme-button-text-color); /* Use theme button text color */
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: background-color 0.2s ease;
+}
+
+.flashcard-button:hover {
+  background-color: var(--theme-accent-secondary); /* Use theme secondary accent for hover */
+}
+
+/* Consider refactoring to use .btn .btn-subtle or .btn-secondary from index.css */
+.flashcard-close-button {
+  background-color: var(--theme-bg-secondary); /* Use theme secondary background */
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+}
+.flashcard-close-button:hover {
+  background-color: var(--theme-accent-secondary); /* Use theme secondary accent for hover */
+  color: var(--theme-button-text-color);
+}
+
+
+.flashcards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  perspective: 1000px; /* For 3D flip effect */
+}
+
+.flashcard {
+  background-color: transparent; /* Needed for perspective */
+  min-height: 180px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  position: relative; /* For absolute positioning of front/back */
+  border: 1px solid var(--theme-border-color); /* Use theme border color */
+}
+
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1); /* Smoother flip */
+  transform-style: preserve-3d;
+  border-radius: 8px; /* ensure inner also has radius if needed */
+}
+
+.flashcard.flipped .flashcard-inner {
+  transform: rotateY(180deg);
+}
+
+.flashcard-front,
+.flashcard-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden; /* Safari */
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 1.1em;
+}
+
+.flashcard-front {
+  background-color: var(--theme-bg-secondary); /* Use theme secondary background for front */
+  color: var(--theme-text-primary); /* Use theme primary text color */
+}
+
+.flashcard-back {
+  background-color: var(--theme-bg-primary); /* Use theme primary background for back (darker) */
+  color: var(--theme-text-primary); /* Use theme primary text color */
+  transform: rotateY(180deg);
+}
+
+.flashcard-front p,
+.flashcard-back p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.flashcard-view-loading,
+.flashcard-view-error,
+.flashcard-view-no-cards {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2em;
+  color: var(--theme-text-secondary); /* Use theme secondary text for messages */
+}
+.flashcard-view-error p {
+  color: var(--theme-accent-primary); /* Using accent color for error, could be a specific error color variable */
+  margin-bottom: 15px;
+}

@@ -1,0 +1,133 @@
+/* frontend/src/components/LearningGraphView.css */
+.learning-graph-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050; /* Higher than questionnaire modal if both could be open */
+  direction: rtl;
+}
+
+.learning-graph-modal-content {
+  background-color: var(--theme-bg-primary);
+  padding: 20px;
+  border-radius: 10px;
+  width: 95%;
+  max-width: 800px; /* Can be wider for graph */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  color: var(--theme-text-primary);
+  position: relative;
+  border: 1px solid var(--theme-border-color);
+}
+
+.learning-graph-modal-close-btn {
+  position: absolute;
+  top: 10px;
+  /* For RTL, left becomes right. Assuming [dir="rtl"] is on a parent or html */
+  right: 15px; 
+  left: auto; /* unset left */
+  background: none;
+  border: none;
+  font-size: 2em;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  line-height: 1;
+}
+.learning-graph-modal-close-btn:hover {
+  color: var(--theme-text-primary);
+}
+
+.learning-graph-modal-title {
+  text-align: center;
+  font-size: 1.8em;
+  margin-bottom: 15px;
+  color: var(--theme-accent-secondary); /* Using secondary accent for title */
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.learning-graph-controls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+/* Apply .btn styles to these buttons */
+.learning-graph-controls button {
+  padding: 8px 18px;
+  font-size: 0.95em;
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.learning-graph-controls button:hover {
+  background-color: var(--theme-accent-secondary);
+  color: var(--theme-button-text-color);
+  border-color: var(--theme-accent-secondary);
+}
+
+.learning-graph-controls button.active {
+  background-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+  border-color: var(--theme-accent-primary);
+  font-weight: bold;
+}
+.learning-graph-controls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.learning-graph-chart-container {
+  flex-grow: 1;
+  min-height: 300px; /* Ensure chart has space */
+  position: relative; /* For loading/error messages */
+  background-color: var(--theme-bg-secondary); /* Use secondary background for chart area */
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-border-color);
+}
+
+.learning-graph-chart-container p { /* For loading/error/no-data messages */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2em;
+  color: var(--theme-text-secondary);
+}
+
+.learning-graph-error {
+  color: var(--theme-accent-secondary) !important; /* Using secondary accent for error */
+}
+
+/* Scrollbar for modal content if it overflows - using theme variables from index.css */
+/* These styles are already defined globally in index.css, so they might not be needed here if they inherit correctly. */
+/* If specific styling for this modal's scrollbar is needed, uncomment and adjust. */
+/*
+.learning-graph-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+.learning-graph-modal-content::-webkit-scrollbar-track {
+  background: var(--theme-bg-secondary);
+}
+.learning-graph-modal-content::-webkit-scrollbar-thumb {
+  background: var(--theme-border-color);
+  border-radius: 4px;
+}
+.learning-graph-modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-accent-secondary);
+}
+*/

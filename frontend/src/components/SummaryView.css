@@ -1,0 +1,123 @@
+/* frontend/src/components/SummaryView.css */
+.summary-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.summary-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  color: var(--theme-text-primary);
+}
+
+.summary-loading-indicator {
+  font-size: 0.9em;
+  color: var(--theme-accent-secondary); /* Use theme accent */
+}
+
+.summary-textarea {
+  flex-grow: 1;
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-border-color);
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  font-size: 1em;
+  line-height: 1.6;
+  resize: vertical; /* Allow vertical resizing */
+  min-height: 200px; /* Minimum height for the text area */
+  box-sizing: border-box;
+}
+
+.summary-textarea:focus {
+  outline: none;
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 2px var(--theme-accent-primary-transparent); /* Needs variable or similar */
+}
+
+.summary-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start; /* Align to the start (right in RTL) */
+  flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+}
+
+/* Apply .btn styles */
+.summary-button {
+  padding: 10px 18px;
+  border: 1px solid transparent; /* Base border */
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 500;
+  transition: background-color 0.2s ease-out, opacity 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
+  color: var(--theme-button-text-color); /* Default button text */
+}
+
+.summary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--theme-bg-secondary);
+  color: var(--theme-text-secondary);
+  border-color: var(--theme-border-color);
+}
+
+.save-button {
+  background-color: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+}
+.save-button:hover:not(:disabled) {
+  background-color: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+.retry-button {
+  background-color: var(--theme-bg-secondary);
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-primary);
+}
+.retry-button:hover:not(:disabled) {
+  background-color: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+}
+
+.discard-button {
+  background-color: var(--theme-bg-secondary); /* Use theme secondary bg */
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-primary);
+}
+.discard-button:hover:not(:disabled) {
+  background-color: var(--theme-border-color); /* Darken border color on hover */
+}
+
+.summary-view-status {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+  font-size: 1.2em;
+  color: var(--theme-text-secondary);
+}
+
+.summary-error-text {
+  color: var(--theme-text-secondary); /* Use theme text for errors */
+  margin-bottom: 20px;
+}

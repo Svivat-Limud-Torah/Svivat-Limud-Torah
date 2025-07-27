@@ -1,0 +1,107 @@
+/* frontend/src/components/AiModelModal.css */
+
+.ai-model-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1500; /* Ensure it's above other content but potentially below global loading */
+  direction: rtl; /* Right-to-left for Hebrew */
+}
+
+.ai-model-modal-content {
+  background-color: var(--theme-bg-primary, #fff);
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  min-width: 300px;
+  max-width: 500px;
+  max-height: 80vh; /* Limit height */
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--theme-border-color, #ccc);
+}
+
+.ai-model-modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--theme-text-primary, #333);
+  text-align: center;
+  font-size: 1.4em; /* Slightly larger title */
+}
+
+.ai-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Space between model buttons */
+  overflow-y: auto; /* Allow scrolling if many models */
+  margin-bottom: 20px;
+  padding-right: 10px; /* Add some padding for scrollbar */
+}
+
+.ai-model-option {
+  padding: 10px 15px;
+  border: 1px solid var(--theme-border-color, #ccc);
+  background-color: var(--theme-bg-secondary, #f9f9f9);
+  color: var(--theme-text-primary, #333);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: right; /* Align text to the right */
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  font-size: 1em; /* Standard font size */
+}
+
+.ai-model-option:hover {
+  background-color: var(--theme-bg-hover, #eee);
+  border-color: var(--theme-border-hover, #bbb);
+}
+
+.ai-model-option.selected {
+  background-color: var(--theme-primary-active, #0056b3); /* Use theme active color */
+  color: var(--theme-text-on-primary, #fff); /* Text color on primary background */
+  border-color: var(--theme-primary-active, #0056b3);
+  font-weight: bold;
+}
+
+.custom-model-input {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.custom-model-input input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--theme-border-color, #ccc);
+  border-radius: 4px;
+  direction: rtl;
+}
+
+.custom-model-input button {
+  padding: 10px 15px;
+  background-color: var(--theme-primary, #0d6efd);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.custom-model-input button:disabled {
+  background-color: var(--theme-disabled, #cccccc);
+  cursor: not-allowed;
+}
+
+.custom-model-input button:not(:disabled):hover {
+  background-color: var(--theme-primary-hover, #0b5ed7);
+}
+
+.ai-model-close-btn {
+  margin-top: auto; /* Push the close button to the bottom */
+  align-self: flex-start; /* Align to the start (left in RTL) */
+  padding: 8px 16px;
+}

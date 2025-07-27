@@ -1,0 +1,145 @@
+/* ApiKeyModal.css */
+
+.api-key-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500; /* Ensure it's above other content but potentially below global messages */
+  direction: rtl; /* Ensure RTL layout */
+}
+
+.api-key-modal-content {
+  background-color: var(--theme-bg-primary); /* Use theme background */
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 500px; /* Limit maximum width */
+  border: 1px solid var(--theme-border-color); /* Use theme border */
+  color: var(--theme-text-primary); /* Use theme text color */
+}
+
+.api-key-modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--theme-text-primary);
+  text-align: center;
+}
+
+.api-key-modal-content p {
+  margin-bottom: 15px;
+  line-height: 1.6;
+  color: var(--theme-text-secondary); /* Slightly lighter text for instructions */
+}
+
+.api-key-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  background-color: var(--theme-input-bg); /* Use theme input background */
+  color: var(--theme-text-primary); /* Use theme text color */
+  direction: ltr; /* API keys are usually LTR */
+  text-align: left; /* Align text to the left for LTR */
+}
+
+/* Styles for the Paid API Key Checkbox */
+.api-key-paid-checkbox {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px; /* Space before actions */
+  gap: 8px; /* Space between checkbox and label */
+}
+
+.api-key-paid-checkbox input[type="checkbox"] {
+  margin: 0; /* Reset default margin */
+  /* Add custom styling if needed */
+}
+
+.api-key-paid-checkbox label {
+  color: var(--theme-text-secondary); /* Use secondary text color */
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+/* Styles for the instructions section */
+.instructions-section {
+  margin-bottom: 20px;
+}
+
+.instructions-toggle-btn {
+  background-color: var(--theme-accent-color, #4a90e2);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-bottom: 15px;
+  transition: background-color 0.2s ease;
+}
+
+.instructions-toggle-btn:hover {
+  background-color: var(--theme-accent-hover, #357abd);
+}
+
+.instructions-content {
+  background-color: var(--theme-bg-secondary, #f8f9fa);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  padding: 20px;
+  margin-top: 10px;
+}
+
+.instructions-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--theme-text-primary);
+  font-size: 1.1em;
+}
+
+.instructions-list {
+  padding-right: 20px;
+  margin-bottom: 15px;
+}
+
+.instructions-list li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  color: var(--theme-text-primary);
+}
+
+.instructions-note {
+  background-color: var(--theme-info-bg, #e3f2fd);
+  border: 1px solid var(--theme-info-border, #bbdefb);
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 15px;
+  margin-bottom: 0;
+  color: var(--theme-info-text, #1565c0);
+}
+
+
+.api-key-modal-actions {
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the end (left in RTL) */
+  gap: 10px; /* Space between buttons */
+}
+
+/* Use existing button styles if available, otherwise define basic ones */
+/* Assuming .btn and .btn-primary are defined globally */
+
+.api-key-saved-message {
+  margin-top: 15px;
+  color: var(--theme-success-color, #48bb78); /* Use theme success color or fallback */
+  text-align: center;
+  font-weight: bold;
+}

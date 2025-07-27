@@ -1,0 +1,272 @@
+/* General body styles - Apply these if this CSS is the primary style sheet or to a main app container */
+/* If you have a global stylesheet, incorporate these there. */
+:root {
+  --app-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+  --editor-font-family: "Consolas", "Monaco", "Courier New", monospace;
+}
+
+body {
+  font-family: var(--app-font-family); /* Use CSS variable for font */
+  background-color: #111827; /* Example very dark background for the page */
+  color: #d1d5db; /* Default light text color */
+  margin: 0; /* Reset default margin */
+  /* For Firefox scrollbar (basic) - uncomment and adjust colors if needed globally */
+  /* scrollbar-color: #4b5563 #1f2937; */
+}
+
+/* Dark Webkit Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 10px; /* Width of vertical scrollbar */
+  height: 10px; /* Height of horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: #1f2937; /* Background of the scrollbar track, should match your darker panel backgrounds */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #4b5563; /* Color of the scrollbar thumb */
+  border-radius: 5px;
+  border: 2px solid #1f2937; /* Creates a "padding" effect around the thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280; /* Thumb color on hover */
+}
+
+/* === Original frontend/src/App.css with modifications === */
+
+.app-container {
+  display: flex;
+  flex-direction: column; /* Changed from row to column to match App.jsx structure */
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--theme-bg-primary);
+  direction: rtl; /* Set base direction for the app */
+  font-family: var(--app-font-family); /* Apply app font to entire container */
+}
+
+/* Styles for the main layout components if App.jsx is structured with Sidebar and MainContentArea */
+/* These might need to be adjusted based on the actual JSX structure in App.jsx */
+.app-layout {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden; /* Prevent double scrollbars if children manage their own scroll */
+}
+
+.sidebar {
+  width: 280px; /* Adjusted width */
+  min-width: 220px; /* Minimum width */
+  background-color: var(--theme-bg-secondary);
+  padding: 1rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--theme-border-color); /* For RTL, this will be on the "inner" side */
+  direction: rtl; /* Explicitly set for sidebar content */
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content-area { /* Renamed to match component name if applicable */
+  flex-grow: 1;
+  padding: 0; /* MainContentArea might handle its own padding */
+  overflow-y: auto;
+  background-color: var(--theme-bg-primary);
+  direction: rtl; /* Explicitly set for main content */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Remove or adjust h1 style if it's too generic or conflicts */
+/* .app-container h1 {
+  color: var(--theme-text-primary);
+} */
+
+/* אנימציית שמירה בטאב */
+.tab-saving {
+  animation: pulse 0.7s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    background-color: #1a1d21;
+    color: #f0f0f0;
+  }
+  50% {
+    background-color: #38a169;
+    color: #ffffff;
+  }
+  100% {
+    background-color: #1a1d21;
+    color: #f0f0f0;
+  }
+}
+
+.tab-inactive-saving {
+  animation: pulse-inactive 0.7s ease-in-out;
+}
+
+@keyframes pulse-inactive {
+  0% {
+    background-color: transparent; /* צבע רקע של טאב לא פעיל */
+    color: #a0aec0;
+  }
+  50% {
+    background-color: #2f855a; /* ירוק כהה יותר לטאב לא פעיל */
+    color: #e2e8f0;
+  }
+  100% {
+    background-color: transparent;
+    color: #a0aec0;
+  }
+}
+/* סוף אנימציית שמירה */
+
+/* סגנון בסיסי לעץ קבצים */
+.tree-item {
+  padding: 3px 8px; /* Slightly more vertical padding for better touch/click */
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem; /* Using rem for better global font scaling */
+  color: #cdd5e0; /* Slightly adjusted text color */
+  transition: background-color 0.1s ease-in-out;
+  min-height: 24px; /* Adjusted min-height */
+  font-family: inherit; /* Ensure it inherits the body's improved font stack */
+}
+
+.tree-item:hover {
+  background-color: #374151; /* Darker, more subtle hover background */
+}
+
+.tree-item-toggle-icon {
+  margin-right: 5px; /* Adjusted margin */
+  color: #9ca3af; /* Softer gray for icons */
+  width: 12px;
+  display: inline-block;
+  text-align: center;
+  font-size: 0.75rem; /* Adjusted size */
+}
+
+.tree-item-icon {
+  margin-right: 7px; /* Adjusted margin */
+  font-size: 0.9rem; /* Adjusted size */
+  width: 18px;
+  text-align: center;
+  color: #81c7f5; /* Slightly adjusted icon blue */
+}
+.tree-folder > .tree-item-icon {
+  color: #facc15; /* Brighter, more modern yellow for folders */
+}
+
+
+.tree-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+.tree-folder > .tree-item-name {
+  font-weight: 500; /* Slightly bolder for folder names for emphasis */
+  color: #e5e7eb; /* Consistent light text color */
+}
+
+.tree-item-search-button {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #9ca3af; /* Matched toggle icon color */
+  cursor: pointer;
+  padding: 2px 5px; /* Adjusted padding */
+  font-size: 0.9rem;
+  border-radius: 4px; /* Slightly larger radius */
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+.tree-item:hover .tree-item-search-button {
+  opacity: 1;
+}
+
+.tree-item-search-button:hover {
+  background-color: #4b5563; /* Consistent hover states */
+  color: #f0f2f5; /* Brighter text on hover */
+}
+
+
+/* סגנונות נוספים להעשרת המראה */
+/* Removed generic button styles from here - rely on index.css */
+
+input[type="text"] {
+  border-radius: 5px; /* Slightly more rounded */
+  background-color: #1f2937; /* Darker background to blend better with very dark themes */
+  color: #e5e7eb;
+  border: 1px solid #374151; /* Darker, more subtle border */
+  /* To remove the border line completely, uncomment the line below and comment out the line above */
+  /* border: none; */
+  padding: 9px 14px; /* Slightly more padding for a modern feel */
+  transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out;
+  font-family: inherit; /* Ensure inputs use the global font stack */
+}
+input[type="text"]:focus {
+  outline: none;
+  border-color: #3b82f6; /* A common modern blue for focus */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); /* Softer focus shadow */
+}
+
+/* סגנון להדגשת חיפוש בתוך העורך */
+.editor-search-highlight {
+  background-color: rgba(250, 204, 21, 0.4); /* Adjusted yellow, slightly less transparent for visibility */
+  border-radius: 3px; /* Slightly larger radius */
+}
+
+/* סגנון למספרי שורות אם Monaco לא מטפל בזה אוטומטית עם RTL */
+.monaco-editor .line-numbers {
+  /* Usually handled by Monaco. These are placeholders. */
+  /* Forcing LTR for numbers if RTL is an issue, e.g., unicode-bidi: bidi-override; direction: ltr; */
+  font-family: var(--editor-font-family) !important; /* Apply editor font to line numbers */
+}
+
+/* Apply app font to all UI elements */
+button, input, textarea, select, .sidebar, .main-content-area, .modal-content {
+  font-family: var(--app-font-family);
+}
+
+/* Apply editor font to code-related elements */
+.cm-editor, .cm-content, .cm-gutters, code, pre, .code, .editor, .font-preview-item {
+  font-family: var(--editor-font-family);
+}
+
+/* Repetitions notification dot */
+.repetitions-notification-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: #ff4444;
+  border-radius: 50%;
+  border: 1px solid white;
+  box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
+  }
+}
+
+html {
+  background-color: #111827;
+}
+*/

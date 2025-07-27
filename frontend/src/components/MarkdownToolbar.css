@@ -1,0 +1,123 @@
+/* MarkdownToolbar.css */
+.markdown-toolbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-secondary);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 44px;
+  direction: rtl;
+}
+
+.markdown-toolbar-label {
+  color: var(--theme-text-secondary);
+  font-size: 14px;
+  margin-left: 12px;
+  font-weight: 500;
+}
+
+.markdown-toolbar-button {
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  padding: 6px 12px;
+  height: auto;
+  min-height: 32px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 2px;
+  white-space: nowrap;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-toolbar-button:hover:not(:disabled) {
+  background: var(--theme-border-color);
+  border-color: var(--theme-accent-secondary);
+  color: var(--theme-text-primary);
+}
+
+.markdown-toolbar-button:active:not(:disabled) {
+  background: var(--theme-bg-secondary);
+}
+
+.markdown-toolbar-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-secondary);
+}
+
+/* Special button styling - simplified */
+.markdown-toolbar-button.bold {
+  font-weight: 700;
+}
+
+.markdown-toolbar-button.italic {
+  font-style: italic;
+}
+
+.markdown-toolbar-button.heading {
+  font-weight: 600;
+}
+
+.markdown-toolbar-button.code {
+  font-family: 'Courier New', monospace;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--theme-border-color);
+  margin: 0 8px;
+}
+
+.markdown-toolbar-button.preview-button.active {
+  background: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+
+.markdown-toolbar-button.preview-button.active:hover:not(:disabled) {
+  background: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+.markdown-toolbar-button.organize-text-button {
+  background: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+
+.markdown-toolbar-button.organize-text-button:hover:not(:disabled) {
+  background: var(--theme-accent-secondary);
+  border-color: var(--theme-accent-secondary);
+}
+
+.markdown-toolbar-button.organize-text-button:disabled {
+  opacity: 0.5;
+  background: var(--theme-bg-secondary);
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-secondary);
+}
+
+/* אנימציה לכפתור ארגן טקסט */
+.markdown-toolbar-button.organize-text-button.processing {
+  animation: organizeTextPulse 1.5s infinite;
+}
+
+@keyframes organizeTextPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
