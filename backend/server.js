@@ -13,6 +13,7 @@ const learningGraphService = require('./services/LearningGraphService');
 const pilpultaRoutes = require('./routes/pilpultaRoutes'); // Import Pilpulta routes
 const smartSearchRoutes = require('./routes/smartSearchRoutes'); // Import Smart Search routes
 const userDataService = require('./services/UserDataService'); // To be created
+const fileConversionService = require('./services/FileConversionService'); // Import File Conversion service
 
 const app = express();
 const port = 3001;
@@ -1033,6 +1034,129 @@ app.use('/api/pilpulta', pilpultaRoutes);
 
 // --- Smart Search API Endpoint ---
 app.use('/api/smart-search', smartSearchRoutes);
+
+// --- File Conversion API Endpoints ---
+app.post('/api/file-conversion/scan-directory', async (req, res) => {
+    const { directoryPath } = req.body;
+    
+    if (!directoryPath) {
+        return res.status(400).json({ error: 'נתיב תיקייה נדרש' });
+    }
+
+    try {
+        // Check if directory exists
+        await fs.access(directoryPath);
+        const stats = await fs.stat(directoryPath);
+        
+        if (!stats.isDirectory()) {
+            return res.status(400).json({ error: 'הנתיב שסופק אינו תיקייה' });
+        }
+
+        const files = await fileConversionService.scanDirectoryForConvertibleFiles(directoryPath);
+        res.json({ 
+            files,
+            totalFiles: files.length,
+            supportedExtensions: fileConversionService.supportedExtensions
+        });
+    } catch (error) {
+        console.error('Error scanning directory:', error);
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({ error: 'התיקייה לא נמצאה' });
+        }
+        if (error.code === 'EPERM' || error.code === 'EACCES') {
+            return res.status(403).json({ error: 'אין הרשאת גישה לתיקייה' });
+        }
+        res.status(500).json({ error: error.message || 'שגיאה בסריקת התיקייה' });
+    }
+});
+
+app.post('/api/file-conversion/convert-directory', async (req, res) => {
+    const { sourceDirectory, targetDirectoryName } = req.body;
+    
+    if (!sourceDirectory || !targetDirectoryName) {
+        return res.status(400).json({ error: 'נתיב תיקיית מקור ושם תיקיית יעד נדרשים' });
+    }
+
+    try {
+        // Check if source directory exists
+        await fs.access(sourceDirectory);
+        const stats = await fs.stat(sourceDirectory);
+        
+        if (!stats.isDirectory()) {
+            return res.status(400).json({ error: 'תיקיית המקור אינה תיקייה תקינה' });
+        }
+
+        // Create target directory path next to source directory
+        const sourceParent = path.dirname(sourceDirectory);
+        const targetDirectory = path.join(sourceParent, targetDirectoryName);
+
+        // Progress callback for real-time updates (can be enhanced with WebSockets later)
+        const progressCallback = (progress) => {
+            console.log('Conversion progress:', progress);
+            // TODO: Implement WebSocket or Server-Sent Events for real-time progress
+        };
+
+        const results = await fileConversionService.convertDirectoryToMarkdown(
+            sourceDirectory,
+            targetDirectory,
+            progressCallback
+        );
+
+        res.json({
+            ...results,
+            sourceDirectory,
+            targetDirectory,
+            message: `הומרו ${results.convertedFiles} מתוך ${results.totalFiles} קבצים בהצלחה`
+        });
+    } catch (error) {
+        console.error('Error converting directory:', error);
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({ error: 'תיקיית המקור לא נמצאה' });
+        }
+        if (error.code === 'EPERM' || error.code === 'EACCES') {
+            return res.status(403).json({ error: 'אין הרשאת גישה לתיקיית המקור או לתיקיית היעד' });
+        }
+        res.status(500).json({ error: error.message || 'שגיאה בהמרת הקבצים' });
+    }
+});
+
+app.post('/api/file-conversion/convert-single-file', async (req, res) => {
+    const { filePath } = req.body;
+    
+    if (!filePath) {
+        return res.status(400).json({ error: 'נתיב קובץ נדרש' });
+    }
+
+    try {
+        // Check if file exists
+        await fs.access(filePath);
+        const stats = await fs.stat(filePath);
+        
+        if (!stats.isFile()) {
+            return res.status(400).json({ error: 'הנתיב שסופק אינו קובץ' });
+        }
+
+        if (!fileConversionService.isFileSupported(filePath)) {
+            return res.status(400).json({ error: 'סוג קובץ לא נתמך להמרה' });
+        }
+
+        const markdownContent = await fileConversionService.convertFileToMarkdown(filePath);
+        res.json({ 
+            content: markdownContent,
+            originalFile: filePath,
+            message: 'הקובץ הומר בהצלחה'
+        });
+    } catch (error) {
+        console.error('Error converting file:', error);
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({ error: 'הקובץ לא נמצא' });
+        }
+        if (error.code === 'EPERM' || error.code === 'EACCES') {
+            return res.status(403).json({ error: 'אין הרשאת גישה לקובץ' });
+        }
+        res.status(500).json({ error: error.message || 'שגיאה בהמרת הקובץ' });
+    }
+});
 
 // --- User Data Export/Import Endpoints ---
 app.get('/api/user/export-data', async (req, res) => {

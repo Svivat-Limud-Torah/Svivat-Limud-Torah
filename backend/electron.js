@@ -190,6 +190,17 @@ app.whenReady().then(() => {
     }
   });
 
+  // IPC handler for closing the application
+  ipcMain.handle('close-app', async () => {
+    try {
+      app.quit();
+      return true;
+    } catch (error) {
+      console.error('Error closing application:', error);
+      return false;
+    }
+  });
+
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.

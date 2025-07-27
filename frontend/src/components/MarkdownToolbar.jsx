@@ -138,6 +138,7 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
         title="מעבר בין מצב עריכה למצב תצוגה - בתצוגה תראה איך הטקסט ייראה בסוף"
         onClick={togglePreview}
         disabled={isDisabled}
+        data-tutorial="preview-button"
         className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''}`}
       >
         {showPreview ? 'חזור לעריכה' : 'תצוגה'}
@@ -147,6 +148,7 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
         title="בינה מלאכותית תסדר ותארגן את הטקסט שלך באופן אוטומטי"
         onClick={handleOrganizeText}
         disabled={isDisabled || isOrganizing}
+        data-tutorial="organize-text-button"
         className={`markdown-toolbar-button organize-text-button ${isOrganizing ? 'processing' : ''}`}
       >
         {isOrganizing ? 'מארגן את הטקסט...' : 'ארגן טקסט עם AI'}

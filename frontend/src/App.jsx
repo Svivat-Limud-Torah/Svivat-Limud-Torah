@@ -18,11 +18,13 @@ import './components/MarkdownToolbar.css';
 import './components/MarkdownToolbar.css'; // Import Markdown Toolbar CSS
 import './components/ApiKeyModal.css'; // Import API Key Modal CSS
 import './components/AiModelModal.css'; // Import AI Model Modal CSS
+import './components/OnboardingTutorial.css'; // Import Onboarding Tutorial CSS
 import './components/PilpultaDisplay.css'; // Import Pilpulta CSS
 import './components/UnsavedChangesModal.css'; // Import UnsavedChangesModal CSS
 
 import Sidebar from './components/Sidebar';
 import MainContentArea from './components/MainContentArea';
+import OnboardingTutorial from './components/OnboardingTutorial';
 import EditorToolbar from './components/EditorToolbar';
 import TranscriptionInputModal from './components/TranscriptionInputModal';
 import QuestionnaireButton from './components/QuestionnaireButton';
@@ -38,6 +40,7 @@ import PilpultaDisplay from './components/PilpultaDisplay'; // Import PilpultaDi
 import SmartSearchModal from './components/SmartSearchModal'; // Import SmartSearchModal
 import HelpModal from './components/HelpModal'; // Import HelpModal
 import UnsavedChangesModal from './components/UnsavedChangesModal'; // Import UnsavedChangesModal
+import FileConversionModal from './components/FileConversionModal'; // Import FileConversionModal
 
 
 import useWorkspace from './hooks/useWorkspace';
@@ -106,6 +109,7 @@ function App() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // State for Help modal
   const [isPilpultaVisible, setIsPilpultaVisible] = useState(false); // State for Pilpulta window
   const [pilpultaData, setPilpultaData] = useState([]); // Data for Pilpulta window
+  const [isFileConversionModalOpen, setIsFileConversionModalOpen] = useState(false); // State for File Conversion modal
   // Smart Search modal state is managed within useAiFeatures hook
   const [editorFontSize, setEditorFontSize] = useState(DEFAULT_FONT_SIZE_PX);
   
@@ -121,6 +125,23 @@ function App() {
   const questionnaireHook = useQuestionnaire(setGlobalLoadingMessage); // Pass setGlobalLoadingMessage
   const learningGraphHook = useLearningGraph(); // Initialize Learning Graph Hook
   const judaismChatHook = useJudaismChat({ setGlobalLoadingMessage, selectedAiModel }); // Pass selected model
+
+  // Check if user should see file conversion prompt
+  useEffect(() => {
+    const hasSeenConversionPrompt = localStorage.getItem('hasSeenFileConversionPrompt');
+    const shouldShowPrompt = localStorage.getItem('showFileConversionPrompt');
+    const hasCompletedConversion = localStorage.getItem('hasCompletedFileConversion') === 'true';
+    
+    // Show prompt on first app load unless user specifically disabled it or already completed conversion
+    if ((!hasSeenConversionPrompt || shouldShowPrompt === 'true') && !hasCompletedConversion) {
+      // Small delay to let the app initialize
+      const timer = setTimeout(() => {
+        setIsFileConversionModalOpen(true);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleEditorFontSizeChange = (newSize) => {
     setEditorFontSize(newSize);
@@ -304,6 +325,32 @@ function App() {
       .then(data => setBackendMessage(data.message))
       .catch(err => console.warn("לא ניתן להתחבר לשרת לקבלת הודעת 'hello':", err.message));
   }, []);
+
+  // Auto-open file conversion modal when no workspace is present
+  useEffect(() => {
+    const neverShowAgain = localStorage.getItem('fileConversionNeverShow') === 'true';
+    const postponed = localStorage.getItem('fileConversionPostponed') === 'true';
+    
+    console.log('Checking workspace status:', {
+      workspaceFoldersCount: workspaceHook.workspaceFolders.length,
+      isModalOpen: isFileConversionModalOpen,
+      neverShowAgain,
+      postponed
+    });
+    
+    if (workspaceHook.workspaceFolders.length === 0 && 
+        !isFileConversionModalOpen && 
+        !neverShowAgain && 
+        !postponed) {
+      // Delay the modal opening to ensure the component is fully mounted
+      const timer = setTimeout(() => {
+        console.log('Opening file conversion modal - no workspace detected');
+        setIsFileConversionModalOpen(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen]);
 
   useEffect(() => {
     const previousWorkspaceFolders = JSON.stringify(workspaceHook.workspaceFolders.map(f => f.path).sort());
@@ -553,6 +600,7 @@ function App() {
         else if (isAiModelModalOpen) setIsAiModelModalOpen(false);
         else if (isApiKeyModalOpen) setIsApiKeyModalOpen(false);
         else if (isHelpModalOpen) setIsHelpModalOpen(false);
+        else if (isFileConversionModalOpen) setIsFileConversionModalOpen(false);
         else if (isLearningGraphViewOpen) setIsLearningGraphViewOpen(false);
         else if (questionnaireHook.isModalOpen) questionnaireHook.closeQuestionnaireModal();
         else if (questionnaireHook.showNotificationSettings) questionnaireHook.setShowNotificationSettings(false);
@@ -576,6 +624,7 @@ function App() {
       isAiModelModalOpen, setIsAiModelModalOpen,
       isApiKeyModalOpen, setIsApiKeyModalOpen,
       isHelpModalOpen, setIsHelpModalOpen,
+      isFileConversionModalOpen, setIsFileConversionModalOpen,
       isPilpultaVisible, hidePilpulta, // Added Pilpulta escape handling
       aiFeaturesHook.isSmartSearchModalOpen, aiFeaturesHook.closeSmartSearchModal, // Added Smart Search escape
       tabsHook.unsavedChangesModal.isOpen, tabsHook.handleModalCancel, // Added UnsavedChanges modal escape
@@ -679,6 +728,39 @@ function App() {
     setIsHelpModalOpen(false);
   };
 
+  // --- File Conversion Modal Handlers ---
+  const handleOpenFileConversionModal = () => {
+    setIsFileConversionModalOpen(true);
+  };
+
+  const handleCloseFileConversionModal = (option = 'postpone') => {
+    setIsFileConversionModalOpen(false);
+    
+    if (option === 'never') {
+      // User clicked "Don't show again"
+      localStorage.setItem('fileConversionNeverShow', 'true');
+      localStorage.removeItem('fileConversionPostponed');
+      console.log('File conversion modal set to never show again');
+    } else if (option === 'postpone') {
+      // User clicked "I'll do it later" or closed the modal
+      localStorage.setItem('fileConversionPostponed', 'true');
+      localStorage.removeItem('fileConversionNeverShow');
+      console.log('File conversion modal postponed');
+    } else if (option === 'success') {
+      // User completed conversion successfully - clear all restrictions
+      localStorage.removeItem('fileConversionNeverShow');
+      localStorage.removeItem('fileConversionPostponed');
+      console.log('File conversion completed successfully - cleared all restrictions');
+    }
+  };
+
+  const handleOpenFileConversionFromSettings = () => {
+    // This is called from settings menu, so we reset the "don't show again" and "postponed" states
+    localStorage.removeItem('fileConversionNeverShow');
+    localStorage.removeItem('fileConversionPostponed');
+    setIsFileConversionModalOpen(true);
+  };
+
   const handleSelectAiModel = (model) => {
     setSelectedAiModel(model);
     // Store the selected model in localStorage
@@ -699,7 +781,7 @@ function App() {
   };
 
 
-  const isAnyModalOpen = isTranscriptionModalOpen || questionnaireHook.isModalOpen || questionnaireHook.showNotificationSettings || isLearningGraphViewOpen || isJudaismChatModalOpen || isApiKeyModalOpen || isAiModelModalOpen || isHelpModalOpen || isPilpultaVisible || aiFeaturesHook.isSmartSearchModalOpen || tabsHook.unsavedChangesModal.isOpen; // Added UnsavedChangesModal
+  const isAnyModalOpen = isTranscriptionModalOpen || questionnaireHook.isModalOpen || questionnaireHook.showNotificationSettings || isLearningGraphViewOpen || isJudaismChatModalOpen || isApiKeyModalOpen || isAiModelModalOpen || isHelpModalOpen || isPilpultaVisible || aiFeaturesHook.isSmartSearchModalOpen || tabsHook.unsavedChangesModal.isOpen || isFileConversionModalOpen; // Added FileConversionModal
   const isAnyAiLoading = aiFeaturesHook.isLoadingFlashcards || aiFeaturesHook.isLoadingSummary || aiFeaturesHook.isLoadingSourceFinding || aiFeaturesHook.isProcessingText || judaismChatHook.isJudaismChatLoading || aiFeaturesHook.isLoadingPilpulta || aiFeaturesHook.isLoadingSmartSearch; // Added Smart Search loading
   const isEditorToolbarDisabled = isAnyAiLoading || !!globalLoadingMessage || isAnyModalOpen;
   const isGlobalActionDisabled = !!globalLoadingMessage || isAnyModalOpen;
@@ -782,6 +864,7 @@ function App() {
                 className="btn"
                 onClick={handleOpenApiKeyModal}
                 disabled={isGlobalActionDisabled}
+                data-tutorial="api-key-button"
                 title={HEBREW_TEXT.geminiApiKeyModalTitle}
               >
                 {HEBREW_TEXT.geminiApiKeyButton}
@@ -795,6 +878,16 @@ function App() {
                 title={HEBREW_TEXT.helpButtonTooltip}
               >
                 {HEBREW_TEXT.helpButton}
+              </button>
+              
+              {/* File Conversion Button - moved before settings */}
+              <button
+                className="btn"
+                onClick={handleOpenFileConversionFromSettings}
+                disabled={isGlobalActionDisabled}
+                title="המרת קבצים לפורמט Markdown"
+              >
+                המרת קבצים
               </button>
               
               <button
@@ -1061,6 +1154,20 @@ function App() {
         onDiscard={tabsHook.handleModalDiscard}
         onCancel={tabsHook.handleModalCancel}
         isSaving={tabsHook.unsavedChangesModal.isSaving}
+      />
+      
+      {/* Render File Conversion Modal */}
+      <FileConversionModal
+        isOpen={isFileConversionModalOpen}
+        onClose={handleCloseFileConversionModal}
+        addWorkspaceFolder={workspaceHook.addWorkspaceFolder}
+      />
+      
+      {/* Onboarding Tutorial */}
+      <OnboardingTutorial
+        isWorkspaceSetup={workspaceHook.workspaceFolders.length > 0}
+        onOpenApiKeyModal={handleOpenApiKeyModal}
+        onClose={() => {}}
       />
     </div>
   );
