@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { HEBREW_TEXT, DEFAULT_FONT_SIZE_PX } from '../utils/constants'; // Ensure HEBREW_TEXT is imported
 import FontSizeModal from './FontSizeModal';
 import FontSelectionModal from './FontSelectionModal';
+import { undo } from '@codemirror/commands'; // Import undo command
 
 const EditorToolbar = ({
   onFindSources,
@@ -11,6 +12,8 @@ const EditorToolbar = ({
   onOpenTranscriptionModal,
   onGeneratePilpulta, // New prop for Pilpulta feature
   onOpenSmartSearchModal, // New prop for Smart Search
+  onGenerateFlashcards, // New prop for Flashcards feature
+  isGeneratingFlashcards, // New prop for Flashcards loading state
   editorFontSize, // Prop from App.jsx
   onEditorFontSizeChange, // Prop from App.jsx
   handleToggleMainView, // New prop for toggling main view
@@ -21,6 +24,7 @@ const EditorToolbar = ({
   onAppFontChange, // New prop for app font change
   onEditorFontChange, // New prop for editor font change
   repetitionsHook, // New prop for repetitions notifications
+  editorRef, // New prop for editor reference to enable undo
 }) => {
   const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
   const [isFontSelectionModalOpen, setIsFontSelectionModalOpen] = useState(false);
@@ -37,6 +41,23 @@ const EditorToolbar = ({
     }
     // The local currentEditorFontSize state is removed, App.jsx manages the source of truth.
     // The modal will get its currentSize directly from the editorFontSize prop.
+  };
+
+  // Undo function using CodeMirror's history
+  const handleUndo = () => {
+    if (!editorRef?.current) return;
+    
+    try {
+      // Get the CodeMirror view from the Editor component
+      const view = editorRef.current.getEditorView?.();
+      if (!view || !view.state) return;
+      
+      // Use CodeMirror's undo command
+      undo(view);
+      view.focus();
+    } catch (error) {
+      console.error('שגיאה בביצוע undo:', error);
+    }
   };
 
   // const handleFontSizeIncrease = () => { // Removed as A+ button is removed
@@ -126,6 +147,36 @@ const EditorToolbar = ({
         }}
       >
         בחירת פונט
+      </button>
+
+      {/* Undo Button */}
+      <button
+        title="חזור לשינוי הקודם (Ctrl+Z)"
+        onClick={handleUndo}
+        disabled={isAiFeaturesActive}
+        className="btn btn-sm"
+        style={{
+          marginRight: '8px',
+          outline: 'none',
+          boxShadow: 'none',
+          ...(isAiFeaturesActive ? disabledStyle : {}),
+        }}
+      >
+        חזור
+      </button>
+
+      {/* Flashcards Button - moved from App.jsx and placed before Find Sources */}
+      <button
+        title={isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
+        onClick={onGenerateFlashcards}
+        disabled={isGeneratingFlashcards || isAiFeaturesActive}
+        className="btn btn-sm"
+        style={{
+          marginLeft: '15px',
+          ...( (isGeneratingFlashcards || isAiFeaturesActive) ? disabledStyle : {}),
+        }}
+      >
+        {isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
       </button>
 
       <button

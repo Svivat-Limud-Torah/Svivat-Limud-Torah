@@ -3,8 +3,16 @@ import React, { useState } from 'react';
 import './MarkdownToolbar.css';
 import { HEBREW_TEXT } from '../utils/constants';
 
-const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrganizeTextToggle, isOrganizing = false }) => {
+const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrganizeTextToggle, isOrganizing = false, hasUnsavedChanges = false, onAiOrganizeComplete }) => {
   const [showPreview, setShowPreview] = useState(false);
+  const [shouldBlinkPreview, setShouldBlinkPreview] = useState(false);
+
+  // Listen for AI organize completion signal
+  React.useEffect(() => {
+    if (onAiOrganizeComplete) {
+      setShouldBlinkPreview(true);
+    }
+  }, [onAiOrganizeComplete]);
 
   const insertMarkdown = (before, after = '', placeholder = '') => {
     if (!editorRef?.current || isDisabled) return;
@@ -32,6 +40,9 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
       });
       
       view.focus();
+      
+      // Trigger preview blink when using markdown formatting
+      setShouldBlinkPreview(true);
     } catch (error) {
       console.error('שגיאה בהוספת Markdown:', error);
     }
@@ -75,12 +86,6 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
       className: 'list'
     },
     {
-      label: 'רשימה ממוספרת',
-      title: 'יוצר רשימה ממוספרת - כל שורה תתחיל במספר',
-      onClick: () => insertMarkdown('1. ', '', 'פריט ברשימה'),
-      className: 'list'
-    },
-    {
       label: 'קישור',
       title: 'הוספת קישור לאתר אינטרנט - הטקסט יהפוך לקישור לחיצה',
       onClick: () => insertMarkdown('[', '](http://example.com)', 'טקסט הקישור'),
@@ -97,6 +102,10 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
   const togglePreview = () => {
     const newShowPreview = !showPreview;
     setShowPreview(newShowPreview);
+    
+    // Stop blinking when toggling to preview or back to edit
+    setShouldBlinkPreview(false);
+    
     if (onPreviewToggle) {
       onPreviewToggle(newShowPreview);
     }
@@ -139,7 +148,7 @@ const MarkdownToolbar = ({ editorRef, isDisabled = false, onPreviewToggle, onOrg
         onClick={togglePreview}
         disabled={isDisabled}
         data-tutorial="preview-button"
-        className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''}`}
+        className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''} ${shouldBlinkPreview && !showPreview ? 'blinking' : ''}`}
       >
         {showPreview ? 'חזור לעריכה' : 'תצוגה'}
       </button>

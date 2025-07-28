@@ -125,6 +125,7 @@ const MainContentArea = ({
   // State for markdown preview mode
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
   const [isOrganizingText, setIsOrganizingText] = useState(false);
+  const [aiOrganizeCompleted, setAiOrganizeCompleted] = useState(null);
 
   const handlePreviewToggle = (isPreview) => {
     setShowMarkdownPreview(isPreview);
@@ -191,6 +192,8 @@ ${activeTabObject.content}
           // עדכון התוכן בעורך
           handleEditorChange(result.organizedText);
           console.log('הטקסט אורגן בהצלחה!');
+          // Signal that AI organize is complete
+          setAiOrganizeCompleted(Date.now());
         } else {
           throw new Error('לא התקבל טקסט מאורגן מהשרת');
         }
@@ -403,6 +406,8 @@ ${activeTabObject.content}
                     onPreviewToggle={handlePreviewToggle}
                     onOrganizeTextToggle={handleOrganizeTextToggle}
                     isOrganizing={isOrganizingText}
+                    hasUnsavedChanges={activeTabObject.isDirty}
+                    onAiOrganizeComplete={aiOrganizeCompleted}
                   />
                 )}
                 

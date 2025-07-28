@@ -15,6 +15,8 @@ export default function useFileOperations({
   handleCloseTab, // from useTabs
   fetchStatsFiles, // from useStats
   setGlobalLoadingMessage,
+  setIsSaveAsModalOpen,
+  setSaveAsData,
 }) {
   const [savingTabPath, setSavingTabPath] = useState(null);
 
@@ -47,58 +49,33 @@ export default function useFileOperations({
     let targetFileName = activeTabObject.name;
 
     if (saveAs || activeTabObject.isNewUnsaved) {
-      setGlobalLoadingMessage("ממתין לבחירת מיקום שמירה...");
-      try {
-        // Use Electron IPC to show the save dialog
-        const dialogArgs = {
-          defaultPath: activeTabObject.basePath !== '__new_unsaved__' ? path.join(activeTabObject.basePath, activeTabObject.relativePath) : '',
-          defaultName: activeTabObject.name,
-          workspacePaths: workspaceFolders.map(wf => wf.path)
-        };
-
-        if (!window.electronAPI || typeof window.electronAPI.showSaveDialog !== 'function') {
-          console.error("electronAPI.showSaveDialog is not available. Ensure preload.js is configured correctly.");
-          alert("שגיאה קריטית: פונקציונליות שמירת הקובץ אינה זמינה. בדוק את הגדרות ה-preload.");
-          setGlobalLoadingMessage('');
-          return;
-        }
-        
-        const dialogData = await window.electronAPI.showSaveDialog(dialogArgs);
-        setGlobalLoadingMessage(''); // Clear after dialog closes or an error occurs
-
-        if (dialogData.error) {
-          console.error("Error from Save As dialog (IPC):", dialogData.error);
-          alert(`שגיאה בפתיחת דיאלוג שמירה: ${dialogData.error}`);
-          return;
-        }
-
-        if (dialogData.cancelled || !dialogData.filePath) {
-          if (dialogData.cancelled) console.log("Save As cancelled by user.");
-          // If not cancelled but filePath is missing, it's an unexpected state from IPC, error should have been set.
-          else console.error("Error getting save path from dialog: filePath missing without cancellation or error flag.");
-          // No alert here if just cancelled, but if filePath is missing without error, it's an issue.
-          // The IPC handler should ideally always return an error string if something went wrong and not cancelled.
-          return; // User cancelled or an unexpected issue occurred
-        }
-
-        // filePath, newBasePath, newRelativePath are expected from the IPC response
-        if (!dialogData.newBasePath || !dialogData.newRelativePath) {
-            console.error("Error: Save path from dialog is incomplete. Missing newBasePath or newRelativePath.", dialogData);
-            alert("שגיאה: נתיב השמירה שהתקבל מהדיאלוג אינו מלא.");
-            return;
-        }
-        targetBasePath = dialogData.newBasePath;
-        targetRelativePath = dialogData.newRelativePath;
-        targetFileName = path.basename(dialogData.filePath); // Use basename of the full path returned
-
-      } catch (error) { // Catch errors from the async IPC call itself or other unexpected issues
-        console.error("Error during Save As dialog IPC execution:", error);
-        alert(`שגיאה בפתיחת דיאלוג שמירה: ${error.message || 'שגיאה לא ידועה בתקשורת עם תהליך הדיאלוג.'}`);
-        setGlobalLoadingMessage('');
-        return;
-      }
+      // Use modal instead of electronAPI.showSaveDialog
+      setGlobalLoadingMessage('');
+      
+      // Extract file name without extension
+      const fileName = activeTabObject.name;
+      const lastDotIndex = fileName.lastIndexOf('.');
+      const nameWithoutExtension = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+      const extension = lastDotIndex > 0 ? fileName.substring(lastDotIndex + 1) : 'md';
+      
+      // Find workspace folder for current tab
+      const currentWorkspaceFolder = workspaceFolders.find(wf => wf.path === activeTabObject.basePath);
+      
+      // Set up save data for the modal
+      setSaveAsData({
+        tabId: activeTabPath,
+        fileName: nameWithoutExtension,
+        extension: extension,
+        content: activeTabObject.content || '',
+        workspaceFolder: currentWorkspaceFolder
+      });
+      
+      // Open the save modal
+      setIsSaveAsModalOpen(true);
+      return;
     }
-     // Ensure basePath is not the special marker if we are actually saving
+    
+    // Ensure basePath is not the special marker if we are actually saving
     if (targetBasePath === '__new_unsaved__') {
         console.error("Cannot save with special basePath '__new_unsaved__'. This indicates an issue with Save As logic.");
         alert("שגיאה פנימית: נתיב שמירה לא תקין.");
@@ -204,6 +181,67 @@ export default function useFileOperations({
     }
   }, [activeTabPath, openTabs, setOpenTabs, fetchStatsFiles, setGlobalLoadingMessage]);
 
+  // Function to save file to a specific path (used by Save As modal)
+  const saveFileToPath = useCallback(async (tabId, basePath, relativePath, content) => {
+    setGlobalLoadingMessage(`שומר את ${path.basename(relativePath)}...`);
+    try {
+      const fileName = path.basename(relativePath);
+      const response = await fetch(`${API_BASE_URL}/save-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          baseFolderPath: basePath, 
+          relativeFilePath: relativePath, 
+          content: content,
+          fileName: fileName
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
+
+      console.log(data.message);
+      
+      // Update tab information
+      const fullPath = path.join(basePath, relativePath);
+      const newTabId = generateTabId(basePath, relativePath);
+      
+      setOpenTabs(prevTabs => 
+        prevTabs.map(tab => {
+          if (tab.id === tabId) {
+            return {
+              ...tab,
+              id: newTabId,
+              name: fileName,
+              basePath: basePath,
+              relativePath: relativePath,
+              isDirty: false,
+              isNewUnsaved: false
+            };
+          }
+          return tab;
+        })
+      );
+      
+      // Update active tab path if this was the active tab
+      setActiveTabPathApp(newTabId);
+      
+      // Update workspace structure
+      updateWorkspaceFolderStructure(basePath, data.directoryStructure);
+      
+      // Refresh stats
+      fetchStatsFiles();
+      
+      setGlobalLoadingMessage('');
+      return true;
+    } catch (error) {
+      console.error('שגיאה בשמירת הקובץ:', error);
+      alert(`שגיאה בשמירת הקובץ: ${error.message}`);
+      setGlobalLoadingMessage('');
+      return false;
+    }
+  }, [setOpenTabs, setActiveTabPathApp, updateWorkspaceFolderStructure, fetchStatsFiles, setGlobalLoadingMessage]);
+
   const handleCreateNewFileOrSummary = useCallback(async (baseFolderPath, relativeNewFilePath, content = '', openAfterCreate = true) => {
     if (!baseFolderPath || !relativeNewFilePath) {
       alert("מידע חסר ליצירת קובץ.");
@@ -254,8 +292,7 @@ export default function useFileOperations({
     await handleCreateNewFileOrSummary(baseFolder.path, relativeNewFilePath, '', true);
   }, [handleCreateNewFileOrSummary]);
 
-  const createNewFolderFromExplorer = useCallback(async (parentItem, baseFolder) => {
-    const newFolderName = prompt(`הזן שם לתיקייה החדשה (בתוך ${parentItem ? parentItem.name : baseFolder.name}):`);
+  const createNewFolderFromExplorer = useCallback(async (newFolderName, parentItem, baseFolder) => {
     if (!newFolderName || !newFolderName.trim()) return;
     if (newFolderName.includes('/') || newFolderName.includes('\\')) {
       alert("שם תיקייה אינו יכול לכלול '/' או '\\'."); return;
@@ -283,10 +320,6 @@ export default function useFileOperations({
   }, [setGlobalLoadingMessage, updateWorkspaceFolderStructure, fetchStatsFiles]);
 
   const deleteItemFromExplorer = useCallback(async (itemToDelete, baseFolder) => {
-    const itemTypeDisplay = itemToDelete.isFolder ? 'התיקייה' : 'הקובץ';
-    const confirmDelete = window.confirm(`האם אתה בטוח שברצונך למחוק את ${itemTypeDisplay} '${itemToDelete.name}'? פעולה זו אינה הפיכה.`);
-    if (!confirmDelete) return;
-
     setGlobalLoadingMessage(`מוחק את ${itemToDelete.name}...`);
     try {
       const response = await fetch(`${API_BASE_URL}/delete-item`, {
@@ -467,6 +500,7 @@ export default function useFileOperations({
     handleSaveFile, // Now accepts a 'saveAs' boolean
     // handleSaveFileAs will be implicitly handled by handleSaveFile(true)
     handleCreateNewFileOrSummary,
+    saveFileToPath, // Export the new function
     createNewFileFromExplorer,
     createNewFolderFromExplorer,
     deleteItemFromExplorer,

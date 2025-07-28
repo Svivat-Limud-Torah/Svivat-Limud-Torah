@@ -108,6 +108,24 @@
   color: var(--theme-text-secondary);
 }
 
+/* אנימציה לכפתור תצוגה כשיש שינויים לא שמורים */
+.markdown-toolbar-button.preview-button.blinking {
+  animation: previewButtonBlink 1.5s infinite;
+}
+@keyframes previewButtonBlink {
+  0%, 50% {
+    background: var(--theme-accent-primary);
+    border-color: var(--theme-accent-primary);
+    color: var(--theme-button-text-color);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+  }
+  100% {
+    background: var(--theme-bg-primary);
+    border-color: var(--theme-border-color);
+    color: var(--theme-text-primary);
+    box-shadow: none;
+  }
+}
 /* אנימציה לכפתור ארגן טקסט */
 .markdown-toolbar-button.organize-text-button.processing {
   animation: organizeTextPulse 1.5s infinite;
