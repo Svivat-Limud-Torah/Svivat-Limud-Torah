@@ -31,4 +31,4 @@ nsis:
   installerIcon: build_resources/icon.ico
   uninstallerIcon: build_resources/icon.ico
   shortcutName: סביבת לימוד תורה
-electronVersion: 37.2.3
+electronVersion: 37.2.5

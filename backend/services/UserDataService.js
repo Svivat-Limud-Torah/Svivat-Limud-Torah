@@ -92,15 +92,15 @@ const importAllUserData = async (dataToImport) => {
     { name: 'UserSettings', dataKey: 'UserSettings', columns: ['user_id', 'enable_daily_questionnaire_reminder', 'reminder_time'], pk: 'user_id' },
     // files_usage: Assuming 'id' is PK and auto-increment, but for restore, we might want to preserve it.
     // The screenshot shows 'id' as a regular column, likely the PK.
-    { name: 'files_usage', dataKey: 'files_usage', columns: ['id', 'absolute_file_path', 'base_folder_path', 'relative_file_path', 'file_name', 'last_accessed_timestamp', 'access_count'], pk: 'id' },
+    { name: 'files_usage', dataKey: 'files_usage', columns: ['id', 'absolute_file_path', 'base_folder_path', 'relative_file_path', 'file_name', 'last_opened_or_edited', 'access_count', 'last_accessed_timestamp'], pk: 'id' },
     { name: 'repetitions', dataKey: 'repetitions', columns: ['id', 'name', 'content', 'created_at', 'last_completed_at', 'current_interval_index', 'next_reminder_date', 'is_muted', 'reminder_interval_1', 'reminder_interval_2', 'reminder_interval_3', 'reminder_interval_4'], pk: 'id' },
     // Questionnaires: Based on screenshot. 'id' is PK.
     // The 'answers_json' column was an assumption. If it's not in the actual table, it shouldn't be in columns list for insert.
     // The export uses SELECT *, so it will get all actual columns. The import must match.
     // For now, using columns from screenshot. If 'answers_json' or 'submitted_at' exist, they should be added.
-    { name: 'Questionnaires', dataKey: 'Questionnaires', columns: ['id', 'user_id', 'date', 'rating_today', 'details_today', 'ai_q1_text' /*, 'submitted_at', 'answers_json' */], pk: 'id'},
+    { name: 'Questionnaires', dataKey: 'Questionnaires', columns: ['id', 'user_id', 'date', 'rating_today', 'details_today', 'ai_q1_text', 'ai_q1_answer', 'ai_q2_text', 'ai_q2_answer', 'submitted_at'], pk: 'id'},
     // WeeklySummaries: Based on screenshot. 'id' is PK.
-    { name: 'WeeklySummaries', dataKey: 'WeeklySummaries', columns: ['id', 'user_id', 'week_start_date', 'summary_content', 'strengths', 'areas_for_improvement', 'created_at'], pk: 'id' },
+    { name: 'WeeklySummaries', dataKey: 'WeeklySummaries', columns: ['id', 'user_id', 'week_start_date', 'summary_content', 'strengths', 'areas_for_improvement', 'generated_at'], pk: 'id' },
   ];
 
   return new Promise((resolve, reject) => {

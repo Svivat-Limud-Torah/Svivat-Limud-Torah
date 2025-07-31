@@ -122,6 +122,7 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     if (initialFoldersLoaded) return; // Don't run again if already loaded
 
     const fetchLastOpenedFolders = async () => {
+      console.log('Fetching last opened folders from server...');
       try {
         const response = await fetch(`${API_BASE_URL}/settings/last-opened-folders`);
         if (!response.ok) {
@@ -129,15 +130,20 @@ export default function useWorkspace(setGlobalLoadingMessage) {
           return;
         }
         const data = await response.json();
+        console.log('Last opened folders received:', data);
         if (data.folderPaths && Array.isArray(data.folderPaths)) {
+          console.log(`Loading ${data.folderPaths.length} workspace folders...`);
           // Sequentially add folders to maintain order and avoid race conditions with settings update
           for (const fp of data.folderPaths) {
             await addWorkspaceFolder(fp, true);
           }
+        } else {
+          console.log('No workspace folders to load');
         }
       } catch (error) {
         console.warn("שגיאה בטעינת תיקיות אחרונות מהשרת:", error);
       } finally {
+        console.log('Setting initialFoldersLoaded to true');
         setInitialFoldersLoaded(true); // Mark as loaded
       }
     };
@@ -201,5 +207,6 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     updateWorkspaceFolderStructure,
     startRenameInExplorerUI,
     clearRenameFlagInExplorerUI,
+    initialFoldersLoaded, // <-- Export the initialFoldersLoaded state
   };
 }

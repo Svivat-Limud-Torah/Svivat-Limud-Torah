@@ -1,6 +1,8 @@
+/* Updated: 2025-07-29 - FORCE ALL BUTTONS TO USE THEME VARIABLES */
+
+/* Added "Varela Round" as default software font */
 :root {
-  /* Added "Assistant" for better Hebrew rendering */
-  font-family: Inter, "Assistant", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Varela Round", Inter, "Assistant", system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -13,15 +15,34 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* New Theme Colors */
-  --theme-bg-primary: #18181B;
-  --theme-bg-secondary: #27272A;
-  --theme-text-primary: #E4E4E7;
-  --theme-text-secondary: #A1A1AA;
-  --theme-accent-primary: #2563EB;
-  --theme-accent-secondary: #60A5FA;
-  --theme-border-color: #3F3F46;
-  --theme-button-text-color: #FFFFFF;
+  /* ChatGPT-inspired dark theme - pure grays and blacks */
+  --theme-bg-primary: #0d1117;        /* Very dark background like ChatGPT */
+  --theme-bg-secondary: #161b22;      /* Slightly lighter dark */
+  --theme-bg-tertiary: #21262d;       /* Medium dark */
+  --theme-bg-quaternary: #30363d;     /* Lighter dark */
+  --theme-text-primary: #f0f6fc;      /* Very light text */
+  --theme-text-secondary: #8b949e;    /* Muted light gray text */
+  --theme-accent-primary: #30363d;    /* Dark gray accent */
+  --theme-accent-secondary: #484f58;  /* Medium gray accent */
+  --theme-accent-color: #30363d;      /* Dark gray */
+  --theme-accent-hover: #484f58;      /* Medium gray hover */
+  --theme-border-color: #30363d;      /* Dark gray borders */
+  --theme-button-text-color: #f0f6fc; /* Light text on buttons */
+  --theme-input-bg: #21262d;          /* Dark input backgrounds */
+  --theme-hover-bg: #30363d;          /* Dark hover backgrounds */
+  --theme-error-color: #da3633;       /* Keep red for errors */
+  --theme-error-hover: #b91c1c;       /* Darker red hover */
+  --theme-warning-color: #fb8500;     /* Keep orange for warnings */
+  --theme-success-color: #238636;     /* Keep green for success */
+  --theme-scrollbar-track: #161b22;   /* Dark scrollbar track */
+  --theme-scrollbar-thumb: #30363d;   /* Dark gray scrollbar thumb */
+  --theme-scrollbar-thumb-hover: #484f58; /* Medium gray scrollbar hover */
+  --theme-page-bg: #0d1117;           /* Very dark page background */
+  --theme-editor-bg: #0d1117;         /* Very dark editor background */
+  --theme-tab-bg: #161b22;            /* Dark tab background */
+  --theme-toolbar-bg: #161b22;        /* Dark toolbar background */
+  --theme-button-bg: #21262d;         /* Dark gray buttons */
+  --theme-button-hover-bg: #30363d;   /* Slightly lighter on hover */
 
   /* Base application styling using new theme colors */
   color: var(--theme-text-primary);
@@ -76,11 +97,11 @@ p {
   border-radius: 6px; /* Slightly less rounded than default for a sharper look */
   padding: 0.5em 1em; /* Adjusted padding */
   font-size: 0.9em;   /* Slightly smaller base font for buttons */
-  font-weight: 500;
+  font-weight: 700;   /* Make all buttons bold */
   font-family: inherit;
   cursor: pointer;
   transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Light white outline by default */
   line-height: 1.4; /* Ensure text is centered vertically */
   text-align: center;
   display: inline-flex; /* For aligning icons if added */
@@ -100,48 +121,101 @@ p {
   cursor: not-allowed;
 }
 
-/* Default Button (subtle) */
+/* Default Button (dark theme style with white outline) */
 .btn {
-  background-color: var(--theme-bg-secondary);
-  color: var(--theme-text-primary);
-  border-color: var(--theme-border-color);
+  background-color: var(--theme-button-bg) !important;
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 .btn:hover:not(:disabled) {
-  background-color: var(--theme-border-color); /* Darken slightly */
-  border-color: var(--theme-accent-secondary);
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Primary Button */
+/* MAXIMUM PRIORITY BUTTON STYLES - FORCE ALL BUTTONS TO USE THEME COLORS WITH WHITE OUTLINE */
+button, .btn, .btn-primary, .btn-secondary, .btn-info, .btn-success, .btn-warning, .btn-danger, .btn-sm, .btn-lg {
+  background-color: var(--theme-button-bg) !important;
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+button:hover, .btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-info:hover, .btn-success:hover, .btn-warning:hover, .btn-danger:hover {
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Primary Button - dark gray with white outline */
 .btn-primary {
-  background-color: var(--theme-accent-primary);
-  color: var(--theme-button-text-color);
-  border-color: var(--theme-accent-primary);
+  background-color: var(--theme-button-bg) !important; /* Use same dark gray as other buttons */
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--theme-accent-secondary);
-  border-color: var(--theme-accent-secondary);
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Secondary Button (Outline) */
+/* Secondary Button - dark gray like other buttons with white outline */
 .btn-secondary {
-  background-color: transparent;
-  color: var(--theme-accent-primary);
-  border-color: var(--theme-accent-primary);
+  background-color: var(--theme-button-bg) !important; /* Use theme dark gray */
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--theme-accent-primary);
-  color: var(--theme-button-text-color);
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Danger Button */
+/* Danger Button with white outline */
 .btn-danger {
-  background-color: #dc2626; /* Tailwind Red-600 */
+  background-color: var(--theme-error-color);
   color: var(--theme-button-text-color);
-  border-color: #dc2626;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: #b91c1c; /* Tailwind Red-700 */
-  border-color: #b91c1c;
+  background-color: var(--theme-error-hover);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Info Button - dark gray with white outline */
+.btn-info {
+  background-color: var(--theme-button-bg) !important; /* Use same dark gray as other buttons */
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.btn-info:hover:not(:disabled) {
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Success Button - use consistent dark theme colors with white outline */
+.btn-success {
+  background-color: var(--theme-button-bg) !important; /* Same as default buttons */
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.btn-success:hover:not(:disabled) {
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Warning Button - use consistent dark theme colors with white outline */
+.btn-warning {
+  background-color: var(--theme-button-bg) !important; /* Same as default buttons */
+  color: var(--theme-button-text-color) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--theme-button-hover-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Button Size Modifiers */
+.btn-sm {
+  padding: 0.5em 1em; /* Same as default .btn for consistency */
+  font-size: 0.9em;   /* Same as default .btn */
+  height: auto;       /* Let it size naturally */
+  min-height: 32px;   /* Ensure consistent minimum height */
 }
 
 /* Subtle Button (alternative to default .btn if more distinction is needed) */
@@ -217,4 +291,39 @@ p {
 .cm-editor .cm-content {
   font-family: 'Segoe UI', sans-serif; /* Added Segoe UI, kept sans-serif as fallback */
   font-size: 11px;
+}
+
+/* FORCE ALL BUTTONS TO BE DARK GRAY THEME - CHATGPT STYLE WITH WHITE OUTLINE */
+button.btn,
+button.btn-primary,
+button.btn-secondary, 
+button.btn-info,
+button.btn-success,
+button.btn-warning,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-info,
+.btn-success,
+.btn-warning {
+  background-color: var(--theme-button-bg) !important;        /* Use theme accent color */
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;     /* Light white outline */
+  color: var(--theme-button-text-color) !important;           /* Use theme text color */
+}
+
+button.btn:hover:not(:disabled),
+button.btn-primary:hover:not(:disabled),
+button.btn-secondary:hover:not(:disabled), 
+button.btn-info:hover:not(:disabled),
+button.btn-success:hover:not(:disabled),
+button.btn-warning:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled),
+.btn-info:hover:not(:disabled),
+.btn-success:hover:not(:disabled),
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--theme-button-hover-bg) !important;  /* Use theme hover color */
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;     /* Slightly brighter white outline on hover */
+  color: var(--theme-button-text-color) !important;           /* Use theme text color */
 }

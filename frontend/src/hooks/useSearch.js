@@ -147,15 +147,13 @@ export default function useSearch({
 
     setMainViewMode('search');
     
-    if (searchTerm.trim()) {
-        handleSearchV2(true); 
-    } else {
-        setSearchResults([]);
-        setSearchError(HEBREW_TEXT.searchScopeUpdatedEnterTerm || "Scope updated. Enter search term.");
-        setSearchTermToHighlightInEditor(''); // Clear highlight on scope change without search
-        setTimeout(() => searchInputRef.current?.focus(), 0);
-    }
-  }, [setMainViewMode, searchTerm, handleSearchV2, setSearchTermToHighlightInEditor]); // Added setSearchTermToHighlightInEditor
+    // Always clear the search term and show the scope updated message
+    setSearchTerm('');
+    setSearchResults([]);
+    setSearchError(HEBREW_TEXT.searchScopeUpdatedEnterTerm || "היקף החיפוש עודכן. הזן מונח לחיפוש.");
+    setSearchTermToHighlightInEditor(''); // Clear highlight on scope change
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [setMainViewMode, setSearchTermToHighlightInEditor]); // Removed searchTerm and handleSearchV2 from dependencies since we're not using them
 
   const clearSearchScope = useCallback(() => {
     setCurrentSearchScope({ basePath: null, relativePath: null, name: null });

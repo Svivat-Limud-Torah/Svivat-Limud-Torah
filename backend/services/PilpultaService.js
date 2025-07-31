@@ -8,6 +8,36 @@ const httpsAgent = new https.Agent({
     rejectUnauthorized: false
 });
 
+/**
+ * Utility function to clean AI responses and extract valid JSON
+ * @param {string} responseText - The raw response text from AI
+ * @returns {string} - Cleaned JSON string ready for parsing
+ */
+function cleanAIResponseForJSON(responseText) {
+    if (!responseText || typeof responseText !== 'string') {
+        throw new Error('Invalid response text provided');
+    }
+    
+    let cleaned = responseText.trim();
+    
+    // Remove markdown code blocks (various formats)
+    cleaned = cleaned.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '');
+    
+    // Remove any leading/trailing quotes or backticks that might wrap the JSON
+    cleaned = cleaned.replace(/^["'`]+|["'`]+$/g, '');
+    
+    // Remove extra whitespace and newlines at start/end
+    cleaned = cleaned.trim();
+    
+    // If the response contains explanatory text before/after JSON, try to extract just the JSON part
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (jsonMatch) {
+        cleaned = jsonMatch[0];
+    }
+    
+    return cleaned;
+}
+
 // Placeholder for constants or configuration - ideally load from a config file or env vars
 const HEBREW_TEXT = {
     apiKeyNotSetError: "AI Service configuration error: API Key not found.",
@@ -106,7 +136,7 @@ ${text}
         }
 
         // Clean potential markdown/JSON markers
-        const cleanedResponse = textResponse.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        const cleanedResponse = cleanAIResponseForJSON(textResponse);
 
         let parsedQuestions;
         try {

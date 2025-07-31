@@ -91,7 +91,9 @@ const Sidebar = ({
         onChange={(e) => setSearchTerm(e.target.value)}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
-            handleToggleMainView('search'); // Ensure search view is active
+            if (mainViewMode !== 'search') {
+              handleToggleMainView('search'); // Only switch to search view if not already there
+            }
             handleSearch(); // Trigger the search
           }
         }}
@@ -100,7 +102,7 @@ const Sidebar = ({
       {/* Search button is implicit via Enter key or handled in MainContentArea's search view */}
       {isSearching && <p style={{color: '#a0aec0', /* fontSize removed */ margin: '5px 0 0 0'}}>{HEBREW_TEXT.searching}</p>}
       {/* Brief error related to input can be shown here, detailed errors in MainContentArea */}
-      {searchError && searchTerm.length > 0 && !isSearching && (searchResults === 0 || !searchResults) && <p style={{color: '#fc8181', /* fontSize removed */ margin: '5px 0 0 0'}}>{searchError}</p>}
+      {searchError && searchTerm.length > 0 && !isSearching && <p style={{color: '#fc8181', /* fontSize removed */ margin: '5px 0 0 0'}}>{searchError}</p>}
     </div>
   );
   
@@ -168,7 +170,7 @@ const Sidebar = ({
         {workspaceFolders.map(wf => (
           <div key={wf.id || wf.path}>
             <div
-              style={{ padding: '8px 10px', backgroundColor: '#2d3748', color: '#e2e8f0', fontWeight: 'bold', borderBottom: '1px solid #1a1d21', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              style={{ padding: '8px 10px', backgroundColor: 'var(--theme-button-bg)', color: 'var(--theme-button-text-color)', fontWeight: 'bold', borderBottom: '1px solid var(--theme-button-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
               onContextMenu={(e) => {
                 e.preventDefault(); e.stopPropagation();
                 const rootItems = [
@@ -233,10 +235,10 @@ const Sidebar = ({
                 padding: '8px 12px',
                 width: '100%',
                 textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left',
-                // --- Changed Style to match inactive buttons ---
-                backgroundColor: 'var(--theme-bg-secondary)',
-                color: 'var(--theme-text-primary)',
-                border: `1px solid var(--theme-border-color)`,
+                // --- Changed Style to match button theme ---
+                backgroundColor: 'var(--theme-button-bg)',
+                color: 'var(--theme-button-text-color)',
+                border: `1px solid var(--theme-button-bg)`,
                 borderRadius: '4px',
                 opacity: globalLoadingMessage ? 0.6 : 1
             }}
@@ -250,16 +252,16 @@ const Sidebar = ({
                 padding: '8px 12px',
                 width: '100%',
                 textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left',
-                backgroundColor: mainViewMode === 'search' ? 'var(--theme-accent-primary)' : 'var(--theme-bg-secondary)',
-                color: mainViewMode === 'search' ? 'var(--theme-button-text-color)' : 'var(--theme-text-primary)',
-                border: `1px solid ${mainViewMode === 'search' ? 'var(--theme-accent-primary)' : 'var(--theme-border-color)'}`,
+                backgroundColor: mainViewMode === 'search' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)',
+                color: mainViewMode === 'search' ? 'var(--theme-button-text-color)' : 'var(--theme-button-text-color)',
+                border: `1px solid ${mainViewMode === 'search' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)'}`,
                 borderRadius: '4px'
             }}
         >
             {HEBREW_TEXT.searchFiles}
         </button>
-        <button onClick={() => handleToggleMainView('recent')} style={{ padding: '8px 12px', width: '100%', textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left', backgroundColor: mainViewMode === 'recent' ? 'var(--theme-accent-primary)' : 'var(--theme-bg-secondary)', color: mainViewMode === 'recent' ? 'var(--theme-button-text-color)' : 'var(--theme-text-primary)', border: `1px solid ${mainViewMode === 'recent' ? 'var(--theme-accent-primary)' : 'var(--theme-border-color)'}`, borderRadius: '4px' }}>{HEBREW_TEXT.recentFiles}</button>
-        <button onClick={() => handleToggleMainView('frequent')} style={{ padding: '8px 12px', width: '100%', textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left', backgroundColor: mainViewMode === 'frequent' ? 'var(--theme-accent-primary)' : 'var(--theme-bg-secondary)', color: mainViewMode === 'frequent' ? 'var(--theme-button-text-color)' : 'var(--theme-text-primary)', border: `1px solid ${mainViewMode === 'frequent' ? 'var(--theme-accent-primary)' : 'var(--theme-border-color)'}`, borderRadius: '4px' }}>{HEBREW_TEXT.frequentFiles}</button>
+        <button onClick={() => handleToggleMainView('recent')} style={{ padding: '8px 12px', width: '100%', textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left', backgroundColor: mainViewMode === 'recent' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)', color: mainViewMode === 'recent' ? 'var(--theme-button-text-color)' : 'var(--theme-button-text-color)', border: `1px solid ${mainViewMode === 'recent' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)'}`, borderRadius: '4px' }}>{HEBREW_TEXT.recentFiles}</button>
+        <button onClick={() => handleToggleMainView('frequent')} style={{ padding: '8px 12px', width: '100%', textAlign: APP_DIRECTION === 'rtl' ? 'right' : 'left', backgroundColor: mainViewMode === 'frequent' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)', color: mainViewMode === 'frequent' ? 'var(--theme-button-text-color)' : 'var(--theme-button-text-color)', border: `1px solid ${mainViewMode === 'frequent' ? 'var(--theme-button-bg)' : 'var(--theme-button-bg)'}`, borderRadius: '4px' }}>{HEBREW_TEXT.frequentFiles}</button>
         <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--theme-text-secondary)', marginTop: '5px' }}>
           Developed by Gemini
         </div>
@@ -280,7 +282,7 @@ const Sidebar = ({
           style={{
             padding: '6px 10px',
             fontSize: '0.9rem',
-            backgroundColor: 'var(--theme-accent-secondary)',
+            backgroundColor: 'var(--theme-button-bg)',
             color: 'var(--theme-button-text-color)',
             border: 'none',
             borderRadius: '4px',

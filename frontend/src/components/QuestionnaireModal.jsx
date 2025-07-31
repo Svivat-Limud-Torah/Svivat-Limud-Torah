@@ -231,24 +231,42 @@ const QuestionnaireModal = ({
   const canGoToNextDay = selectedDateObj < today && getFormattedDate(selectedDateObj) !== todayStr;
 
   const handleShowWeeklySummary = useCallback(async () => {
-    if (showWeeklySummary && weeklySummary) { // If already shown and data exists, just toggle
-        setShowWeeklySummary(false); // Allow hiding it
+    if (showWeeklySummary && weeklySummary) { 
+        // If already shown and data exists, just toggle
+        setShowWeeklySummary(false);
         return;
     }
-    setShowWeeklySummary(true); // Show the section immediately
-    setWeeklySummaryLoading(true);
+    
+    // Clear any previous errors when starting fresh
     setWeeklySummaryError('');
+    
+    // Show the section immediately for better UX
+    setShowWeeklySummary(true); 
+    setWeeklySummaryLoading(true);
     setWeeklySummary(null);
+    
     try {
       const response = await apiService.getLatestWeeklySummary();
       if (response && response.data) {
         setWeeklySummary(response.data);
+        console.log("Weekly summary loaded successfully:", response.data);
       } else {
-        setWeeklySummary(null); // No summary found
+        setWeeklySummary(null);
+        console.log("No weekly summary data available");
+        // Don't show error for missing data, show informational message instead
+        setWeeklySummaryError('');
       }
     } catch (err) {
       console.error("Error fetching weekly summary:", err);
-      setWeeklySummaryError(HEBREW_TEXT.questionnaire?.errorFetchingWeeklySummary || "שגיאה בטעינת הסיכום השבועי.");
+      // Provide more user-friendly error messages
+      if (err.message?.includes('Network')) {
+        setWeeklySummaryError(HEBREW_TEXT.questionnaire?.networkError || "בעיית רשת. אנא נסה שוב.");
+      } else if (err.message?.includes('404')) {
+        setWeeklySummaryError('');
+        setWeeklySummary(null);
+      } else {
+        setWeeklySummaryError(HEBREW_TEXT.questionnaire?.errorFetchingWeeklySummary || "שגיאה בטעינת הסיכום השבועי. אנא נסה שוב.");
+      }
     } finally {
       setWeeklySummaryLoading(false);
     }
@@ -384,23 +402,66 @@ const QuestionnaireModal = ({
             onClick={handleShowWeeklySummary} 
             className="show-weekly-summary-btn"
             disabled={isLoading || weeklySummaryLoading}
+            title={showWeeklySummary && weeklySummary ? 
+              (HEBREW_TEXT.questionnaire?.hideWeeklySummaryTooltip || "הסתר את הסיכום השבועי") : 
+              (HEBREW_TEXT.questionnaire?.showWeeklySummaryTooltip || "הצג סיכום שבועי של התקדמותך")
+            }
           >
-            {showWeeklySummary && weeklySummary ? (HEBREW_TEXT.questionnaire?.hideWeeklySummary || "הסתר סיכום שבועי") : (HEBREW_TEXT.questionnaire?.showWeeklySummary || "הצג סיכום שבועי")}
+            {weeklySummaryLoading ? 
+              (HEBREW_TEXT.questionnaire?.loadingWeeklySummary || "טוען...") : 
+              (showWeeklySummary && weeklySummary ? 
+                (HEBREW_TEXT.questionnaire?.hideWeeklySummary || "הסתר סיכום שבועי") : 
+                (HEBREW_TEXT.questionnaire?.showWeeklySummary || "הצג סיכום שבועי")
+              )
+            }
           </button>
           {showWeeklySummary && (
             <div className="weekly-summary-content">
-              {weeklySummaryLoading && <p>{HEBREW_TEXT.questionnaire?.loadingWeeklySummary || "טוען סיכום שבועי..."}</p>}
-              {weeklySummaryError && <p className="error-message">{weeklySummaryError}</p>}
+              {weeklySummaryLoading && (
+                <div className="weekly-summary-loading">
+                  <p>{HEBREW_TEXT.questionnaire?.loadingWeeklySummary || "טוען סיכום שבועי..."}</p>
+                  <div className="loading-spinner"></div>
+                </div>
+              )}
+              {weeklySummaryError && (
+                <div className="weekly-summary-error">
+                  <p className="error-message">{weeklySummaryError}</p>
+                  <button 
+                    onClick={handleShowWeeklySummary} 
+                    className="retry-btn"
+                    disabled={weeklySummaryLoading}
+                  >
+                    {HEBREW_TEXT.questionnaire?.retryButton || "נסה שוב"}
+                  </button>
+                </div>
+              )}
               {weeklySummary && !weeklySummaryLoading && !weeklySummaryError && (
-                <>
-                  <h4>{HEBREW_TEXT.questionnaire?.weeklySummaryTitle || "סיכום שבועי אחרון"} (שבוע המתחיל ב: {weeklySummary.week_start_date})</h4>
-                  <p><strong>{HEBREW_TEXT.questionnaire?.summaryContentLabel || "תוכן הסיכום:"}</strong> {weeklySummary.summary_content || (<i>{HEBREW_TEXT.na || "אין תוכן"}</i>)}</p>
-                  <p><strong>{HEBREW_TEXT.questionnaire?.strengthsLabel || "נקודות חוזק:"}</strong> {weeklySummary.strengths || (<i>{HEBREW_TEXT.na || "אין נקודות חוזק"}</i>)}</p>
-                  <p><strong>{HEBREW_TEXT.questionnaire?.areasForImprovementLabel || "נקודות לשיפור:"}</strong> {weeklySummary.areas_for_improvement || (<i>{HEBREW_TEXT.na || "אין נקודות לשיפור"}</i>)}</p>
-                </>
+                <div className="weekly-summary-data">
+                  <h4>
+                    {HEBREW_TEXT.questionnaire?.weeklySummaryTitle || "סיכום שבועי אחרון"} 
+                    <span className="week-date">
+                      (שבוע המתחיל ב: {new Date(weeklySummary.week_start_date + "T00:00:00").toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                    </span>
+                  </h4>
+                  <div className="summary-section">
+                    <p><strong>{HEBREW_TEXT.questionnaire?.summaryContentLabel || "תוכן הסיכום:"}</strong></p>
+                    <p className="summary-text">{weeklySummary.summary_content || (<i>{HEBREW_TEXT.na || "אין תוכן"}</i>)}</p>
+                  </div>
+                  <div className="summary-section">
+                    <p><strong>{HEBREW_TEXT.questionnaire?.strengthsLabel || "נקודות חוזק:"}</strong></p>
+                    <p className="summary-text">{weeklySummary.strengths || (<i>{HEBREW_TEXT.na || "אין נקודות חוזק"}</i>)}</p>
+                  </div>
+                  <div className="summary-section">
+                    <p><strong>{HEBREW_TEXT.questionnaire?.areasForImprovementLabel || "נקודות לשיפור:"}</strong></p>
+                    <p className="summary-text">{weeklySummary.areas_for_improvement || (<i>{HEBREW_TEXT.na || "אין נקודות לשיפור"}</i>)}</p>
+                  </div>
+                </div>
               )}
               {!weeklySummary && !weeklySummaryLoading && !weeklySummaryError && (
-                <p>{HEBREW_TEXT.questionnaire?.noWeeklySummaryFound || "לא נמצא סיכום שבועי."}</p>
+                <div className="no-summary-message">
+                  <p>{HEBREW_TEXT.questionnaire?.noWeeklySummaryFound || "לא נמצא סיכום שבועי עדיין."}</p>
+                  <p className="help-text">{HEBREW_TEXT.questionnaire?.completeDailyQuestionnaires || "המשך למלא שאלונים יומיים כדי ליצור סיכום שבועי."}</p>
+                </div>
               )}
             </div>
           )}

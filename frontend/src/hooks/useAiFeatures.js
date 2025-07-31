@@ -1,9 +1,107 @@
 // frontend/src/hooks/useAiFeatures.js
 import { useState, useCallback, useRef } from 'react';
-import { API_BASE_URL, HEBREW_TEXT } from '../utils/constants'; // Removed GEMINI_MODEL_NAME, GEMINI_API_KEY
+import { API_BASE_URL, HEBREW_TEXT, DISABLE_ITALIC_FORMATTING_KEY } from '../utils/constants'; // Removed GEMINI_MODEL_NAME, GEMINI_API_KEY
 import path from '../utils/pathUtils'; // For path.basename, path.dirname, path.join for saving summary
 import { getApiKeyDetails } from '../components/ApiKeyModal'; // Import the updated helper
 import apiService from '../utils/apiService'; // Import apiService
+import { storeSelectedTextBackup } from '../utils/aiOrganizeBackup';
+
+/**
+ * Utility function to clean AI responses and extract valid JSON
+ * @param {string} responseText - The raw response text from AI
+ * @returns {string} - Cleaned JSON string ready for parsing
+ */
+function cleanAIResponseForJSON(responseText) {
+    if (!responseText || typeof responseText !== 'string') {
+        throw new Error('Invalid response text provided');
+    }
+    
+    let cleaned = responseText.trim();
+    
+    // Remove markdown code blocks (various formats)
+    cleaned = cleaned.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '');
+    
+    // Remove any leading/trailing quotes or backticks that might wrap the JSON
+    cleaned = cleaned.replace(/^["'`]+|["'`]+$/g, '');
+    
+    // Remove extra whitespace and newlines at start/end
+    cleaned = cleaned.trim();
+    
+    // If the response contains explanatory text before/after JSON, try to extract just the JSON part
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (jsonMatch) {
+        cleaned = jsonMatch[0];
+    }
+    
+    return cleaned;
+}
+
+/**
+ * פונקציה לניקוי והחלקה של הטקסט המאורגן - גרסת Frontend
+ */
+function cleanAndSmoothText(text) {
+  if (!text || typeof text !== 'string') {
+    return text;
+  }
+  
+  // Remove excessive blank lines
+  let cleaned = text.replace(/\n{3,}/g, '\n\n');
+  
+  // Fix duplicate headers
+  cleaned = cleaned.replace(/^(#{1,6}\s+.+)\n\1/gm, '$1');
+  
+  // Fix broken paragraphs (Hebrew text)
+  cleaned = cleaned.replace(/([^.!?:])\n([א-ת])/g, '$1 $2');
+  
+  // Clean up list formatting
+  cleaned = cleaned.replace(/^\s*[-*]\s*$/gm, ''); // Remove empty list items
+  cleaned = cleaned.replace(/\n{2,}([-*]\s)/g, '\n$1'); // Fix spacing before lists
+  
+  // Fix Hebrew punctuation spacing
+  cleaned = cleaned.replace(/([א-ת])\s+([.!?:;,])/g, '$1$2');
+  cleaned = cleaned.replace(/([.!?:;,])\s*([א-ת])/g, '$1 $2');
+  
+  // Clean up markdown formatting
+  cleaned = cleaned.replace(/\*{3,}/g, '**'); // Fix multiple asterisks
+  cleaned = cleaned.replace(/#{7,}/g, '######'); // Limit header levels
+  
+  return cleaned.trim();
+}
+
+/**
+ * Helper function to safely parse API response JSON
+ */
+async function safeJsonParse(response) {
+  let responseText;
+  try {
+    responseText = await response.text();
+  } catch (textError) {
+    console.error('Failed to read response text:', textError);
+    throw new Error(`שגיאה בקריאת תשובת Google AI API: ${textError.message}`);
+  }
+
+  if (!response.ok) {
+    console.error(`Google AI API Error: ${response.status} - ${responseText}`);
+    
+    // Try to parse error as JSON for better error details
+    let errorDetails = responseText;
+    try {
+      const errorData = JSON.parse(responseText);
+      errorDetails = errorData.error?.message || responseText;
+    } catch (parseError) {
+      console.warn('Could not parse error response as JSON:', parseError);
+    }
+    
+    throw new Error(`Google AI API שגיאה: ${response.status} - ${errorDetails}`);
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (jsonError) {
+    console.error('Failed to parse response as JSON. Raw response:', responseText);
+    throw new Error(`שגיאה בפיענוח תשובת Google AI API: התקבלה תשובה לא תקינה. ייתכן שהמפתח API לא תקין או שיש בעיית רשת.`);
+  }
+}
 
 export default function useAiFeatures({
   activeTabObject, // From App
@@ -13,8 +111,35 @@ export default function useAiFeatures({
   workspaceFolders, // From App (via useWorkspace), used for default save path
   selectedAiModel, // From App
   showPilpulta, // From App - function to show the Pilpulta window with data
+  showQuotaLimitModal, // From App - function to show quota limit modal
+  showModelOverloadedModal, // From App - function to show model overloaded modal
   // hidePilpulta is implicitly handled by closing the window via its own button triggering state change in App
 }) {
+  
+  /**
+   * Helper function to handle API errors and check for quota limits
+   */
+  const handleApiError = useCallback((error, feature) => {
+    console.error(`שגיאה ב${feature}:`, error);
+    
+    // Check if the error is model overloaded (first priority)
+    if (HEBREW_TEXT.isModelOverloadedError(error)) {
+      // Show model overloaded modal instead of regular alert
+      showModelOverloadedModal();
+      return { isModelOverloadedError: true };
+    }
+    
+    // Check if the error is quota-related
+    if (HEBREW_TEXT.isQuotaLimitError(error)) {
+      // Show quota limit modal instead of regular alert
+      showQuotaLimitModal();
+      return { isQuotaError: true };
+    }
+    
+    // For non-quota and non-overload errors, return the error message for regular handling
+    return { isQuotaError: false, isModelOverloadedError: false, message: error.message };
+  }, [showQuotaLimitModal, showModelOverloadedModal]);
+
   const [flashcardData, setFlashcardData] = useState([]);
   const [isLoadingFlashcards, setIsLoadingFlashcards] = useState(false);
   const [flashcardError, setFlashcardError] = useState(null);
@@ -104,7 +229,7 @@ ${activeTabObject.content}
       const data = await response.json();
       const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!textResponse) throw new Error(HEBREW_TEXT.invalidApiResponse("כרטיסיות"));
-      const cleanedResponse = textResponse.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      const cleanedResponse = cleanAIResponseForJSON(textResponse);
       let parsedCards = JSON.parse(cleanedResponse);
       if (!Array.isArray(parsedCards) || !parsedCards.every(c => c.question && c.answer)) {
         throw new Error(HEBREW_TEXT.invalidFlashcardResponse);
@@ -112,9 +237,13 @@ ${activeTabObject.content}
       setFlashcardData(parsedCards);
       setMainViewMode('flashcards');
     } catch (error) {
-      console.error("שגיאה ביצירת כרטיסיות:", error);
-      setFlashcardError(error.message);
-      alert(`${HEBREW_TEXT.flashcardsError}: ${error.message}`); // Show error to user
+      const errorResult = handleApiError(error, "יצירת כרטיסיות");
+      
+      if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+        // Only show alert and set error state for non-quota and non-overload errors
+        setFlashcardError(errorResult.message);
+        alert(`${HEBREW_TEXT.flashcardsError}: ${errorResult.message}`);
+      }
     } finally {
       setIsLoadingFlashcards(false);
       setGlobalLoadingMessage("");
@@ -176,9 +305,13 @@ ${activeTabObject.content}
       setSummaryText(textResponse.trim());
       setMainViewMode('summary');
     } catch (error) {
-      console.error("שגיאה ביצירת סיכום:", error);
-      setSummaryError(error.message);
-       alert(`${HEBREW_TEXT.summaryError}: ${error.message}`); // Show error to user
+      const errorResult = handleApiError(error, "יצירת סיכום");
+      
+      if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+        // Only show alert and set error state for non-quota and non-overload errors
+        setSummaryError(errorResult.message);
+        alert(`${HEBREW_TEXT.summaryError}: ${errorResult.message}`);
+      }
     } finally {
       setIsLoadingSummary(false);
       setGlobalLoadingMessage("");
@@ -324,9 +457,13 @@ ${activeTabObject.content}
       setSourceFindingResults(textResponse.trim());
       setMainViewMode('sourceResults'); // New view mode
     } catch (error) {
-      console.error("שגיאה במציאת מקורות:", error);
-      setSourceFindingError(error.message);
-      alert(`${HEBREW_TEXT.sourceResultsError}: ${error.message}`); // Show error to user
+      const errorResult = handleApiError(error, "מציאת מקורות");
+      
+      if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+        // Only show alert and set error state for non-quota and non-overload errors
+        setSourceFindingError(errorResult.message);
+        alert(`${HEBREW_TEXT.sourceResultsError}: ${errorResult.message}`);
+      }
     } finally {
       setIsLoadingSourceFinding(false);
       setGlobalLoadingMessage("");
@@ -448,9 +585,12 @@ ${inputText}
       setProcessedText(textResponse.trim());
       // setMainViewMode('transcriptionResult'); // Handled by modal flow
     } catch (error) {
-      console.error(`שגיאה ב${operation === 'organize' ? 'ארגון' : 'סיכום'} טקסט:`, error);
-      setProcessingError(error.message);
-      // No alert here, error is displayed within the modal
+      const errorResult = handleApiError(error, operation === 'organize' ? 'ארגון טקסט' : 'סיכום תמלול');
+      
+      if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+        // Only set error state for non-quota and non-overload errors (no alert here, error is displayed within the modal)
+        setProcessingError(errorResult.message);
+      }
     } finally {
       setIsProcessingText(false);
       setGlobalLoadingMessage("");
@@ -535,9 +675,13 @@ ${inputText}
         showPilpulta(results); // Call the function passed from App to show the window
 
     } catch (error) {
-        console.error("שגיאה ביצירת פלפולתא:", error);
-        setPilpultaError(error.message);
-        alert(`${HEBREW_TEXT.pilpultaError}: ${error.message}`); // Add this constant
+        const errorResult = handleApiError(error, "יצירת פלפולתא");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+            // Only show alert and set error state for non-quota and non-overload errors
+            setPilpultaError(errorResult.message);
+            alert(`${HEBREW_TEXT.pilpultaError}: ${errorResult.message}`);
+        }
     } finally {
         setIsLoadingPilpulta(false);
         setGlobalLoadingMessage("");
@@ -643,16 +787,450 @@ ${inputText}
         );
         setSmartSearchResults(results);
       } catch (error) {
-        console.error("שגיאה בחיפוש חכם:", error);
-        const errorMessage = error.response?.data?.error || error.message || HEBREW_TEXT.smartSearchErrorPrefix + " " + HEBREW_TEXT.error;
-        setSmartSearchError(errorMessage);
-        // Alerting here might be redundant if the modal displays the error,
-        // but good for ensuring user sees it if modal somehow fails to render error.
-        // alert(errorMessage); 
+        const errorResult = handleApiError(error, "חיפוש חכם");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only set error state for non-quota and non-overload errors
+          const errorMessage = error.response?.data?.error || errorResult.message || HEBREW_TEXT.smartSearchErrorPrefix + " " + HEBREW_TEXT.error;
+          setSmartSearchError(errorMessage);
+          // Alerting here might be redundant if the modal displays the error,
+          // but good for ensuring user sees it if modal somehow fails to render error.
+          // alert(errorMessage); 
+        }
       } finally {
         setIsLoadingSmartSearch(false);
         setGlobalLoadingMessage(""); // Clear global loading message
       }
     }, [selectedAiModel, workspaceFolders, setGlobalLoadingMessage, apiService]),
+
+    // Selected Text AI Features
+    generatePilpultaFromSelectedText: useCallback(async (selectedText) => {
+      if (!selectedText || !selectedText.trim()) {
+        alert('אנא בחר טקסט תחילה');
+        return;
+      }
+      
+      setIsLoadingPilpulta(true);
+      setPilpultaError(null);
+      setPilpultaData([]);
+      setGlobalLoadingMessage(HEBREW_TEXT.generatingPilpulta);
+
+      const prompt = `אתה מומחה בלמדנות יהודית ובפלפול.
+צור רשימה של שאלות מעמיקות (קושיות) על הטקסט הבא.
+כל שאלה צריכה להיות מחודדת, מעמיקה, ולעודד מחשבה ביקורתית.
+הפלט צריך להיות במפורמט JSON של מערך אובייקטים, כאשר לכל אובייקט יש מפתח 'question' ומפתח 'source'.
+לדוגמה: [{ "question": "מה הכוונה ב...", "source": "הטקסט הנבחר" }]
+אל תכלול טקסט כלשהו מחוץ למערך ה-JSON.
+
+הטקסט לניתוח:
+---
+${selectedText}
+---`;
+
+      try {
+        const { key: apiKey } = getApiKeyDetails();
+        if (!apiKey) {
+          alert(HEBREW_TEXT.apiKeyNotSetAlert);
+          throw new Error(HEBREW_TEXT.apiKeyNotSetError);
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorDetails = '';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorDetails = errorData.error?.message || errorText;
+            console.error("Gemini API Error Response (Pilpulta Selected - JSON):", errorData);
+          } catch (e) {
+            errorDetails = errorText;
+            console.error("Gemini API Error Response (Pilpulta Selected - Non-JSON):", errorText);
+          }
+          throw new Error(HEBREW_TEXT.apiError(response.status, response.statusText, errorDetails));
+        }
+        
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textResponse) throw new Error(HEBREW_TEXT.invalidApiResponse("פלפולתא"));
+        
+        const cleanedResponse = cleanAIResponseForJSON(textResponse);
+        let parsedQuestions = JSON.parse(cleanedResponse);
+        
+        if (!Array.isArray(parsedQuestions) || !parsedQuestions.every(q => q.question && q.source)) {
+          throw new Error(HEBREW_TEXT.invalidPilpultaResponse);
+        }
+        
+        setPilpultaData(parsedQuestions);
+        showPilpulta(parsedQuestions);
+      } catch (error) {
+        const errorResult = handleApiError(error, "יצירת פלפולתא מטקסט נבחר");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only show alert and set error state for non-quota and non-overload errors
+          setPilpultaError(errorResult.message);
+          alert(`${HEBREW_TEXT.pilpultaError}: ${errorResult.message}`);
+        }
+      } finally {
+        setIsLoadingPilpulta(false);
+        setGlobalLoadingMessage("");
+      }
+    }, [selectedAiModel, setGlobalLoadingMessage, showPilpulta]),
+
+    findJewishSourcesFromSelectedText: useCallback(async (selectedText) => {
+      if (!selectedText || !selectedText.trim()) {
+        alert('אנא בחר טקסט תחילה');
+        return;
+      }
+      
+      setIsLoadingSourceFinding(true);
+      setSourceFindingError(null);
+      setSourceFindingResults('');
+      setOriginalFileForSourceFinding({ name: 'טקסט נבחר', content: selectedText });
+      lastContentForSourceFindingRef.current = selectedText;
+      setGlobalLoadingMessage(HEBREW_TEXT.findingSources);
+
+      const prompt = `אתה חוקר מקורות יהודיים מומחה.
+מצא מקורות יהודיים (תנ"ך, משנה, תלמוד, מדרשים, פוסקים, ספרי קבלה וכו') הקשורים לטקסט הבא.
+ציין את המקורות המדויקים, כולל פרק ופסוק/דף/הלכה כשאפשר.
+הסבר את הקשר בין הטקסט למקורות שמצאת.
+
+הטקסט לחיפוש מקורות:
+---
+${selectedText}
+---`;
+
+      try {
+        const { key: apiKey } = getApiKeyDetails();
+        if (!apiKey) {
+          alert(HEBREW_TEXT.apiKeyNotSetAlert);
+          throw new Error(HEBREW_TEXT.apiKeyNotSetError);
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorDetails = '';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorDetails = errorData.error?.message || errorText;
+            console.error("Gemini API Error Response (Sources Selected - JSON):", errorData);
+          } catch (e) {
+            errorDetails = errorText;
+            console.error("Gemini API Error Response (Sources Selected - Non-JSON):", errorText);
+          }
+          throw new Error(HEBREW_TEXT.apiError(response.status, response.statusText, errorDetails));
+        }
+        
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textResponse) {
+          throw new Error(HEBREW_TEXT.noSourceFoundError);
+        }
+        
+        setSourceFindingResults(textResponse.trim());
+        setMainViewMode('sourceResults');
+      } catch (error) {
+        const errorResult = handleApiError(error, "מציאת מקורות מטקסט נבחר");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only show alert and set error state for non-quota and non-overload errors
+          setSourceFindingError(errorResult.message);
+          alert(`${HEBREW_TEXT.sourceResultsError}: ${errorResult.message}`);
+        }
+      } finally {
+        setIsLoadingSourceFinding(false);
+        setGlobalLoadingMessage("");
+      }
+    }, [selectedAiModel, setMainViewMode, setGlobalLoadingMessage]),
+
+    generateFlashcardsFromSelectedText: useCallback(async (selectedText) => {
+      if (!selectedText || !selectedText.trim()) {
+        alert('אנא בחר טקסט תחילה');
+        return;
+      }
+      
+      setIsLoadingFlashcards(true);
+      setFlashcardError(null);
+      setFlashcardData([]);
+      lastContentForFlashcardsRef.current = selectedText;
+      setGlobalLoadingMessage(HEBREW_TEXT.generatingFlashcards);
+
+      const prompt = `אתה מומחה ביצירת תוכן לימודי.
+הפוך את הטקסט הבא לסדרה של זוגות שאלה ותשובה, המתאימים לכרטיסיות לימוד.
+כל זוג צריך להיות מובחן ולהתמקד במושגי מפתח או במידע מהטקסט.
+עצב את הפלט כמערך JSON של אובייקטים, כאשר לכל אובייקט יש מפתח 'question' ומפתח 'answer'.
+לדוגמה: [{ "question": "מהו הנושא המרכזי?", "answer": "הנושא המרכזי הוא..." }, { "question": "...", "answer": "..." }]
+ודא שהשאלות ברורות ותמציתיות, והתשובות אינפורמטיביות.
+אל תכלול טקסט כלשהו מחוץ למערך ה-JSON.
+
+הנה הטקסט לעיבוד:
+---
+${selectedText}
+---`;
+
+      try {
+        const { key: apiKey } = getApiKeyDetails();
+        if (!apiKey) {
+          alert(HEBREW_TEXT.apiKeyNotSetAlert);
+          throw new Error(HEBREW_TEXT.apiKeyNotSetError);
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorDetails = '';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorDetails = errorData.error?.message || errorText;
+            console.error("Gemini API Error Response (Flashcards Selected - JSON):", errorData);
+          } catch (e) {
+            errorDetails = errorText;
+            console.error("Gemini API Error Response (Flashcards Selected - Non-JSON):", errorText);
+          }
+          throw new Error(HEBREW_TEXT.apiError(response.status, response.statusText, errorDetails));
+        }
+        
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textResponse) throw new Error(HEBREW_TEXT.invalidApiResponse("כרטיסיות"));
+        
+        const cleanedResponse = cleanAIResponseForJSON(textResponse);
+        let parsedCards = JSON.parse(cleanedResponse);
+        
+        if (!Array.isArray(parsedCards) || !parsedCards.every(c => c.question && c.answer)) {
+          throw new Error(HEBREW_TEXT.invalidFlashcardResponse);
+        }
+        
+        setFlashcardData(parsedCards);
+        setMainViewMode('flashcards');
+      } catch (error) {
+        const errorResult = handleApiError(error, "יצירת כרטיסיות מטקסט נבחר");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only show alert and set error state for non-quota and non-overload errors
+          setFlashcardError(errorResult.message);
+          alert(`${HEBREW_TEXT.flashcardError}: ${errorResult.message}`);
+        }
+      } finally {
+        setIsLoadingFlashcards(false);
+        setGlobalLoadingMessage("");
+      }
+    }, [selectedAiModel, setMainViewMode, setGlobalLoadingMessage]),
+
+    generateSummaryFromSelectedText: useCallback(async (selectedText) => {
+      if (!selectedText || !selectedText.trim()) {
+        alert('אנא בחר טקסט תחילה');
+        return;
+      }
+      
+      setIsLoadingSummary(true);
+      setSummaryError(null);
+      setSummaryText('');
+      setOriginalFileForSummary({ name: 'טקסט נבחר', content: selectedText });
+      lastContentForSummaryRef.current = selectedText;
+      setGlobalLoadingMessage(HEBREW_TEXT.generatingSummary);
+
+      const prompt = `אתה מומחה בסיכום טקסטים בעברית.
+צור סיכום מפורט ומובנה של הטקסט הבא.
+הסיכום צריך להיות ברור, מאורגן, וכולל את הנקודות המרכזיות.
+השתמש בפורמט markdown עם כותרות וסעיפים.
+
+הטקסט לסיכום:
+---
+${selectedText}
+---`;
+
+      try {
+        const { key: apiKey } = getApiKeyDetails();
+        if (!apiKey) {
+          alert(HEBREW_TEXT.apiKeyNotSetAlert);
+          throw new Error(HEBREW_TEXT.apiKeyNotSetError);
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorDetails = '';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorDetails = errorData.error?.message || errorText;
+            console.error("Gemini API Error Response (Summary Selected - JSON):", errorData);
+          } catch (e) {
+            errorDetails = errorText;
+            console.error("Gemini API Error Response (Summary Selected - Non-JSON):", errorText);
+          }
+          throw new Error(HEBREW_TEXT.apiError(response.status, response.statusText, errorDetails));
+        }
+        
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textResponse) throw new Error(HEBREW_TEXT.invalidApiResponse("סיכום"));
+        
+        setSummaryText(textResponse.trim());
+        setMainViewMode('summary');
+      } catch (error) {
+        const errorResult = handleApiError(error, "יצירת סיכום מטקסט נבחר");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only show alert and set error state for non-quota and non-overload errors
+          setSummaryError(errorResult.message);
+          alert(`${HEBREW_TEXT.summaryError}: ${errorResult.message}`);
+        }
+      } finally {
+        setIsLoadingSummary(false);
+        setGlobalLoadingMessage("");
+      }
+    }, [selectedAiModel, setMainViewMode, setGlobalLoadingMessage]),
+
+    organizeSelectedText: useCallback(async (selectedText) => {
+      if (!selectedText || !selectedText.trim()) {
+        alert('אנא בחר טקסט תחילה');
+        return;
+      }
+      
+      // Large text detection and user notification
+      const textLines = selectedText.split('\n');
+      const isLargeText = textLines.length > 80;
+      const isVeryLargeText = textLines.length >= 200;
+      
+      if (isVeryLargeText) {
+        const userConfirmed = confirm(HEBREW_TEXT.largeFileWarning(textLines.length));
+        if (!userConfirmed) {
+          return;
+        }
+      } else if (isLargeText) {
+        const estimatedTime = textLines.length > 300 ? '2-3 דקות' : '1-2 דקות';
+        const userConfirmed = confirm(`הטקסט מכיל ${textLines.length} שורות. זהו טקסט גדול שיעובד בגישה מותאמת.\n\nזמן עיבוד משוער: ${estimatedTime}\n\nהאם להמשיך?`);
+        if (!userConfirmed) {
+          return;
+        }
+      }
+      
+      // Store original selected text in localStorage as backup for undo functionality
+      // This ensures that even if user switches to preview mode and back, Ctrl+Z will still work
+      if (activeTabObject && activeTabObject.id) {
+        storeSelectedTextBackup(activeTabObject.id, selectedText);
+      }
+      
+      setIsProcessingText(true);
+      setProcessingError(null);
+      setProcessedText('');
+      setProcessingMode('organize');
+      setGlobalLoadingMessage(isLargeText ? 
+        `מעבד טקסט נבחר גדול (${textLines.length} שורות) באמצעות בינה מלאכותית...` : 
+        'מארגן טקסט נבחר באמצעות בינה מלאכותית...'
+      );
+
+      // Check user preference for italic formatting
+      const disableItalicFormatting = localStorage.getItem(DISABLE_ITALIC_FORMATTING_KEY) === 'true';
+      const formattingInstructions = disableItalicFormatting 
+        ? `4. הדגש מילות מפתח חשובות (**מילה**) - אל תשתמש בעיצוב נטייה (*מילה*)`
+        : `4. הדגש מילות מפתח חשובות (**מילה**, *מילה*)`;
+
+      const prompt = `אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט הבא לפורמט Markdown מושלם.
+
+🔥 חוקים קריטיים - אל תעבור על אלה:
+• שמור על כל התוכן המקורי - אל תמחק או תחסיר מידע
+• אל תחזור על תוכן - כל חלק צריך להופיע פעם אחת בלבד  
+• וודא שהטקסט המאורגן כולל את כל התוכן המקורי
+• אל תוסיף מידע שלא היה בטקסט המקורי
+
+📋 משימות הארגון:
+1. צור היררכיה ברורה עם כותרות H1, H2, H3 לפי הקשר הלוגי
+2. חלק לפסקאות מובנות ונושאיות
+3. ארגן רשימות בפורמט Markdown נכון (-, *, 1., 2., וכו')
+${formattingInstructions}
+5. צור מבנה לוגי וזורם שקל לקריאה
+6. שפר פיסוק ומבנה משפטים ללא שינוי המשמעות
+7. הסר שורות ריקות מיותרות (לא יותר מ-2 שורות ריקות ברצף)
+
+📖 כללי פורמט:
+• השתמש בעברית תקינה וברורה
+• שמור על המינוח המקורי של מושגים יהודיים/תורניים
+• ארגן ציטוטים ומקורות בפורמט אחיד
+• צור מבנה חזותי נעים ומאורגן
+
+הטקסט לארגון:
+${selectedText}
+
+החזר אך ורק את הטקסט המאורגן ללא הסברים או הערות נוספות.`;
+
+      try {
+        const { key: apiKey } = getApiKeyDetails();
+        if (!apiKey) {
+          alert(HEBREW_TEXT.apiKeyNotSetAlert);
+          throw new Error(HEBREW_TEXT.apiKeyNotSetError);
+        }
+
+        // Dynamic token configuration based on text size
+        const maxTokens = textLines.length > 200 ? 16000 : textLines.length > 100 ? 8000 : 4000;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.1,        // Low for consistency
+              maxOutputTokens: maxTokens,
+              topP: 0.9,
+              topK: 40
+            }
+          })
+        });
+        
+        const data = await safeJsonParse(response);
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textResponse) throw new Error('תגובה לא תקינה מ-Google AI API');
+
+        // Apply post-processing cleanup
+        const cleanedText = cleanAndSmoothText(textResponse.trim());
+        setProcessedText(cleanedText);
+        
+        console.log(`ארגון טקסט נבחר הושלם בהצלחה (${textLines.length} שורות)`);
+        
+        // Show tip about undo
+        if (isLargeText) {
+          console.log('💡 טיפ: לחזרה לטקסט המקורי, לחץ Ctrl+Z');
+        }
+        
+      } catch (error) {
+        const errorResult = handleApiError(error, "ארגון טקסט נבחר");
+        
+        if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
+          // Only show alert and set error state for non-quota and non-overload errors
+          setProcessingError(errorResult.message);
+          alert(`שגיאה בארגון הטקסט: ${errorResult.message}`);
+        }
+      } finally {
+        setIsProcessingText(false);
+        setGlobalLoadingMessage("");
+      }
+    }, [selectedAiModel, setGlobalLoadingMessage, activeTabObject]),
   };
 }

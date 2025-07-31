@@ -1,7 +1,9 @@
 // frontend/src/App.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
+import { initializeBackupSystem } from './utils/aiOrganizeBackup';
 import ContextMenu from './components/ContextMenu';
+import SettingsModal from './components/SettingsModal';
 import './components/ContextMenu.css';
 import './components/TreeItem.css';
 import './components/FlashcardView.css';
@@ -21,6 +23,9 @@ import './components/AiModelModal.css'; // Import AI Model Modal CSS
 import './components/OnboardingTutorial.css'; // Import Onboarding Tutorial CSS
 import './components/PilpultaDisplay.css'; // Import Pilpulta CSS
 import './components/UnsavedChangesModal.css'; // Import UnsavedChangesModal CSS
+import './components/NewFileModal.css'; // Import NewFileModal CSS
+import './components/QuotaLimitModal.css'; // Import QuotaLimitModal CSS
+import './components/ModelOverloadedModal.css'; // Import ModelOverloadedModal CSS
 
 import Sidebar from './components/Sidebar';
 import MainContentArea from './components/MainContentArea';
@@ -41,6 +46,12 @@ import SmartSearchModal from './components/SmartSearchModal'; // Import SmartSea
 import HelpModal from './components/HelpModal'; // Import HelpModal
 import UnsavedChangesModal from './components/UnsavedChangesModal'; // Import UnsavedChangesModal
 import FileConversionModal from './components/FileConversionModal'; // Import FileConversionModal
+import SingleFileConversionModal from './components/SingleFileConversionModal'; // Import SingleFileConversionModal
+import NewFileModal from './components/NewFileModal'; // Import NewFileModal
+import ConfirmDeleteModal from './components/ConfirmDeleteModal'; // Import ConfirmDeleteModal
+import CreateFolderModal from './components/CreateFolderModal'; // Import CreateFolderModal
+import QuotaLimitModal from './components/QuotaLimitModal'; // Import QuotaLimitModal
+import ModelOverloadedModal from './components/ModelOverloadedModal'; // Import ModelOverloadedModal
 
 
 import useWorkspace from './hooks/useWorkspace';
@@ -54,6 +65,7 @@ import useRepetitions from './hooks/useRepetitions';
 import useQuestionnaire from './hooks/useQuestionnaire';
 import useLearningGraph from './hooks/useLearningGraph'; // Import useLearningGraph
 import useJudaismChat from './hooks/useJudaismChat'; // Import useJudaismChat
+import { useThemeSettings } from './hooks/useThemeSettings'; // Import useThemeSettings
 import JudaismChatModal from './components/JudaismChatModal'; // Import JudaismChatModal
 
 import path from './utils/pathUtils';
@@ -90,6 +102,7 @@ function App() {
   const aiModels = [...defaultAiModels, ...customModels];
 
   const [isZenMode, setIsZenMode] = useState(false);
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
   // 'editor', 'flashcards', 'summary', 'sourceResults', 'search', 'recent', 'frequent', 'repetitions', 'weeklySummary', 'notificationSettings', 'learningGraph'
   const [mainViewMode, setMainViewMode] = useState('editor');
   const [globalLoadingMessage, setGlobalLoadingMessage] = useState('');
@@ -107,15 +120,36 @@ function App() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false); // State for API Key modal
   const [isAiModelModalOpen, setIsAiModelModalOpen] = useState(false); // State for AI Model modal
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // State for Help modal
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // State for Settings modal
+  const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false); // State for New File modal
+  const [selectedFolderForNewFile, setSelectedFolderForNewFile] = useState(null); // State for context menu new file
+  const [isSaveAsModalOpen, setIsSaveAsModalOpen] = useState(false); // State for Save As modal
+  const [saveAsData, setSaveAsData] = useState(null); // Data for Save As modal
   const [isPilpultaVisible, setIsPilpultaVisible] = useState(false); // State for Pilpulta window
   const [pilpultaData, setPilpultaData] = useState([]); // Data for Pilpulta window
   const [isFileConversionModalOpen, setIsFileConversionModalOpen] = useState(false); // State for File Conversion modal
+  const [isSingleFileConversionModalOpen, setIsSingleFileConversionModalOpen] = useState(false); // State for Single File Conversion modal
+  const [singleFileConversionData, setSingleFileConversionData] = useState(null); // Data for Single File Conversion modal
+  
+  // New states for delete confirmation and folder creation
+  const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [baseFolderForDelete, setBaseFolderForDelete] = useState(null);
+  
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [createFolderData, setCreateFolderData] = useState(null);
+  
+  // Quota Limit Modal state
+  const [isQuotaLimitModalOpen, setIsQuotaLimitModalOpen] = useState(false);
+  const [isModelOverloadedModalOpen, setIsModelOverloadedModalOpen] = useState(false);
+  
   // Smart Search modal state is managed within useAiFeatures hook
   const [editorFontSize, setEditorFontSize] = useState(DEFAULT_FONT_SIZE_PX);
+  const [presentationFontSize, setPresentationFontSize] = useState(DEFAULT_FONT_SIZE_PX);
   
   // Font management state
   const [appFont, setAppFont] = useState('Arial');
-  const [editorFont, setEditorFont] = useState('Consolas');
+  const [editorFont, setEditorFont] = useState('Arial');
 
 
   // --- Initialize Hooks ---
@@ -128,6 +162,9 @@ function App() {
 
   // Check if user should see file conversion prompt
   useEffect(() => {
+    // Initialize AI organization backup system
+    initializeBackupSystem();
+    
     const hasSeenConversionPrompt = localStorage.getItem('hasSeenFileConversionPrompt');
     const shouldShowPrompt = localStorage.getItem('showFileConversionPrompt');
     const hasCompletedConversion = localStorage.getItem('hasCompletedFileConversion') === 'true';
@@ -147,6 +184,12 @@ function App() {
     setEditorFontSize(newSize);
     // Persist to localStorage if desired
     localStorage.setItem('editorFontSize', newSize);
+  };
+
+  const handlePresentationFontSizeChange = (newSize) => {
+    setPresentationFontSize(newSize);
+    // Persist to localStorage if desired
+    localStorage.setItem('presentationFontSize', newSize);
   };
   
   const handleAppFontChange = (newFont) => {
@@ -168,6 +211,11 @@ function App() {
     const savedFontSize = localStorage.getItem('editorFontSize');
     if (savedFontSize) {
       setEditorFontSize(parseInt(savedFontSize, 10));
+    }
+
+    const savedPresentationFontSize = localStorage.getItem('presentationFontSize');
+    if (savedPresentationFontSize) {
+      setPresentationFontSize(parseInt(savedPresentationFontSize, 10));
     }
     
     // Load saved fonts
@@ -197,6 +245,10 @@ function App() {
     localStorage.removeItem('selectedAiModel'); // If you store this
     localStorage.removeItem('customAiModels'); // Clear custom AI models
     localStorage.removeItem('editorSettings'); // Example, if you store editor settings
+    localStorage.removeItem('editorFontSize'); // Clear editor font size
+    localStorage.removeItem('presentationFontSize'); // Clear presentation font size
+    localStorage.removeItem('appFont'); // Clear app font
+    localStorage.removeItem('editorFont'); // Clear editor font
     // Add any other localStorage keys that store user-specific data
     
     // Optionally, clear other states if they hold user data not covered by hooks
@@ -216,6 +268,24 @@ function App() {
   const hidePilpulta = useCallback(() => {
     setIsPilpultaVisible(false);
     // Optionally clear data when hiding: setPilpultaData([]);
+  }, []);
+
+  // --- Quota Limit Modal Management ---
+  const showQuotaLimitModal = useCallback(() => {
+    setIsQuotaLimitModalOpen(true);
+  }, []);
+
+  const hideQuotaLimitModal = useCallback(() => {
+    setIsQuotaLimitModalOpen(false);
+  }, []);
+
+  // --- Model Overloaded Modal Management ---
+  const showModelOverloadedModal = useCallback(() => {
+    setIsModelOverloadedModalOpen(true);
+  }, []);
+
+  const hideModelOverloadedModal = useCallback(() => {
+    setIsModelOverloadedModalOpen(false);
   }, []);
 
 
@@ -279,6 +349,9 @@ function App() {
 
   const activeTabObject = appLevelActiveTabPath ? tabsHook.openTabs.find(t => t.id === appLevelActiveTabPath) : null;
 
+  // Initialize theme settings hook
+  const themeHook = useThemeSettings();
+
   const editorSettingsHook = useEditorSettings({
     activeTabObject,
     editorSharedRef,
@@ -296,6 +369,8 @@ function App() {
     handleCloseTab: tabsHook.handleCloseTab,
     fetchStatsFiles: statsHook.fetchStatsFiles,
     setGlobalLoadingMessage,
+    setIsSaveAsModalOpen,
+    setSaveAsData,
   });
 
   const searchHook = useSearch({
@@ -316,6 +391,8 @@ function App() {
     workspaceFolders: workspaceHook.workspaceFolders,
     selectedAiModel, // Pass selected model
     showPilpulta, // Pass the function to show the Pilpulta window
+    showQuotaLimitModal, // Pass the function to show the quota limit modal
+    showModelOverloadedModal, // Pass the function to show the model overloaded modal
   });
 
   // --- Effects & Callbacks ---
@@ -328,29 +405,71 @@ function App() {
 
   // Auto-open file conversion modal when no workspace is present
   useEffect(() => {
-    const neverShowAgain = localStorage.getItem('fileConversionNeverShow') === 'true';
-    const postponed = localStorage.getItem('fileConversionPostponed') === 'true';
+    console.log('FileConversion Effect Running:', {
+      initialFoldersLoaded: workspaceHook.initialFoldersLoaded,
+      workspaceFoldersCount: workspaceHook.workspaceFolders.length,
+      isModalOpen: isFileConversionModalOpen
+    });
     
-    console.log('Checking workspace status:', {
+    // Only check after initial workspace folders have been loaded
+    if (!workspaceHook.initialFoldersLoaded) {
+      console.log('Initial folders not yet loaded, waiting...');
+      return;
+    }
+    
+    const neverShowAgain = localStorage.getItem('fileConversionNeverShow') === 'true';
+    const postponedTimestamp = localStorage.getItem('fileConversionPostponedTime');
+    
+    // Check if 5 hours (5 * 60 * 60 * 1000 = 18000000 ms) have passed since postponement
+    const fiveHoursInMs = 5 * 60 * 60 * 1000;
+    const now = Date.now();
+    let shouldRespectPostponement = false;
+    
+    if (postponedTimestamp) {
+      const timeSincePostponed = now - parseInt(postponedTimestamp);
+      shouldRespectPostponement = timeSincePostponed < fiveHoursInMs;
+      
+      if (!shouldRespectPostponement) {
+        console.log('5 hours have passed since postponement - clearing postponed flag');
+        localStorage.removeItem('fileConversionPostponedTime');
+      } else {
+        const remainingTime = fiveHoursInMs - timeSincePostponed;
+        const remainingHours = Math.floor(remainingTime / (60 * 60 * 1000));
+        const remainingMinutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+        console.log(`File conversion still postponed for ${remainingHours}h ${remainingMinutes}m`);
+      }
+    }
+    
+    console.log('Checking workspace status for file conversion modal:', {
       workspaceFoldersCount: workspaceHook.workspaceFolders.length,
       isModalOpen: isFileConversionModalOpen,
       neverShowAgain,
-      postponed
+      postponedTimestamp,
+      shouldRespectPostponement,
+      initialFoldersLoaded: workspaceHook.initialFoldersLoaded
     });
     
+    // If no workspace folders exist, and either no postponement or 5 hours have passed, show modal
     if (workspaceHook.workspaceFolders.length === 0 && 
         !isFileConversionModalOpen && 
         !neverShowAgain && 
-        !postponed) {
+        !shouldRespectPostponement) {
       // Delay the modal opening to ensure the component is fully mounted
       const timer = setTimeout(() => {
-        console.log('Opening file conversion modal - no workspace detected');
+        console.log('Opening file conversion modal - no workspace detected and postponement expired/cleared');
         setIsFileConversionModalOpen(true);
       }, 1000);
       
       return () => clearTimeout(timer);
+    } else {
+      console.log('Not opening file conversion modal because:', {
+        hasWorkspace: workspaceHook.workspaceFolders.length > 0,
+        modalAlreadyOpen: isFileConversionModalOpen,
+        neverShowAgain,
+        shouldRespectPostponement
+      });
     }
-  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen]);
+  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen, workspaceHook.initialFoldersLoaded]);
 
   useEffect(() => {
     const previousWorkspaceFolders = JSON.stringify(workspaceHook.workspaceFolders.map(f => f.path).sort());
@@ -402,10 +521,11 @@ function App() {
 
 
   const toggleZenMode = () => setIsZenMode(prev => !prev);
+  const toggleFormattingToolbar = () => setShowFormattingToolbar(prev => !prev);
 
   const handleToggleMainView = useCallback((viewType) => {
-    // Added 'learningGraph' to the list of views that don't toggle back to editor on second click
-    if (mainViewMode === viewType && !['flashcards', 'summary', 'sourceResults', 'repetitions', 'weeklySummary', 'learningGraph'].includes(viewType)) {
+    // Added 'learningGraph' and 'search' to the list of views that don't toggle back to editor on second click
+    if (mainViewMode === viewType && !['flashcards', 'summary', 'sourceResults', 'repetitions', 'weeklySummary', 'learningGraph', 'search'].includes(viewType)) {
       setMainViewMode('editor');
     } else {
       setMainViewMode(viewType);
@@ -452,17 +572,63 @@ function App() {
     if (item.isFolder) {
       menuItems.push({
         label: HEBREW_TEXT.newFile + "...",
-        action: () => fileOperationsHook.createNewFileFromExplorer(item, baseFolder)
+        action: () => {
+          // Calculate the target path
+          const targetPath = path.join(baseFolder.path, item.path);
+          
+          // Open the new file modal with the selected folder as default location
+          setIsNewFileModalOpen(true);
+          // We'll need to pass the target path to the modal somehow
+          // For now, we'll store it in a state variable
+          setSelectedFolderForNewFile({ 
+            path: targetPath, 
+            workspaceFolder: baseFolder 
+          });
+        }
       });
       menuItems.push({
         label: HEBREW_TEXT.newFolder + "...",
-        action: () => fileOperationsHook.createNewFolderFromExplorer(item, baseFolder)
+        action: () => {
+          // Open the create folder modal
+          setCreateFolderData({
+            parentItem: item,
+            baseFolder: baseFolder,
+            parentFolderName: item ? item.name : baseFolder.name
+          });
+          setIsCreateFolderModalOpen(true);
+        }
       });
     }
     menuItems.push({ type: 'separator' });
+    
+    // Add conversion option for files only
+    if (!item.isFolder) {
+      menuItems.push({
+        label: "המר ל... 🔄",
+        action: () => {
+          // Calculate the full file path
+          const fullFilePath = path.join(baseFolder.path, item.path);
+          
+          // Open the single file conversion modal
+          setSingleFileConversionData({
+            filePath: fullFilePath,
+            fileName: item.name,
+            baseFolder: baseFolder
+          });
+          setIsSingleFileConversionModalOpen(true);
+        }
+      });
+      menuItems.push({ type: 'separator' });
+    }
+    
     menuItems.push({
       label: HEBREW_TEXT.deleteItem,
-      action: () => fileOperationsHook.deleteItemFromExplorer(item, baseFolder)
+      action: () => {
+        // Open the delete confirmation modal
+        setItemToDelete(item);
+        setBaseFolderForDelete(baseFolder);
+        setIsConfirmDeleteModalOpen(true);
+      }
     });
     menuItems.push({type: 'separator'});
     menuItems.push({
@@ -478,32 +644,110 @@ function App() {
 
 
   const handleCreateNewFileAction = useCallback(async () => {
-    if (workspaceHook.workspaceFolders.length === 0) { alert(HEBREW_TEXT.addFolderFirst); return; }
-    let targetBaseFolderPath = null;
-    let targetBaseFolderForPrompt = null;
-
-    const currentActiveTab = activeTabObject;
-    if (currentActiveTab && currentActiveTab.basePath) {
-      targetBaseFolderPath = currentActiveTab.basePath;
-      targetBaseFolderForPrompt = workspaceHook.workspaceFolders.find(wf => wf.path === targetBaseFolderPath);
-    } else if (workspaceHook.workspaceFolders.length === 1) {
-      targetBaseFolderPath = workspaceHook.workspaceFolders[0].path;
-      targetBaseFolderForPrompt = workspaceHook.workspaceFolders[0];
-    } else {
-      const folderNames = workspaceHook.workspaceFolders.map((wf, idx) => `${idx + 1}. ${wf.name} (${wf.path})`).join('\n');
-      const choice = prompt(HEBREW_TEXT.chooseTargetFolderPrompt(folderNames));
-      if (choice === null || choice.trim() === '') return;
-      const choiceIndex = parseInt(choice.trim(), 10) - 1;
-      if (workspaceHook.workspaceFolders[choiceIndex]) {
-        targetBaseFolderPath = workspaceHook.workspaceFolders[choiceIndex].path;
-        targetBaseFolderForPrompt = workspaceHook.workspaceFolders[choiceIndex];
-      } else {
-        alert(HEBREW_TEXT.invalidChoice); return;
-      }
+    if (workspaceHook.workspaceFolders.length === 0) { 
+      alert(HEBREW_TEXT.addFolderFirst); 
+      return; 
     }
-    if (!targetBaseFolderPath || !targetBaseFolderForPrompt) { alert(HEBREW_TEXT.noTargetFolder); return; }
-    await fileOperationsHook.createNewFileFromExplorer(null, targetBaseFolderForPrompt);
-  }, [workspaceHook.workspaceFolders, activeTabObject, fileOperationsHook.createNewFileFromExplorer]);
+    
+    // Open the new file modal instead of using prompts
+    setIsNewFileModalOpen(true);
+  }, [workspaceHook.workspaceFolders]);
+
+  // Handle file creation from the new file modal
+  const handleCreateFileFromModal = useCallback(async (selectedPath, fileName) => {
+    try {
+      // Check if the selected path is within an existing workspace folder
+      let targetWorkspaceFolder = null;
+      let relativePath = fileName;
+
+      for (const folder of workspaceHook.workspaceFolders) {
+        if (selectedPath.startsWith(folder.path)) {
+          targetWorkspaceFolder = folder;
+          // Calculate relative path from workspace folder
+          relativePath = selectedPath === folder.path 
+            ? fileName 
+            : `${selectedPath.slice(folder.path.length + 1)}\\${fileName}`;
+          break;
+        }
+      }
+
+      if (targetWorkspaceFolder) {
+        // Use existing workspace folder
+        await fileOperationsHook.handleCreateNewFileOrSummary(
+          targetWorkspaceFolder.path, 
+          relativePath.replace(/\\/g, '/'), // Convert to forward slashes for consistency
+          '', 
+          true
+        );
+      } else {
+        // The selected path is outside existing workspace folders
+        // Add it as a new workspace folder first
+        await workspaceHook.addWorkspaceFolder(selectedPath);
+        
+        // Then create the file in the root of the new workspace
+        await fileOperationsHook.handleCreateNewFileOrSummary(
+          selectedPath, 
+          fileName, 
+          '', 
+          true
+        );
+      }
+    } catch (error) {
+      console.error('Error creating file:', error);
+      alert(`שגיאה ביצירת הקובץ: ${error.message}`);
+    }
+  }, [fileOperationsHook.handleCreateNewFileOrSummary, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder]);
+
+  // Handle saving file from the modal (for Save As functionality)
+  const handleSaveFileFromModal = useCallback(async (selectedPath, fileName) => {
+    if (!saveAsData) return;
+    
+    try {
+      // Check if the selected path is within an existing workspace folder
+      let targetWorkspaceFolder = null;
+      let relativePath = fileName;
+
+      for (const folder of workspaceHook.workspaceFolders) {
+        if (selectedPath.startsWith(folder.path)) {
+          targetWorkspaceFolder = folder;
+          // Calculate relative path from workspace folder
+          relativePath = selectedPath === folder.path 
+            ? fileName 
+            : `${selectedPath.slice(folder.path.length + 1)}\\${fileName}`;
+          break;
+        }
+      }
+
+      if (targetWorkspaceFolder) {
+        // Use the fileOperations hook to save with the new path
+        await fileOperationsHook.saveFileToPath(
+          saveAsData.tabId, 
+          targetWorkspaceFolder.path, 
+          relativePath.replace(/\\/g, '/'), // Convert to forward slashes for consistency
+          saveAsData.content
+        );
+      } else {
+        // The selected path is outside existing workspace folders
+        // Add it as a new workspace folder first
+        await workspaceHook.addWorkspaceFolder(selectedPath);
+        
+        // Then save the file in the root of the new workspace
+        await fileOperationsHook.saveFileToPath(
+          saveAsData.tabId, 
+          selectedPath, 
+          fileName, 
+          saveAsData.content
+        );
+      }
+      
+      // Clear the save data and close modal
+      setSaveAsData(null);
+      setIsSaveAsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving file:', error);
+      alert(`שגיאה בשמירת הקובץ: ${error.message}`);
+    }
+  }, [saveAsData, fileOperationsHook, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder]);
 
   const handleDeleteActiveFileAction = useCallback(async () => {
     const currentActiveTab = activeTabObject;
@@ -518,8 +762,11 @@ function App() {
       name: currentActiveTab.name, path: currentActiveTab.relativePath,
       isFolder: false, type: currentActiveTab.type
     };
-    await fileOperationsHook.deleteItemFromExplorer(itemToDelete, baseFolder);
-  }, [activeTabObject, mainViewMode, workspaceHook.workspaceFolders, fileOperationsHook.deleteItemFromExplorer]);
+    // Use the modal instead of direct deletion
+    setItemToDelete(itemToDelete);
+    setBaseFolderForDelete(baseFolder);
+    setIsConfirmDeleteModalOpen(true);
+  }, [activeTabObject, mainViewMode, workspaceHook.workspaceFolders]);
 
   // Scroll position handlers
   const handleScrollPositionChange = useCallback((scrollPosition) => {
@@ -534,6 +781,44 @@ function App() {
     }
     return 0;
   }, [appLevelActiveTabPath, tabsHook]);
+
+  // Handle delete confirmation
+  const handleConfirmDelete = useCallback(async () => {
+    if (itemToDelete && baseFolderForDelete) {
+      await fileOperationsHook.deleteItemFromExplorer(itemToDelete, baseFolderForDelete);
+      setItemToDelete(null);
+      setBaseFolderForDelete(null);
+    }
+  }, [itemToDelete, baseFolderForDelete, fileOperationsHook]);
+
+  // Handle folder creation
+  const handleCreateFolder = useCallback(async (folderName) => {
+    if (createFolderData) {
+      await fileOperationsHook.createNewFolderFromExplorer(
+        folderName,
+        createFolderData.parentItem,
+        createFolderData.baseFolder
+      );
+      setCreateFolderData(null);
+    }
+  }, [createFolderData, fileOperationsHook]);
+
+  // Handle folder creation from sidebar (for context menu on workspace folders)
+  const handleCreateFolderFromSidebar = useCallback((parentItem, baseFolder) => {
+    setCreateFolderData({
+      parentItem: parentItem,
+      baseFolder: baseFolder,
+      parentFolderName: parentItem ? parentItem.name : baseFolder.name
+    });
+    setIsCreateFolderModalOpen(true);
+  }, []);
+
+  // Handle delete from sidebar  
+  const handleDeleteFromSidebar = useCallback((item, baseFolder) => {
+    setItemToDelete(item);
+    setBaseFolderForDelete(baseFolder);
+    setIsConfirmDeleteModalOpen(true);
+  }, []);
 
   // Add event listener for save requests from modal
   useEffect(() => {
@@ -562,6 +847,45 @@ function App() {
     const handleKeyDown = (event) => {
       const isCtrlOrMeta = event.ctrlKey || event.metaKey;
 
+      // Handle Undo: Ctrl+Z (English) or Ctrl+ז (Hebrew)
+      if (isCtrlOrMeta && !event.shiftKey && (event.key.toLowerCase() === 'z' || event.key === 'ז')) {
+        // Only handle if we're in editor mode and have an active editor
+        if (mainViewMode === 'editor' && editorSharedRef.current) {
+          event.preventDefault();
+          try {
+            const view = editorSharedRef.current.getEditorView?.();
+            if (view && view.state) {
+              const { undo } = require('@codemirror/commands');
+              undo(view);
+              view.focus();
+            }
+          } catch (error) {
+            console.error('שגיאה בביצוע undo:', error);
+          }
+        }
+        return;
+      }
+
+      // Handle Redo: Ctrl+Y (English) or Ctrl+ט (Hebrew) or Ctrl+Shift+Z
+      if (isCtrlOrMeta && ((event.key.toLowerCase() === 'y' || event.key === 'ט') || 
+                           (event.shiftKey && (event.key.toLowerCase() === 'z' || event.key === 'ז')))) {
+        // Only handle if we're in editor mode and have an active editor
+        if (mainViewMode === 'editor' && editorSharedRef.current) {
+          event.preventDefault();
+          try {
+            const view = editorSharedRef.current.getEditorView?.();
+            if (view && view.state) {
+              const { redo } = require('@codemirror/commands');
+              redo(view);
+              view.focus();
+            }
+          } catch (error) {
+            console.error('שגיאה בביצוע redo:', error);
+          }
+        }
+        return;
+      }
+
       // Handle Ctrl+S (English) and Ctrl+ד (Hebrew) for save
       if (isCtrlOrMeta && (event.key.toLowerCase() === 's' || event.key.toLowerCase() === 'ד')) {
         event.preventDefault();
@@ -579,13 +903,28 @@ function App() {
         event.preventDefault();
         toggleZenMode();
       }
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'z') { // Note: Typically Ctrl+Z is Undo, Ctrl+Y or Ctrl+Shift+Z is Redo. This is for Zen Mode.
-        event.preventDefault(); toggleZenMode();
-      }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      // Toggle formatting toolbar with Shift+Q (English) or Shift+/ 
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key.toLowerCase() === 'q' || event.key === '/')) {
         event.preventDefault();
-        if (mainViewMode !== 'search') handleToggleMainView('search');
-        else setTimeout(() => searchHook.searchInputRef.current?.focus(), 0);
+        toggleFormattingToolbar();
+      }
+      if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'f' || event.key === 'כ')) {
+        event.preventDefault();
+        
+        // If there's an active file in the editor, focus on the CodeMirror search
+        if (appLevelActiveTabPath && mainViewMode === 'editor' && editorSharedRef.current) {
+          // Try to open the in-file search panel
+          const searchOpened = editorSharedRef.current.openSearch();
+          if (!searchOpened) {
+            // Fallback to global search if the editor search failed
+            if (mainViewMode !== 'search') handleToggleMainView('search');
+            else setTimeout(() => searchHook.searchInputRef.current?.focus(), 0);
+          }
+        } else {
+          // Fallback to global search if no active editor
+          if (mainViewMode !== 'search') handleToggleMainView('search');
+          else setTimeout(() => searchHook.searchInputRef.current?.focus(), 0);
+        }
       }
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'i') {
         event.preventDefault();
@@ -596,10 +935,13 @@ function App() {
         if (tabsHook.unsavedChangesModal.isOpen) tabsHook.handleModalCancel();
         else if (aiFeaturesHook.isSmartSearchModalOpen) aiFeaturesHook.closeSmartSearchModal();
         else if (isPilpultaVisible) hidePilpulta();
+        else if (isQuotaLimitModalOpen) hideQuotaLimitModal();
+        else if (isModelOverloadedModalOpen) hideModelOverloadedModal();
         else if (isJudaismChatModalOpen) setIsJudaismChatModalOpen(false);
         else if (isAiModelModalOpen) setIsAiModelModalOpen(false);
         else if (isApiKeyModalOpen) setIsApiKeyModalOpen(false);
         else if (isHelpModalOpen) setIsHelpModalOpen(false);
+        else if (isSettingsModalOpen) setIsSettingsModalOpen(false);
         else if (isFileConversionModalOpen) setIsFileConversionModalOpen(false);
         else if (isLearningGraphViewOpen) setIsLearningGraphViewOpen(false);
         else if (questionnaireHook.isModalOpen) questionnaireHook.closeQuestionnaireModal();
@@ -614,7 +956,7 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-      appLevelActiveTabPath, mainViewMode, fileOperationsHook.handleSaveFile, toggleZenMode,
+      appLevelActiveTabPath, mainViewMode, fileOperationsHook.handleSaveFile, toggleZenMode, toggleFormattingToolbar,
       searchHook.searchInputRef, contextMenuState.visible, handleCloseContextMenu,
       handleToggleMainView, isTranscriptionModalOpen,
       questionnaireHook.isModalOpen, questionnaireHook.closeQuestionnaireModal,
@@ -626,6 +968,8 @@ function App() {
       isHelpModalOpen, setIsHelpModalOpen,
       isFileConversionModalOpen, setIsFileConversionModalOpen,
       isPilpultaVisible, hidePilpulta, // Added Pilpulta escape handling
+      isQuotaLimitModalOpen, hideQuotaLimitModal, // Added quota limit modal escape handling
+      isModelOverloadedModalOpen, hideModelOverloadedModal, // Added model overloaded modal escape handling
       aiFeaturesHook.isSmartSearchModalOpen, aiFeaturesHook.closeSmartSearchModal, // Added Smart Search escape
       tabsHook.unsavedChangesModal.isOpen, tabsHook.handleModalCancel, // Added UnsavedChanges modal escape
   ]);
@@ -739,17 +1083,18 @@ function App() {
     if (option === 'never') {
       // User clicked "Don't show again"
       localStorage.setItem('fileConversionNeverShow', 'true');
-      localStorage.removeItem('fileConversionPostponed');
+      localStorage.removeItem('fileConversionPostponedTime');
       console.log('File conversion modal set to never show again');
     } else if (option === 'postpone') {
-      // User clicked "I'll do it later" or closed the modal
-      localStorage.setItem('fileConversionPostponed', 'true');
+      // User clicked "I'll do it later" or closed the modal - store timestamp for 5-hour reminder
+      const currentTime = Date.now();
+      localStorage.setItem('fileConversionPostponedTime', currentTime.toString());
       localStorage.removeItem('fileConversionNeverShow');
-      console.log('File conversion modal postponed');
+      console.log('File conversion modal postponed for 5 hours, timestamp:', currentTime);
     } else if (option === 'success') {
       // User completed conversion successfully - clear all restrictions
       localStorage.removeItem('fileConversionNeverShow');
-      localStorage.removeItem('fileConversionPostponed');
+      localStorage.removeItem('fileConversionPostponedTime');
       console.log('File conversion completed successfully - cleared all restrictions');
     }
   };
@@ -757,9 +1102,48 @@ function App() {
   const handleOpenFileConversionFromSettings = () => {
     // This is called from settings menu, so we reset the "don't show again" and "postponed" states
     localStorage.removeItem('fileConversionNeverShow');
-    localStorage.removeItem('fileConversionPostponed');
+    localStorage.removeItem('fileConversionPostponedTime');
     setIsFileConversionModalOpen(true);
   };
+
+  // --- Single File Conversion Modal Handlers ---
+  const handleCloseSingleFileConversionModal = () => {
+    setIsSingleFileConversionModalOpen(false);
+    setSingleFileConversionData(null);
+  };
+
+  const handleSingleFileConversionSuccess = (result) => {
+    console.log('File conversion successful:', result);
+    
+    // Refresh the workspace structure to show the new file
+    if (singleFileConversionData && singleFileConversionData.baseFolder) {
+      workspaceHook.refreshWorkspaceFolder(singleFileConversionData.baseFolder.path);
+    }
+    
+    // Close the modal
+    handleCloseSingleFileConversionModal();
+  };
+
+  // Debug function to clear localStorage and force file conversion modal
+  const forceOpenFileConversionModal = () => {
+    console.log('Force opening file conversion modal (debug)');
+    localStorage.removeItem('fileConversionNeverShow');
+    localStorage.removeItem('fileConversionPostponedTime');
+    setIsFileConversionModalOpen(true);
+  };
+
+  // Add keyboard shortcut for debugging (Ctrl+Shift+F)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'F') {
+        event.preventDefault();
+        forceOpenFileConversionModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSelectAiModel = (model) => {
     setSelectedAiModel(model);
@@ -781,7 +1165,7 @@ function App() {
   };
 
 
-  const isAnyModalOpen = isTranscriptionModalOpen || questionnaireHook.isModalOpen || questionnaireHook.showNotificationSettings || isLearningGraphViewOpen || isJudaismChatModalOpen || isApiKeyModalOpen || isAiModelModalOpen || isHelpModalOpen || isPilpultaVisible || aiFeaturesHook.isSmartSearchModalOpen || tabsHook.unsavedChangesModal.isOpen || isFileConversionModalOpen; // Added FileConversionModal
+  const isAnyModalOpen = isTranscriptionModalOpen || questionnaireHook.isModalOpen || questionnaireHook.showNotificationSettings || isLearningGraphViewOpen || isJudaismChatModalOpen || isApiKeyModalOpen || isAiModelModalOpen || isHelpModalOpen || isSettingsModalOpen || isPilpultaVisible || aiFeaturesHook.isSmartSearchModalOpen || tabsHook.unsavedChangesModal.isOpen || isFileConversionModalOpen || isNewFileModalOpen || isSaveAsModalOpen || isConfirmDeleteModalOpen || isCreateFolderModalOpen || isQuotaLimitModalOpen || isModelOverloadedModalOpen; // Added quota limit and model overloaded modals
   const isAnyAiLoading = aiFeaturesHook.isLoadingFlashcards || aiFeaturesHook.isLoadingSummary || aiFeaturesHook.isLoadingSourceFinding || aiFeaturesHook.isProcessingText || judaismChatHook.isJudaismChatLoading || aiFeaturesHook.isLoadingPilpulta || aiFeaturesHook.isLoadingSmartSearch; // Added Smart Search loading
   const isEditorToolbarDisabled = isAnyAiLoading || !!globalLoadingMessage || isAnyModalOpen;
   const isGlobalActionDisabled = !!globalLoadingMessage || isAnyModalOpen;
@@ -811,7 +1195,7 @@ function App() {
       {/* Header-like section - can be extracted to its own component later if needed */}
       <div style={{ padding: '10px 15px', borderBottom: `1px solid var(--theme-border-color)`, backgroundColor: `var(--theme-bg-secondary)`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <h1 style={{ margin: 0, /* fontSize removed */ color: `var(--theme-text-primary)`, whiteSpace: 'nowrap' }}>{HEBREW_TEXT.appName}</h1>
+          {!isZenMode && <h1 style={{ margin: 0, /* fontSize removed */ color: `var(--theme-text-primary)`, whiteSpace: 'nowrap' }}>{HEBREW_TEXT.appName}</h1>}
           {!isZenMode && (
             <>
               {/* Changed btn-primary to btn and removed inline style */}
@@ -823,10 +1207,6 @@ function App() {
 
               {mainViewMode === 'editor' && activeTabObject && activeTabObject.type === 'file' && (
                 <>
-                  {/* Removed inline background/border styles */}
-                  <button className="btn" onClick={aiFeaturesHook.generateFlashcards} disabled={isEditorToolbarDisabled || aiFeaturesHook.isLoadingFlashcards} title={HEBREW_TEXT.generateFlashcards}>
-                    {aiFeaturesHook.isLoadingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
-                  </button>
                   {/* Changed btn-primary to btn and removed inline style */}
                   <button className="btn" onClick={aiFeaturesHook.generateSummary} disabled={isEditorToolbarDisabled || aiFeaturesHook.isLoadingSummary} title={HEBREW_TEXT.generateSummary}>
                     {aiFeaturesHook.isLoadingSummary ? HEBREW_TEXT.generatingSummary : HEBREW_TEXT.generateSummary}
@@ -891,9 +1271,9 @@ function App() {
               </button>
               
               <button
-                onClick={() => questionnaireHook.setShowNotificationSettings(true)}
+                onClick={() => setIsSettingsModalOpen(true)}
                 disabled={isGlobalActionDisabled}
-                title={HEBREW_TEXT.questionnaire.manageNotificationsButton}
+                title="הגדרות התוכנה"
                 className="btn btn-icon" // Using btn-icon for the gear
                 style={{ /* fontSize removed */ }}
                 >
@@ -904,12 +1284,18 @@ function App() {
           {workspaceHook.addFolderError && !isZenMode && <span style={{ color: '#fc8181', marginLeft: '10px', /* fontSize removed */ }}>{HEBREW_TEXT.addFolderError}: {workspaceHook.addFolderError}</span>}
         </div>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-          {/* Removed conditional btn-primary/btn-subtle, always use btn */}
-          <button className={`btn`} onClick={editorSettingsHook.toggleHighlightActiveLine} disabled={isAnyModalOpen} title={HEBREW_TEXT.toggleHighlightLine(editorSettingsHook.highlightActiveLine)}>{editorSettingsHook.highlightActiveLine ? 'שורה ✓' : 'שורה ✕'}</button>
-          {/* Removed conditional btn-primary/btn-subtle, always use btn */}
-          <button className={`btn`} onClick={editorSettingsHook.toggleShowLineNumbers} disabled={isAnyModalOpen} title={HEBREW_TEXT.toggleLineNumbers(editorSettingsHook.showLineNumbers)}>{editorSettingsHook.showLineNumbers ? 'מספרים ✓' : 'מספרים ✕'}</button>
-          {/* Keep Zen mode toggle as is for now, unless user wants it changed too */}
-          <button className={`btn ${isZenMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleZenMode} disabled={isAnyModalOpen} title={HEBREW_TEXT.zenMode(isZenMode)}>{isZenMode ? 'Zen ✓' : 'Zen ✕'}</button>
+          {!isZenMode && (
+            <>
+              {/* Removed conditional btn-primary/btn-subtle, always use btn */}
+              <button className={`btn`} onClick={editorSettingsHook.toggleShowLineNumbers} disabled={isAnyModalOpen} title={HEBREW_TEXT.toggleLineNumbers(editorSettingsHook.showLineNumbers)}>{editorSettingsHook.showLineNumbers ? 'מספרים ✓' : 'מספרים ✕'}</button>
+              {/* Keep Zen mode toggle as is for now, unless user wants it changed too */}
+              <button className={`btn ${isZenMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleZenMode} disabled={isAnyModalOpen} title={HEBREW_TEXT.zenMode(isZenMode)}>{isZenMode ? 'Zen ✓' : 'Zen ✕'}</button>
+            </>
+          )}
+          {/* Show only zen button when in zen mode - but only if not in editor with markdown file */}
+          {isZenMode && !(mainViewMode === 'editor' && activeTabObject && activeTabObject.id?.toLowerCase().endsWith('.md')) && (
+            <button className={`btn btn-primary`} onClick={toggleZenMode} disabled={isAnyModalOpen} title={HEBREW_TEXT.zenMode(isZenMode)}>Zen ✓</button>
+          )}
         </div>
       </div>
 
@@ -921,8 +1307,12 @@ function App() {
             onOpenTranscriptionModal={handleOpenTranscriptionModal}
             onGeneratePilpulta={aiFeaturesHook.generatePilpulta} // Pass Pilpulta handler
             onOpenSmartSearchModal={aiFeaturesHook.openSmartSearchModal} // Pass Smart Search handler
+            onGenerateFlashcards={aiFeaturesHook.generateFlashcards} // Pass Flashcards handler
+            isGeneratingFlashcards={aiFeaturesHook.isLoadingFlashcards} // Pass flashcards loading state
             editorFontSize={editorFontSize} // Pass down font size
             onEditorFontSizeChange={handleEditorFontSizeChange} // Pass down handler
+            presentationFontSize={presentationFontSize} // Pass down presentation font size
+            onPresentationFontSizeChange={handlePresentationFontSizeChange} // Pass down presentation handler
             appFont={appFont} // Pass app font
             editorFont={editorFont} // Pass editor font
             onAppFontChange={handleAppFontChange} // Pass app font change handler
@@ -931,6 +1321,7 @@ function App() {
             mainViewMode={mainViewMode} // Pass current main view mode
             activeTabObject={activeTabObject} // Pass active tab object to check file type
             repetitionsHook={repetitionsHook} // Pass repetitions hook for notifications
+            editorRef={editorSharedRef} // Pass editor reference for undo functionality
           />
       )}
 
@@ -971,8 +1362,8 @@ function App() {
             renameItemInExplorer={fileOperationsHook.renameItemInExplorer}
             dropItemInExplorer={fileOperationsHook.dropItemInExplorer}
             createNewFileFromExplorer={fileOperationsHook.createNewFileFromExplorer}
-            createNewFolderFromExplorer={fileOperationsHook.createNewFolderFromExplorer}
-            deleteItemFromExplorer={fileOperationsHook.deleteItemFromExplorer}
+            createNewFolderFromExplorer={handleCreateFolderFromSidebar}
+            deleteItemFromExplorer={handleDeleteFromSidebar}
             setContextMenuState={setContextMenuState}
             globalLoadingMessage={globalLoadingMessage}
             handleRemoveWorkspaceFolder={handleActualRemoveWorkspaceFolder}
@@ -988,6 +1379,14 @@ function App() {
           activeTabObject={activeTabObject}
           editorFontSize={editorFontSize} // Pass editorFontSize to MainContentArea
           editorFont={editorFont} // Pass editorFont to MainContentArea
+          presentationFontSize={presentationFontSize} // Pass presentationFontSize to MainContentArea
+          selectedAiModel={selectedAiModel} // Pass selectedAiModel to MainContentArea
+          isZenMode={isZenMode} // Pass zen mode state
+          showFormattingToolbar={showFormattingToolbar} // Pass formatting toolbar state
+          toggleZenMode={toggleZenMode} // Pass zen mode toggle function
+          toggleFormattingToolbar={toggleFormattingToolbar} // Pass formatting toolbar toggle function
+          toggleShowLineNumbers={editorSettingsHook.toggleShowLineNumbers} // Pass line numbers toggle function
+          showLineNumbers={editorSettingsHook.showLineNumbers} // Pass line numbers state
           handleTabClick={tabsHook.handleTabClick}
           handleCloseTab={tabsHook.handleCloseTab}
           handleOpenNewTab={tabsHook.handleOpenNewTab} // Pass the new handler
@@ -998,7 +1397,6 @@ function App() {
           handleEditorChange={tabsHook.handleEditorChange}
           searchTermToHighlightInEditor={searchHook.searchTermToHighlightInEditor}
           scrollToLine={editorSettingsHook.scrollToLine}
-          showLineNumbers={editorSettingsHook.showLineNumbers}
           highlightActiveLine={editorSettingsHook.highlightActiveLine}
           initialScrollPosition={getCurrentScrollPosition()}
           onScrollPositionChange={handleScrollPositionChange}
@@ -1022,6 +1420,12 @@ function App() {
           findJewishSources={aiFeaturesHook.findJewishSources}
           saveSourceFindingResults={aiFeaturesHook.saveSourceFindingResults}
           discardSourceFindingResults={aiFeaturesHook.discardSourceFindingResults}
+
+          generatePilpultaFromSelectedText={aiFeaturesHook.generatePilpultaFromSelectedText}
+          findJewishSourcesFromSelectedText={aiFeaturesHook.findJewishSourcesFromSelectedText}
+          generateFlashcardsFromSelectedText={aiFeaturesHook.generateFlashcardsFromSelectedText}
+          generateSummaryFromSelectedText={aiFeaturesHook.generateSummaryFromSelectedText}
+          organizeSelectedText={aiFeaturesHook.organizeSelectedText}
 
           searchResults={searchHook.searchResults}
           handleFileSelect={tabsHook.handleFileSelect}
@@ -1146,6 +1550,18 @@ function App() {
         onClose={handleCloseHelpModal}
       />
       
+      {/* Render Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        notificationSettings={questionnaireHook.notificationSettings}
+        onUpdateNotificationSettings={questionnaireHook.updateNotificationSettings}
+        isNotificationLoading={questionnaireHook.isLoadingNotificationSettings}
+        currentTheme={themeHook.currentTheme}
+        onUpdateTheme={themeHook.updateTheme}
+        onOpenFileConversion={handleOpenFileConversionFromSettings}
+      />
+      
       {/* Render Unsaved Changes Modal */}
       <UnsavedChangesModal
         isOpen={tabsHook.unsavedChangesModal.isOpen}
@@ -1161,6 +1577,79 @@ function App() {
         isOpen={isFileConversionModalOpen}
         onClose={handleCloseFileConversionModal}
         addWorkspaceFolder={workspaceHook.addWorkspaceFolder}
+      />
+      
+      {/* Render Single File Conversion Modal */}
+      <SingleFileConversionModal
+        isOpen={isSingleFileConversionModalOpen}
+        onClose={handleCloseSingleFileConversionModal}
+        filePath={singleFileConversionData?.filePath || ''}
+        fileName={singleFileConversionData?.fileName || ''}
+        onSuccess={handleSingleFileConversionSuccess}
+      />
+      
+      {/* Render New File Modal */}
+      <NewFileModal
+        isOpen={isNewFileModalOpen}
+        onClose={() => {
+          setIsNewFileModalOpen(false);
+          setSelectedFolderForNewFile(null);
+        }}
+        onCreateFile={handleCreateFileFromModal}
+        workspaceFolders={workspaceHook.workspaceFolders}
+        defaultLocation={activeTabObject ? workspaceHook.workspaceFolders.find(wf => wf.path === activeTabObject.basePath) : null}
+        preselectedPath={selectedFolderForNewFile?.path || null}
+      />
+      
+      {/* Render Save As Modal */}
+      <NewFileModal
+        isOpen={isSaveAsModalOpen}
+        onClose={() => {
+          setIsSaveAsModalOpen(false);
+          setSaveAsData(null);
+        }}
+        onCreateFile={handleSaveFileFromModal}
+        workspaceFolders={workspaceHook.workspaceFolders}
+        defaultLocation={saveAsData?.workspaceFolder || null}
+        mode="save"
+        initialFileName={saveAsData?.fileName || ''}
+        initialExtension={saveAsData?.extension || 'md'}
+      />
+      
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={isConfirmDeleteModalOpen}
+        onClose={() => {
+          setIsConfirmDeleteModalOpen(false);
+          setItemToDelete(null);
+          setBaseFolderForDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        itemName={itemToDelete?.name || ''}
+        itemType={itemToDelete?.isFolder ? 'folder' : 'file'}
+      />
+      
+      {/* Create Folder Modal */}
+      <CreateFolderModal
+        isOpen={isCreateFolderModalOpen}
+        onClose={() => {
+          setIsCreateFolderModalOpen(false);
+          setCreateFolderData(null);
+        }}
+        onCreateFolder={handleCreateFolder}
+        parentFolderName={createFolderData?.parentFolderName || ''}
+      />
+      
+      {/* Quota Limit Modal */}
+      <QuotaLimitModal
+        isOpen={isQuotaLimitModalOpen}
+        onClose={hideQuotaLimitModal}
+      />
+      
+      {/* Model Overloaded Modal */}
+      <ModelOverloadedModal
+        isOpen={isModelOverloadedModalOpen}
+        onClose={hideModelOverloadedModal}
       />
       
       {/* Onboarding Tutorial */}

@@ -30,6 +30,47 @@ const path = {
             joined = joined.slice(0, -1);
         }
         return joined;
+    },
+    relative: (from, to) => {
+        if (!from || !to) return to || '';
+        
+        // Normalize paths to use forward slashes
+        from = from.replace(/\\/g, '/');
+        to = to.replace(/\\/g, '/');
+        
+        // Remove trailing slashes
+        from = from.replace(/\/+$/, '');
+        to = to.replace(/\/+$/, '');
+        
+        // If they're the same, return empty string
+        if (from === to) return '';
+        
+        // Split paths into parts
+        const fromParts = from.split('/').filter(part => part !== '');
+        const toParts = to.split('/').filter(part => part !== '');
+        
+        // Find common prefix
+        let commonLength = 0;
+        const minLength = Math.min(fromParts.length, toParts.length);
+        for (let i = 0; i < minLength; i++) {
+            if (fromParts[i] === toParts[i]) {
+                commonLength++;
+            } else {
+                break;
+            }
+        }
+        
+        // Build relative path
+        const upSteps = fromParts.length - commonLength;
+        const downParts = toParts.slice(commonLength);
+        
+        const relativeParts = [];
+        for (let i = 0; i < upSteps; i++) {
+            relativeParts.push('..');
+        }
+        relativeParts.push(...downParts);
+        
+        return relativeParts.length > 0 ? relativeParts.join('/') : '.';
     }
 };
 

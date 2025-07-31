@@ -449,15 +449,15 @@
 /* Dark theme support */
 @media (prefers-color-scheme: dark) {
     .file-conversion-explanation {
-        border-right-color: #63b3ed;
+        border-right-color: #484f58;
     }
     
     .benefits-list h4 {
-        color: #63b3ed;
+        color: #484f58;
     }
     
     .welcome-intro {
-        color: #63b3ed;
+        color: #484f58;
     }
     
     .safety-notice {

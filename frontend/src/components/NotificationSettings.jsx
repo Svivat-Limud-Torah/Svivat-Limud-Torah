@@ -8,6 +8,7 @@ const NotificationSettings = ({
   onUpdateSettings,
   onClose,
   isLoading,
+  isInModal = false, // New prop to indicate if it's inside another modal
 }) => {
   const [enableReminder, setEnableReminder] = useState(
     currentSettings.enable_daily_questionnaire_reminder
@@ -30,7 +31,20 @@ const NotificationSettings = ({
   const fixedReminderTime = "22:00"; // As per requirements
 
   // Basic styling, can be moved to a CSS file if it grows
-  const modalStyle = {
+  const modalStyle = isInModal ? {
+    // When inside another modal, don't use fixed positioning
+    backgroundColor: 'transparent',
+    padding: '0',
+    borderRadius: '0',
+    zIndex: 'auto',
+    color: 'var(--theme-text-primary, #E4E4E7)',
+    width: '100%',
+    maxWidth: 'none',
+    boxShadow: 'none',
+    direction: 'rtl',
+    position: 'static',
+    transform: 'none',
+  } : {
     position: 'fixed',
     top: '50%',
     left: '50%',
@@ -96,7 +110,7 @@ const NotificationSettings = ({
 
 
   return (
-    <div style={modalStyle}>
+    <div style={modalStyle} className={isInModal ? 'notification-settings-content' : ''}>
       <h3 style={headerStyle}>{HEBREW_TEXT.questionnaire?.notificationSettingsTitle || "הגדרות תזכורת"}</h3>
       
       <label style={labelStyle}>
@@ -125,14 +139,24 @@ const NotificationSettings = ({
       )}
       */}
 
-      <div style={buttonContainerStyle}>
-        <button onClick={onClose} style={buttonStyle(false)} disabled={isLoading}>
-          {HEBREW_TEXT.close || "סגור"}
-        </button>
-        <button onClick={handleSave} style={buttonStyle(true)} disabled={isLoading}>
-          {isLoading ? (HEBREW_TEXT.saving || "שומר...") : (HEBREW_TEXT.saveChanges || "שמור שינויים")}
-        </button>
-      </div>
+      {!isInModal && (
+        <div style={buttonContainerStyle}>
+          <button onClick={onClose} style={buttonStyle(false)} disabled={isLoading}>
+            {HEBREW_TEXT.close || "סגור"}
+          </button>
+          <button onClick={handleSave} style={buttonStyle(true)} disabled={isLoading}>
+            {isLoading ? (HEBREW_TEXT.saving || "שומר...") : (HEBREW_TEXT.saveChanges || "שמור שינויים")}
+          </button>
+        </div>
+      )}
+      
+      {isInModal && (
+        <div style={{...buttonContainerStyle, justifyContent: 'center', marginTop: '20px'}}>
+          <button onClick={handleSave} style={buttonStyle(true)} disabled={isLoading}>
+            {isLoading ? (HEBREW_TEXT.saving || "שומר...") : (HEBREW_TEXT.saveChanges || "שמור שינויים")}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

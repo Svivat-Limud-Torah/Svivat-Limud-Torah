@@ -2,7 +2,7 @@
 import React from 'react';
 import './MarkdownPreview.css';
 
-const MarkdownPreview = ({ content }) => {
+const MarkdownPreview = ({ content, presentationFontSize }) => {
   const convertMarkdownToHtml = (text) => {
     if (!text) return '';
 
@@ -54,7 +54,7 @@ const MarkdownPreview = ({ content }) => {
   };
 
   return (
-    <div className="markdown-preview">
+    <div className="markdown-preview" style={{ fontSize: presentationFontSize ? `${presentationFontSize}px` : undefined }}>
       <div 
         className="markdown-content"
         dangerouslySetInnerHTML={{ __html: convertMarkdownToHtml(content) }}

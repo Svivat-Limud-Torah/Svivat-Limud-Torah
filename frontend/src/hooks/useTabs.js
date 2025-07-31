@@ -5,7 +5,7 @@ import { API_BASE_URL, SUPPORTED_IMAGE_EXTENSIONS_CLIENT } from '../utils/consta
 
 export const generateTabId = (basePath, relativePath) => {
   if (basePath === '__new_unsaved__') {
-    return `untitled::${relativePath}`; // relativePath will be like "Untitled-1.txt"
+    return `untitled::${relativePath}`; // relativePath will be like "Untitled-1.md"
   }
   return `${basePath}::${relativePath}`;
 };
@@ -56,7 +56,7 @@ export default function useTabs({
             const hasUnsavedContent = tab.unsavedContent !== undefined && tab.type === 'file';
 
             if (isNewUnsavedTab && tab.name && tab.name.startsWith("Untitled-")) {
-                const numMatch = tab.name.match(/Untitled-(\d+)\.txt/);
+                const numMatch = tab.name.match(/Untitled-(\d+)\.md/);
                 if (numMatch && numMatch[1]) {
                     const num = parseInt(numMatch[1], 10);
                     if (num > untitledCounterRef.current) {
@@ -386,7 +386,7 @@ export default function useTabs({
 
   const handleOpenNewTab = useCallback(() => {
     untitledCounterRef.current += 1;
-    const newFileName = `Untitled-${untitledCounterRef.current}.txt`;
+    const newFileName = `Untitled-${untitledCounterRef.current}.md`;
     const newTabId = generateTabId('__new_unsaved__', newFileName);
 
     const newTabObject = {

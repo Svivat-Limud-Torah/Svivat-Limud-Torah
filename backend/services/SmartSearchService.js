@@ -36,6 +36,36 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const GOOGLE_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
 /**
+ * Utility function to clean AI responses and extract valid JSON
+ * @param {string} responseText - The raw response text from AI
+ * @returns {string} - Cleaned JSON string ready for parsing
+ */
+function cleanAIResponseForJSON(responseText) {
+    if (!responseText || typeof responseText !== 'string') {
+        throw new Error('Invalid response text provided');
+    }
+    
+    let cleaned = responseText.trim();
+    
+    // Remove markdown code blocks (various formats)
+    cleaned = cleaned.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '');
+    
+    // Remove any leading/trailing quotes or backticks that might wrap the JSON
+    cleaned = cleaned.replace(/^["'`]+|["'`]+$/g, '');
+    
+    // Remove extra whitespace and newlines at start/end
+    cleaned = cleaned.trim();
+    
+    // If the response contains explanatory text before/after JSON, try to extract just the JSON part
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (jsonMatch) {
+        cleaned = jsonMatch[0];
+    }
+    
+    return cleaned;
+}
+
+/**
  * Step 1: Gets all text file paths within a workspace.
  * Returns name, relativePath, and absolutePath.
  * @param {string} workspacePath - Absolute path to the workspace.
@@ -119,7 +149,8 @@ ${JSON.stringify(filesForPrompt, null, 2)}
             console.warn(`No text response from AI for file selection (top ${numFilesToScan}).`);
             return [];
         }
-        const cleanedResponse = textResponse.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        // Clean the response more thoroughly to handle various markdown formats
+        const cleanedResponse = cleanAIResponseForJSON(textResponse);
         const relevantRelativePaths = JSON.parse(cleanedResponse);
 
         if (Array.isArray(relevantRelativePaths)) {
@@ -196,7 +227,8 @@ ${JSON.stringify(contentForPrompt, null, 2)}
             console.warn("No text response from AI for answer extraction from multiple contents.");
             return { found: false, error: "No text response from AI." };
         }
-        const cleanedResponse = textResponse.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        // Clean the response more thoroughly to handle various markdown formats
+        const cleanedResponse = cleanAIResponseForJSON(textResponse);
         const result = JSON.parse(cleanedResponse);
 
         if (typeof result.found === 'boolean') {
@@ -327,39 +359,102 @@ async function organizeText(text, prompt, model = 'gpt-4', apiKey) {
         throw new Error('שגיאה: נדרש טקסט לארגון');
     }
 
+    const startTime = Date.now();
+    
     // בדיקה איזה סוג מודל זה (OpenAI או Google)
     const isGoogleModel = model && (model.includes('gemini') || model.includes('palm'));
     
     try {
+        const lines = text.split('\n');
+        console.log(`התחלת ארגון טקסט - מספר שורות: ${lines.length}, מודל: ${model}`);
+        
+        // גישה חדשה: תמיד נשלח את הטקסט המלא עם הגדרות מותאמות
+        console.log('מארגן טקסט בגישה חדשה - טקסט מלא עם הגדרות מותאמות');
+        
         let organizedText;
         
         if (isGoogleModel) {
-            organizedText = await callGoogleAIForTextOrganization(text, prompt, model, apiKey);
+            organizedText = await callGoogleAIForTextOrganizationOptimized(text, prompt, model, apiKey, lines.length);
         } else {
-            organizedText = await callOpenAIForTextOrganization(text, prompt, model, apiKey);
+            organizedText = await callOpenAIForTextOrganizationOptimized(text, prompt, model, apiKey, lines.length);
+        }
+        
+        const endTime = Date.now();
+        console.log(`ארגון טקסט הושלם בתוך ${(endTime - startTime) / 1000} שניות`);
+        
+        // בדיקה סופית לוודא שהטקסט המאורגן שלם
+        const originalLines = text.split('\n').filter(line => line.trim().length > 0);
+        const organizedLines = organizedText.split('\n').filter(line => line.trim().length > 0);
+        
+        console.log(`בדיקה סופית: שורות במקור: ${originalLines.length}, שורות מאורגנות: ${organizedLines.length}`);
+        
+        // אם יש הפרש גדול בשורות, תן אזהרה
+        if (organizedLines.length < originalLines.length * 0.8) {
+            console.warn(`⚠️ אזהרה סופית: מספר השורות המאורגנות (${organizedLines.length}) קטן משמעותית ממספר השורות המקוריות (${originalLines.length})`);
         }
         
         return organizedText;
+        
     } catch (error) {
-        console.error('שגיאה בארגון טקסט:', error);
+        const endTime = Date.now();
+        console.error(`שגיאה בארגון טקסט אחרי ${(endTime - startTime) / 1000} שניות:`, error);
         throw new Error(`שגיאה בארגון הטקסט: ${error.message}`);
     }
 }
 
 /**
- * קריאה ל-OpenAI לארגון טקסט
+ * קריאה ל-OpenAI לארגון טקסט - גרסה מותאמת לטקסטים גדולים
  */
-async function callOpenAIForTextOrganization(text, prompt, model, apiKey) {
+async function callOpenAIForTextOrganizationOptimized(text, prompt, model, apiKey, lineCount) {
     const systemPrompt = prompt || `
-אתה עוזר מקצועי לעיצוב וארגון מסמכי Markdown. 
-המשימה שלך היא לארגן את הטקסט הבא בצורה מובנית וקריאה:
-1. ארגן כותרות בהיררכיה ברורה
-2. חלק לפסקאות לוגיות
-3. שפר את הקריאות והזרימה
-4. שמור על כל התוכן המקורי
-5. השתמש בפורמט Markdown מתאים
-6. החזר רק את הטקסט המאורגן ללא הסברים נוספים
-`;
+אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט שהמשתמש יספק בהודעה הבאה.
+
+🔥 CRITICAL - חוקים שאסור לעבור עליהם:
+• שמור על כל התוכן המקורי ללא יוצא מהכלל - כולל השורות האחרונות!
+• אל תמחק, תקצר, או תחסיר שום מידע מהטקסט המקורי
+• אל תחתוך את הטקסט באמצע או בסוף - הכל חייב להישמר
+• ודא שהטקסט המאורגן מכיל בדיוק את כל המילים והמשפטים מהמקור
+• השורות האחרונות בטקסט המקורי חייבות להופיע גם בטקסט המאורגן
+• אל תחליף את התוכן בנושא אחר - רק ארגן את מה שכבר קיים!
+• אסור לך ליצור תוכן חדש על תיקון מידות או נושאים אחרים!
+
+⚠️ אזהרה חשובה: 
+המשתמש רוצה לארגן את הטקסט שלו, לא לקבל תוכן חדש על נושא אחר!
+אל תחליף את התוכן המקורי בתוכן על נושאים כמו תיקון מידות או כל נושא אחר!
+
+📋 משימות הארגון:
+1. ארגן כותרות בהיררכיה ברורה (H1, H2, H3) על פי התוכן הקיים
+2. חלק לפסקאות לוגיות ומובנות את התוכן הקיים
+3. שפר את הקריאות והזרימה של הטקסט הקיים
+4. השתמש בפורמט Markdown מתאים (כותרות, רשימות, הדגשות)
+5. ארגן רשימות בצורה מסודרת
+6. אל תחזור על תוכן - כל חלק צריך להופיע פעם אחת בלבד
+7. וודא שכל השורות האחרונות נכללות במלואן
+
+החזר אך ורק את הטקסט המאורגן המלא ללא הסברים נוספים, חתכים או קיצורים.
+🚨 חשוב מאוד: שמור על כל התוכן במלואו! אל תחתוך או תקצר שום דבר!
+🚨 זכור: המטרה היא לארגן את הטקסט שהמשתמש יספק, לא ליצור תוכן חדש!
+🚨 הקפד במיוחד על השורות האחרונות - הן חייבות להיכלל במלואן!
+
+הטקסט לארגון (${lineCount} שורות, ${text.length} תווים):
+---
+${text}
+---
+
+אנא ארגן את הטקסט שלמעלה במלואו. חשוב: שמור על כל התוכן, כולל השורות האחרונות:
+${text.split('\n').slice(-3).join('\n')}
+
+תן דעתך במיוחד לשמור על השורות האחרונות הללו!`;
+
+    // הגדרות מותאמות לגודל הטקסט - הגדלת הטוקנים משמעותית לטקסטים גדולים
+    // חישוב דינמי של maxTokens בהתבסס על גודל הטקסט בפועל
+    const textTokensEstimate = Math.ceil(text.length / 3); // הערכה גסה של מספר טוקנים בטקסט
+    const minOutputTokens = textTokensEstimate * 1.5; // לפחות 150% מהטקסט המקורי
+    const maxTokens = Math.max(minOutputTokens, lineCount > 500 ? 60000 : lineCount > 300 ? 45000 : lineCount > 200 ? 35000 : lineCount > 100 ? 25000 : 15000);
+    
+    console.log(`OpenAI: שורות: ${lineCount}, טוקנים משוערים בטקסט: ${textTokensEstimate}, maxTokens: ${maxTokens}`);
+    
+    const isLargeText = lineCount > 100;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -376,11 +471,20 @@ async function callOpenAIForTextOrganization(text, prompt, model, apiKey) {
                 },
                 {
                     role: 'user',
-                    content: text
+                    content: `אנא ארגן את הטקסט הבא (${lineCount} שורות). שמור על כל התוכן המקורי ורק ארגן אותו:
+
+${text}`
                 }
             ],
-            max_tokens: 4000,
-            temperature: 0.3
+            max_tokens: maxTokens,
+            temperature: 0.1, // נמוך יותר לעקביות
+            top_p: 0.9,
+            frequency_penalty: 0.3, // מונע חזרות
+            presence_penalty: 0.1,
+            ...(isLargeText && {
+                stream: false, // וודא שאין streaming לטקסטים גדולים
+                timeout: 300000 // 5 דקות timeout במקום 2
+            })
         })
     });
 
@@ -392,10 +496,373 @@ async function callOpenAIForTextOrganization(text, prompt, model, apiKey) {
     const data = await response.json();
     
     if (data.choices && data.choices[0] && data.choices[0].message) {
-        return data.choices[0].message.content.trim();
+        const organizedText = data.choices[0].message.content.trim();
+        
+        // בדיקת אימות משופרת שהתוכן לא נחתך
+        const originalWords = text.split(/\s+/).filter(word => word.length > 0).length;
+        const organizedWords = organizedText.split(/\s+/).filter(word => word.length > 0).length;
+        const wordsRatio = organizedWords / originalWords;
+        
+        // בדיקת אורך הטקסט גם בתווים
+        const originalChars = text.replace(/\s/g, '').length;
+        const organizedChars = organizedText.replace(/\s/g, '').length;
+        const charsRatio = organizedChars / originalChars;
+        
+        console.log(`אימות תוכן: מילים במקור: ${originalWords}, מילים מאורגנות: ${organizedWords}, יחס מילים: ${(wordsRatio * 100).toFixed(1)}%`);
+        console.log(`אימות תוכן: תווים במקור: ${originalChars}, תווים מאורגנים: ${organizedChars}, יחס תווים: ${(charsRatio * 100).toFixed(1)}%`);
+        
+        // אם יחס המילים או התווים נמוך מדי, זה יכול להצביע על חיתוך
+        if (wordsRatio < 0.85 || charsRatio < 0.85) {
+            console.warn(`⚠️ אזהרה: הטקסט המאורגן נראה קצר משמעותית מהמקור - מילים: ${(wordsRatio * 100).toFixed(1)}%, תווים: ${(charsRatio * 100).toFixed(1)}%`);
+            
+            // בדיקה האם השורות האחרונות מהטקסט המקורי מופיעות בטקסט המאורגן
+            const originalLines = text.split('\n').filter(line => line.trim().length > 0);
+            const lastOriginalLines = originalLines.slice(-3).map(line => line.trim()); // 3 השורות האחרונות
+            
+            let missingLastLines = 0;
+            for (const lastLine of lastOriginalLines) {
+                if (lastLine.length > 5 && !organizedText.includes(lastLine)) { // בדיקה רק לשורות משמעותיות
+                    missingLastLines++;
+                    console.warn(`⚠️ שורה אחרונה חסרה: "${lastLine}"`);
+                }
+            }
+            
+            if (missingLastLines > 0) {
+                console.error(`❌ שגיאה: ${missingLastLines} מהשורות האחרונות חסרות בטקסט המאורגן!`);
+                // אל תזרוק שגיאה - פשוט תן אזהרה והחזר את התוצאה
+            }
+        }
+        
+        return organizedText;
     } else {
         throw new Error('תגובה לא תקינה מ-OpenAI API');
     }
+}
+
+/**
+ * קריאה ל-Google AI לארגון טקסט - גרסה מותאמת לטקסטים גדולים
+ */
+async function callGoogleAIForTextOrganizationOptimized(text, prompt, model, apiKey, lineCount) {
+    const combinedPrompt = (prompt || `
+אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט שאספק לך.
+
+🔥 CRITICAL - חוקים שאסור לעבור עליהם:
+• שמור על כל התוכן המקורי ללא יוצא מהכלל - כולל השורות האחרונות!
+• אל תמחק, תקצר, או תחסיר שום מידע מהטקסט המקורי
+• אל תחתוך את הטקסט באמצע או בסוף - הכל חייב להישמר
+• ודא שהטקסט המאורגן מכיל בדיוק את כל המילים והמשפטים מהמקור
+• השורות האחרונות בטקסט המקורי חייבות להופיע גם בטקסט המאורגן
+• אל תחליף את התוכן בנושא אחר - רק ארגן את מה שכבר קיים!
+• אסור לך ליצור תוכן חדש על תיקון מידות או נושאים אחרים!
+
+⚠️ אזהרה חשובה: 
+המשתמש רוצה לארגן את הטקסט שלו, לא לקבל תוכן חדש על נושא אחר!
+אל תחליף את התוכן המקורי בתוכן על נושאים כמו תיקון מידות או כל נושא אחר!
+
+📋 משימות הארגון:
+1. ארגן כותרות בהיררכיה ברורה (H1, H2, H3) על פי התוכן הקיים
+2. חלק לפסקאות לוגיות ומובנות את התוכן הקיים
+3. שפר את הקריאות והזרימה של הטקסט הקיים
+4. השתמש בפורמט Markdown מתאים (כותרות, רשימות, הדגשות)
+5. ארגן רשימות בצורה מסודרת
+6. אל תחזור על תוכן - כל חלק צריך להופיע פעם אחת בלבד
+7. וודא שכל השורות האחרונות נכללות במלואן
+
+החזר אך ורק את הטקסט המאורגן המלא ללא הסברים נוספים, חתכים או קיצורים.
+🚨 חשוב מאוד: שמור על כל התוכן במלואו! אל תחתוך או תקצר שום דבר!
+🚨 זכור: המטרה היא לארגן את הטקסט הקיים, לא ליצור תוכן חדש!
+🚨 הקפד במיוחד על השורות האחרונות - הן חייבות להיכלל במלואן!
+`) + `
+
+הטקסט לארגון (${lineCount} שורות, ${text.length} תווים):
+---
+${text}
+---
+
+אנא ארגן את הטקסט שלמעלה במלואו. חשוב: שמור על כל התוכן, כולל השורות האחרונות:
+${text.split('\n').slice(-3).join('\n')}
+
+תן דעתך במיוחד לשמור על השורות האחרונות הללו!`;
+
+    // הגדרות מותאמות לגודל הטקסט - הגדלת הטוקנים משמעותית לטקסטים גדולים
+    // חישוב דינמי של maxTokens בהתבסס על גודל הטקסט בפועל
+    const textTokensEstimate = Math.ceil(text.length / 3); // הערכה גסה של מספר טוקנים בטקסט
+    const minOutputTokens = textTokensEstimate * 1.5; // לפחות 150% מהטקסט המקורי
+    const maxTokens = Math.max(minOutputTokens, lineCount > 500 ? 60000 : lineCount > 300 ? 45000 : lineCount > 200 ? 35000 : lineCount > 100 ? 25000 : 15000);
+    
+    console.log(`Google AI: שורות: ${lineCount}, טוקנים משוערים בטקסט: ${textTokensEstimate}, maxTokens: ${maxTokens}`);
+
+    const url = `${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`;
+    
+    const fetch = require('node-fetch');
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            text: combinedPrompt
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.1, // נמוך יותר לעקביות
+                maxOutputTokens: maxTokens,
+                topP: 0.9,
+                topK: 40,
+                candidateCount: 1, // רק מועמד אחד
+                stopSequences: [] // אל תעצור באמצע
+            },
+            safetySettings: [
+                {
+                    category: "HARM_CATEGORY_HARASSMENT",
+                    threshold: "BLOCK_NONE"
+                },
+                {
+                    category: "HARM_CATEGORY_HATE_SPEECH", 
+                    threshold: "BLOCK_NONE"
+                },
+                {
+                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold: "BLOCK_NONE"
+                },
+                {
+                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold: "BLOCK_NONE"
+                }
+            ]
+        }),
+        agent: httpsAgent,
+        timeout: 300000 // 5 דקות timeout במקום 2
+    });
+
+    let responseText;
+    try {
+        responseText = await response.text();
+    } catch (textError) {
+        console.error('Failed to read response text:', textError);
+        throw new Error(`שגיאה בקריאת תשובת Google AI API: ${textError.message}`);
+    }
+
+    if (!response.ok) {
+        console.error(`Google AI API Error: ${response.status} - ${responseText}`);
+        
+        // Try to parse error as JSON for better error details
+        let errorDetails = responseText;
+        try {
+            const errorData = JSON.parse(responseText);
+            errorDetails = errorData.error?.message || responseText;
+        } catch (parseError) {
+            // If we can't parse as JSON, use the raw text
+            console.warn('Could not parse error response as JSON:', parseError);
+        }
+        
+        throw new Error(`Google AI API שגיאה: ${response.status} - ${errorDetails}`);
+    }
+
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (jsonError) {
+        console.error('Failed to parse response as JSON. Raw response:', responseText);
+        throw new Error(`שגיאה בפיענוח תשובת Google AI API: התקבלה תשובה לא תקינה. ייתכן שהמפתח API לא תקין או שיש בעיית רשת.`);
+    }
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+        const organizedText = data.candidates[0].content.parts[0].text.trim();
+        
+        // בדיקת אימות משופרת שהתוכן לא נחתך
+        const originalWords = text.split(/\s+/).filter(word => word.length > 0).length;
+        const organizedWords = organizedText.split(/\s+/).filter(word => word.length > 0).length;
+        const wordsRatio = organizedWords / originalWords;
+        
+        // בדיקת אורך הטקסט גם בתווים
+        const originalChars = text.replace(/\s/g, '').length;
+        const organizedChars = organizedText.replace(/\s/g, '').length;
+        const charsRatio = organizedChars / originalChars;
+        
+        console.log(`אימות תוכן Google AI: מילים במקור: ${originalWords}, מילים מאורגנות: ${organizedWords}, יחס מילים: ${(wordsRatio * 100).toFixed(1)}%`);
+        console.log(`אימות תוכן Google AI: תווים במקור: ${originalChars}, תווים מאורגנים: ${organizedChars}, יחס תווים: ${(charsRatio * 100).toFixed(1)}%`);
+        
+        // אם יחס המילים או התווים נמוך מדי, זה יכול להצביע על חיתוך
+        if (wordsRatio < 0.85 || charsRatio < 0.85) {
+            console.warn(`⚠️ אזהרה: הטקסט המאורגן נראה קצר משמעותית מהמקור - מילים: ${(wordsRatio * 100).toFixed(1)}%, תווים: ${(charsRatio * 100).toFixed(1)}%`);
+            
+            // בדיקה האם השורות האחרונות מהטקסט המקורי מופיעות בטקסט המאורגן
+            const originalLines = text.split('\n').filter(line => line.trim().length > 0);
+            const lastOriginalLines = originalLines.slice(-3).map(line => line.trim()); // 3 השורות האחרונות
+            
+            let missingLastLines = 0;
+            for (const lastLine of lastOriginalLines) {
+                if (lastLine.length > 5 && !organizedText.includes(lastLine)) { // בדיקה רק לשורות משמעותיות
+                    missingLastLines++;
+                    console.warn(`⚠️ שורה אחרונה חסרה: "${lastLine}"`);
+                }
+            }
+            
+            if (missingLastLines > 0) {
+                console.error(`❌ שגיאה: ${missingLastLines} מהשורות האחרונות חסרות בטקסט המאורגן!`);
+                // אל תזרוק שגיאה - פשוט תן אזהרה והחזר את התוצאה
+            }
+        }
+        
+        return organizedText;
+    } else {
+        throw new Error('תגובה לא תקינה מ-Google AI API');
+    }
+}
+
+/**
+ * מחלק טקסט גדול לחלקים קטנים יותר בצורה חכמה ומהירה
+ */
+async function divideTextIntoChunks(text, model, apiKey) {
+    const lines = text.split('\n');
+    if (lines.length <= 80) {
+        return [text]; // אם הטקסט קטן מ-80 שורות, החזר אותו כפי שהוא
+    }
+
+    console.log(`מתחיל חלוקה חכמה של טקסט עם ${lines.length} שורות`);
+    
+    // שלב 1: חלוקה מהירה לפי כותרות
+    const smartChunks = divideByHeaders(lines);
+    
+    // שלב 2: אם יש חלקים גדולים מדי, חלק אותם עוד יותר
+    const finalChunks = [];
+    for (const chunk of smartChunks) {
+        const chunkLines = chunk.split('\n');
+        if (chunkLines.length <= 80) {
+            finalChunks.push(chunk);
+        } else {
+            // חלק חלק גדול לחלקים קטנים יותר
+            const subChunks = divideTextByLines(chunk, 70); // 70 במקום 80 כדי להשאיר מקום לחפיפה
+            finalChunks.push(...subChunks);
+        }
+    }
+    
+    console.log(`הטקסט חולק ל-${finalChunks.length} חלקים`);
+    return finalChunks;
+}
+
+/**
+ * חלוקה חכמה של טקסט לפי כותרות
+ */
+function divideByHeaders(lines) {
+    const chunks = [];
+    let currentChunk = [];
+    let linesInCurrentChunk = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // בדיקה אם השורה היא כותרת (מתחילה ב-# או מכילה מילות מפתח של כותרות)
+        const isHeader = isHeaderLine(line, i > 0 ? lines[i-1] : '', i < lines.length - 1 ? lines[i+1] : '');
+        
+        // אם מצאנו כותרת והחלק הנוכחי מכיל יותר מ-40 שורות, התחל חלק חדש
+        if (isHeader && linesInCurrentChunk > 40 && currentChunk.length > 0) {
+            chunks.push(currentChunk.join('\n'));
+            currentChunk = [];
+            linesInCurrentChunk = 0;
+        }
+        
+        // אם החלק הנוכחי מכיל יותר מ-80 שורות, חתוך אותו כפות
+        if (linesInCurrentChunk >= 80) {
+            chunks.push(currentChunk.join('\n'));
+            currentChunk = [];
+            linesInCurrentChunk = 0;
+        }
+        
+        currentChunk.push(lines[i]);
+        linesInCurrentChunk++;
+    }
+    
+    // הוסף את החלק האחרון
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join('\n'));
+    }
+    
+    return chunks;
+}
+
+/**
+ * בדיקה אם שורה היא כותרת
+ */
+function isHeaderLine(line, prevLine, nextLine) {
+    if (!line || line.length === 0) return false;
+    
+    // כותרות Markdown
+    if (line.startsWith('#')) return true;
+    
+    // כותרות עם מילות מפתח נפוצות
+    const headerKeywords = [
+        'פרק', 'חלק', 'סעיף', 'סימן', 'הלכה', 'משנה', 'גמרא', 'רש"י', 'תוספות',
+        'שאלה', 'תשובה', 'מבוא', 'הקדמה', 'סיכום', 'סיום', 'ביאור', 'פירוש',
+        'נושא', 'עניין', 'דיון', 'הסבר', 'הערה', 'הארה', 'חידוש', 'דקדוק'
+    ];
+    
+    for (const keyword of headerKeywords) {
+        if (line.includes(keyword) && (line.length < 100 || line.endsWith(':'))) {
+            return true;
+        }
+    }
+    
+    // שורה קצרה שמסתיימת בנקודתיים
+    if (line.endsWith(':') && line.length < 80 && !line.includes('.')) {
+        return true;
+    }
+    
+    // שורה שהיא מספר או אות בלבד (כותרת מסוג "א. " או "1. ")
+    if (/^\s*[א-ת]\.\s*$|^\s*\d+\.\s*$/.test(line)) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * חלוקה פשוטה של טקסט לפי מספר שורות (כפתרון גיבוי) - משופרת
+ */
+function divideTextByLines(text, maxLines) {
+    const lines = text.split('\n');
+    const chunks = [];
+    
+    let currentChunk = [];
+    for (let i = 0; i < lines.length; i++) {
+        currentChunk.push(lines[i]);
+        
+        // אם הגענו לגבול השורות
+        if (currentChunk.length >= maxLines) {
+            // נסה לחתוך במקום טוב (שורה ריקה או כותרת)
+            let cutPoint = currentChunk.length;
+            for (let j = currentChunk.length - 1; j >= Math.max(0, currentChunk.length - 10); j--) {
+                const line = currentChunk[j].trim();
+                // אם מצאנו שורה ריקה או כותרת, חתוך שם
+                if (line === '' || line.startsWith('#') || line.endsWith(':')) {
+                    cutPoint = j + 1;
+                    break;
+                }
+            }
+            
+            // חתוך את החלק הנוכחי
+            const chunkToAdd = currentChunk.slice(0, cutPoint).join('\n');
+            chunks.push(chunkToAdd);
+            
+            // התחל חלק חדש עם השורות שנותרו
+            currentChunk = currentChunk.slice(cutPoint);
+        }
+    }
+    
+    // הוסף את השארית
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join('\n'));
+    }
+    
+    return chunks;
 }
 
 /**
@@ -403,17 +870,31 @@ async function callOpenAIForTextOrganization(text, prompt, model, apiKey) {
  */
 async function callGoogleAIForTextOrganization(text, prompt, model, apiKey) {
     const systemPrompt = prompt || `
-אתה עוזר מקצועי לעיצוב וארגון מסמכי Markdown. 
-המשימה שלך היא לארגן את הטקסט הבא בצורה מובנית וקריאה:
-1. ארגן כותרות בהיררכיה ברורה
-2. חלק לפסקאות לוגיות
-3. שפר את הקריאות והזרימה
+אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט הספציפי שהמשתמש סיפק ולא ליצור תוכן חדש.
+
+🔥 CRITICAL - חוקים שאסור לעבור עליהם:
+• שמור על כל התוכן המקורי ללא יוצא מהכלל
+• אל תמחק, תקצר, או תחסיר שום מידע מהטקסט המקורי
+• אל תחליף את התוכן בנושא אחר - רק ארגן את מה שכבר קיים!
+• אסור לך ליצור תוכן חדש על תיקון מידות או נושאים אחרים!
+
+⚠️ אזהרה חשובה: 
+המשתמש רוצה לארגן את הטקסט שלו, לא לקבל תוכן חדש על נושא אחר!
+אל תחליף את התוכן המקורי בתוכן על נושאים כמו תיקון מידות או כל נושא אחר!
+
+📋 משימות הארגון:
+1. ארגן כותרות בהיררכיה ברורה על פי התוכן הקיים למטה
+2. חלק לפסקאות לוגיות את התוכן הקיים למטה
+3. שפר את הקריאות והזרימה של הטקסט הקיים למטה
 4. שמור על כל התוכן המקורי
 5. השתמש בפורמט Markdown מתאים
 6. החזר רק את הטקסט המאורגן ללא הסברים נוספים
+7. אל תשנה את הנושא או התוכן - רק ארגן אותו!
 
 הטקסט לארגון:
 ${text}
+
+🚨 זכור: המטרה היא לארגן את הטקסט הקיים למעלה, לא ליצור תוכן חדש!
 `;
 
     const url = `${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`;
@@ -443,18 +924,62 @@ ${text}
         agent: httpsAgent // Use our custom agent
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Google AI API שגיאה: ${response.status} - ${errorText}`);
+    let responseText;
+    try {
+        responseText = await response.text();
+    } catch (textError) {
+        console.error('Failed to read response text:', textError);
+        throw new Error(`שגיאה בקריאת תשובת Google AI API: ${textError.message}`);
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+        console.error(`Google AI API Error: ${response.status} - ${responseText}`);
+        
+        // Try to parse error as JSON for better error details
+        let errorDetails = responseText;
+        try {
+            const errorData = JSON.parse(responseText);
+            errorDetails = errorData.error?.message || responseText;
+        } catch (parseError) {
+            // If we can't parse as JSON, use the raw text
+            console.warn('Could not parse error response as JSON:', parseError);
+        }
+        
+        throw new Error(`Google AI API שגיאה: ${response.status} - ${errorDetails}`);
+    }
+
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (jsonError) {
+        console.error('Failed to parse response as JSON. Raw response:', responseText);
+        throw new Error(`שגיאה בפיענוח תשובת Google AI API: התקבלה תשובה לא תקינה. ייתכן שהמפתח API לא תקין או שיש בעיית רשת.`);
+    }
     
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
         return data.candidates[0].content.parts[0].text.trim();
     } else {
         throw new Error('תגובה לא תקינה מ-Google AI API');
     }
+}
+
+/**
+ * ניקוי וחלקות סופיים של הטקסט המאורגן
+ */
+function cleanAndSmooth(text) {
+    // הסרת שורות ריקות מיותרות
+    let cleaned = text.replace(/\n{3,}/g, '\n\n');
+    
+    // תיקון כותרות כפולות
+    cleaned = cleaned.replace(/^(#{1,6}\s+.+)\n\1/gm, '$1');
+    
+    // תיקון פסקאות שנקטעו
+    cleaned = cleaned.replace(/([^.!?:])\n([א-ת])/g, '$1 $2');
+    
+    // וידוא שכותרות מתחילות בשורה חדשה
+    cleaned = cleaned.replace(/([^.\n])\n(#{1,6}\s+)/g, '$1\n\n$2');
+    
+    return cleaned.trim();
 }
 
 module.exports = {

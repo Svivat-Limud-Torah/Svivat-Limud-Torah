@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { HEBREW_TEXT, DEFAULT_FONT_SIZE_PX } from '../utils/constants'; // Ensure HEBREW_TEXT is imported
 import FontSizeModal from './FontSizeModal';
 import FontSelectionModal from './FontSelectionModal';
+import { undo, redo } from '@codemirror/commands'; // Import undo and redo commands
 
 const EditorToolbar = ({
   onFindSources,
@@ -11,8 +12,12 @@ const EditorToolbar = ({
   onOpenTranscriptionModal,
   onGeneratePilpulta, // New prop for Pilpulta feature
   onOpenSmartSearchModal, // New prop for Smart Search
+  onGenerateFlashcards, // New prop for Flashcards feature
+  isGeneratingFlashcards, // New prop for Flashcards loading state
   editorFontSize, // Prop from App.jsx
   onEditorFontSizeChange, // Prop from App.jsx
+  presentationFontSize, // Prop from App.jsx for presentation font size
+  onPresentationFontSizeChange, // Prop from App.jsx for presentation font size change
   handleToggleMainView, // New prop for toggling main view
   mainViewMode, // New prop for current main view mode
   activeTabObject, // New prop to check file type
@@ -21,6 +26,7 @@ const EditorToolbar = ({
   onAppFontChange, // New prop for app font change
   onEditorFontChange, // New prop for editor font change
   repetitionsHook, // New prop for repetitions notifications
+  editorRef, // New prop for editor reference to enable undo
 }) => {
   const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
   const [isFontSelectionModalOpen, setIsFontSelectionModalOpen] = useState(false);
@@ -31,12 +37,52 @@ const EditorToolbar = ({
   const openFontSelectionModal = () => setIsFontSelectionModalOpen(true);
   const closeFontSelectionModal = () => setIsFontSelectionModalOpen(false);
 
-  const handleSaveFontSize = (newSize) => {
-    if (onEditorFontSizeChange) {
-      onEditorFontSizeChange(newSize);
+  const handleSaveFontSize = (newSize, fontType) => {
+    if (fontType === 'editor') {
+      if (onEditorFontSizeChange) {
+        onEditorFontSizeChange(newSize);
+      }
+    } else if (fontType === 'presentation') {
+      if (onPresentationFontSizeChange) {
+        onPresentationFontSizeChange(newSize);
+      }
     }
     // The local currentEditorFontSize state is removed, App.jsx manages the source of truth.
     // The modal will get its currentSize directly from the editorFontSize prop.
+  };
+
+  // Undo function using CodeMirror's history
+  const handleUndo = () => {
+    if (!editorRef?.current) return;
+    
+    try {
+      // Get the CodeMirror view from the Editor component
+      const view = editorRef.current.getEditorView?.();
+      if (!view || !view.state) return;
+      
+      // Use CodeMirror's undo command
+      undo(view);
+      view.focus();
+    } catch (error) {
+      console.error('שגיאה בביצוע undo:', error);
+    }
+  };
+
+  // Redo function using CodeMirror's history
+  const handleRedo = () => {
+    if (!editorRef?.current) return;
+    
+    try {
+      // Get the CodeMirror view from the Editor component
+      const view = editorRef.current.getEditorView?.();
+      if (!view || !view.state) return;
+      
+      // Use CodeMirror's redo command
+      redo(view);
+      view.focus();
+    } catch (error) {
+      console.error('שגיאה בביצוע redo:', error);
+    }
   };
 
   // const handleFontSizeIncrease = () => { // Removed as A+ button is removed
@@ -50,28 +96,6 @@ const EditorToolbar = ({
   // const handleBoldClick = () => { // Removed as B button is removed
   //   onApplyStyle('bold', { active: true });
   // };
-
-  const buttonStyle = {
-    backgroundColor: '#555e69',
-    color: 'white',
-    border: '1px solid #4a5568',
-    padding: '4px 8px',
-    height: '28px',
-    cursor: 'pointer',
-    /* fontSize removed - using btn-sm */
-    borderRadius: '3px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-    transition: 'border-color 0.2s, transform 0.1s, background-color 0.2s',
-  };
-
-  const buttonHoverStyle = {
-    backgroundColor: '#6b7280',
-    borderColor: '#718096',
-  };
-
-  const buttonActiveStyle = {
-    transform: 'scale(0.95)',
-  };
 
   const disabledStyle = {
     opacity: 0.5,
@@ -87,8 +111,8 @@ const EditorToolbar = ({
   return (
     <div style={{
         padding: '6px 10px',
-        borderBottom: '1px solid #2d3748',
-        backgroundColor: '#23272c',
+        borderBottom: '1px solid var(--theme-border-color)',
+        backgroundColor: 'var(--theme-toolbar-bg)',
         display: 'flex',
         gap: '8px',
         alignItems: 'center',
@@ -101,11 +125,9 @@ const EditorToolbar = ({
         title={HEBREW_TEXT.fontSizeModal?.buttonText || "Set Font Size"}
         onClick={openFontSizeModal}
         disabled={isAiFeaturesActive} // Consistent with other buttons
-        className="btn btn-sm" // Changed from btn-secondary to default btn for non-blue style
+        className="btn btn-sm" // Changed from btn-secondary to default btn for non-gray style
         style={{
           marginRight: '8px', // Space before the next button
-          outline: 'none', // No blue outline on focus
-          boxShadow: 'none', // No box shadow
           ...(isAiFeaturesActive ? disabledStyle : {}),
         }}
       >
@@ -120,25 +142,63 @@ const EditorToolbar = ({
         className="btn btn-sm"
         style={{
           marginRight: '8px', // Always space before the next button
-          outline: 'none',
-          boxShadow: 'none',
           ...(isAiFeaturesActive ? disabledStyle : {}),
         }}
       >
         בחירת פונט
       </button>
 
+      {/* Undo Button */}
+      <button
+        title="חזור לשינוי הקודם (Ctrl+Z)"
+        onClick={handleUndo}
+        disabled={isAiFeaturesActive}
+        className="btn btn-sm"
+        style={{
+          marginRight: '8px',
+          ...(isAiFeaturesActive ? disabledStyle : {}),
+        }}
+      >
+        ↶ חזור
+      </button>
+
+      {/* Redo Button */}
+      <button
+        title="חזור לשינוי הבא (Ctrl+Y)"
+        onClick={handleRedo}
+        disabled={isAiFeaturesActive}
+        className="btn btn-sm"
+        style={{
+          marginRight: '8px',
+          ...(isAiFeaturesActive ? disabledStyle : {}),
+        }}
+      >
+        ↷ קדימה
+      </button>
+
+      {/* Flashcards Button - moved from App.jsx and placed before Find Sources */}
+      <button
+        title={isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
+        onClick={onGenerateFlashcards}
+        disabled={isGeneratingFlashcards || isAiFeaturesActive}
+        className="btn btn-sm"
+        style={{
+          marginLeft: '15px',
+          ...( (isGeneratingFlashcards || isAiFeaturesActive) ? disabledStyle : {}),
+        }}
+      >
+        {isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
+      </button>
+
       <button
         title={isFindingSources ? HEBREW_TEXT.findingSources : HEBREW_TEXT.findSources}
         onClick={onFindSources}
         disabled={isFindingSources || isAiFeaturesActive}
-        className="btn btn-info btn-sm" // Added btn classes (info for blue)
-        style={{ // Kept specific styles
-          backgroundColor: isFindingSources ? '#f59e0b' : undefined, // Keep warning color when finding
+        className="btn btn-sm" // Use default button styling for consistency
+        style={{ // Consistent styling
           marginLeft: '15px',
           ...( (isFindingSources || isAiFeaturesActive) ? disabledStyle : {}),
         }}
-        // Removed hover/active styles handled by btn classes
       >
         {isFindingSources ? HEBREW_TEXT.findingSources : HEBREW_TEXT.findSources}
       </button>
@@ -148,12 +208,11 @@ const EditorToolbar = ({
         title={HEBREW_TEXT.transcriptionFeatureButton}
         onClick={onOpenTranscriptionModal}
         disabled={isAiFeaturesActive} // Disable if other AI features are active or during general loading
-        className="btn btn-success btn-sm" // Added btn classes (success for green)
+        className="btn btn-sm" // Use default button styling for consistency
         style={{ // Kept specific styles
           marginLeft: '15px',
           ...(isAiFeaturesActive ? disabledStyle : {}),
         }}
-        // Removed hover/active styles handled by btn classes
       >
         {HEBREW_TEXT.transcriptionFeatureButton}
       </button>
@@ -182,7 +241,7 @@ const EditorToolbar = ({
         title={HEBREW_TEXT.generatePilpultaTitle || "צור פלפולתא (קושיות מהטקסט)"} // Add text to constants later
         onClick={onGeneratePilpulta}
         disabled={isAiFeaturesActive} // Disable if other AI features are active
-        className="btn btn-warning btn-sm" // Use warning (orange) for this new AI feature
+        className="btn btn-sm" // Use default button styling for consistency
         style={{
           marginLeft: '15px', // Add space from previous button
           ...(isAiFeaturesActive ? disabledStyle : {}),
@@ -212,10 +271,6 @@ const EditorToolbar = ({
         className="btn btn-secondary btn-sm" // Changed to secondary for a more standard look
         style={{
           marginLeft: '8px', // Add some space from the previous button
-          color: 'white', // Ensure text is white
-          border: '1px solid #4a5568', // Explicitly set border to match other non-highlighted button borders
-          outline: 'none', // Remove focus outline
-          boxShadow: 'none', // Remove any box shadow
         }}
       >
         {HEBREW_TEXT.openOrotHatorahLink}
@@ -228,10 +283,6 @@ const EditorToolbar = ({
         className="btn btn-secondary btn-sm"
         style={{
           marginLeft: '8px',
-          color: 'white',
-          border: '1px solid #4a5568',
-          outline: 'none',
-          boxShadow: 'none',
         }}
       >
         {HEBREW_TEXT.smartDiscussionButton}
@@ -244,10 +295,6 @@ const EditorToolbar = ({
         className="btn btn-secondary btn-sm"
         style={{
           marginLeft: '8px',
-          color: 'white',
-          border: '1px solid #4a5568',
-          outline: 'none',
-          boxShadow: 'none',
         }}
       >
         {HEBREW_TEXT.aramaicStudyButton}
@@ -256,7 +303,8 @@ const EditorToolbar = ({
       <FontSizeModal
         isOpen={isFontSizeModalOpen}
         onClose={closeFontSizeModal}
-        currentSize={editorFontSize} // Use prop from App.jsx
+        currentEditorSize={editorFontSize} // Use prop from App.jsx
+        currentPresentationSize={presentationFontSize} // Use prop from App.jsx
         onSaveFontSize={handleSaveFontSize}
       />
       

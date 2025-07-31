@@ -12,6 +12,7 @@ const questionnaireService = require('./services/QuestionnaireService');
 const learningGraphService = require('./services/LearningGraphService');
 const pilpultaRoutes = require('./routes/pilpultaRoutes'); // Import Pilpulta routes
 const smartSearchRoutes = require('./routes/smartSearchRoutes'); // Import Smart Search routes
+const textOrganizationRoutes = require('./routes/textOrganizationRoutes'); // Import Text Organization routes
 const userDataService = require('./services/UserDataService'); // To be created
 const fileConversionService = require('./services/FileConversionService'); // Import File Conversion service
 
@@ -1035,6 +1036,9 @@ app.use('/api/pilpulta', pilpultaRoutes);
 // --- Smart Search API Endpoint ---
 app.use('/api/smart-search', smartSearchRoutes);
 
+// --- Text Organization with Progress API Endpoint ---
+app.use('/api/text-organization', textOrganizationRoutes);
+
 // --- File Conversion API Endpoints ---
 app.post('/api/file-conversion/scan-directory', async (req, res) => {
     const { directoryPath } = req.body;
@@ -1106,7 +1110,7 @@ app.post('/api/file-conversion/convert-directory', async (req, res) => {
             ...results,
             sourceDirectory,
             targetDirectory,
-            message: `הומרו ${results.convertedFiles} מתוך ${results.totalFiles} קבצים בהצלחה`
+            message: `הומרו ${results.convertedFiles} קבצים והועתקו ${results.copiedFiles || 0} קבצים נוספים מתוך ${results.totalFiles} קבצים בהצלחה`
         });
     } catch (error) {
         console.error('Error converting directory:', error);
@@ -1148,6 +1152,61 @@ app.post('/api/file-conversion/convert-single-file', async (req, res) => {
         });
     } catch (error) {
         console.error('Error converting file:', error);
+        if (error.code === 'ENOENT') {
+            return res.status(404).json({ error: 'הקובץ לא נמצא' });
+        }
+        if (error.code === 'EPERM' || error.code === 'EACCES') {
+            return res.status(403).json({ error: 'אין הרשאת גישה לקובץ' });
+        }
+        res.status(500).json({ error: error.message || 'שגיאה בהמרת הקובץ' });
+    }
+});
+
+// New endpoint for file conversion with format selection
+app.post('/api/file-conversion/convert-file-with-format', async (req, res) => {
+    const { filePath, targetFormat = 'md' } = req.body;
+    
+    if (!filePath) {
+        return res.status(400).json({ error: 'נתיב קובץ נדרש' });
+    }
+
+    if (!targetFormat) {
+        return res.status(400).json({ error: 'פורמט היעד נדרש' });
+    }
+
+    try {
+        // Check if file exists
+        await fs.access(filePath);
+        const stats = await fs.stat(filePath);
+        
+        if (!stats.isFile()) {
+            return res.status(400).json({ error: 'הנתיב שסופק אינו קובץ' });
+        }
+
+        if (!fileConversionService.isFileSupported(filePath)) {
+            return res.status(400).json({ error: 'סוג קובץ לא נתמך להמרה' });
+        }
+
+        // Convert the file content
+        const convertedContent = await fileConversionService.convertFileToFormat(filePath, targetFormat);
+        
+        // Generate output file path (same directory as source file)
+        const sourceDir = path.dirname(filePath);
+        const sourceBaseName = path.basename(filePath, path.extname(filePath));
+        const outputFilePath = path.join(sourceDir, `${sourceBaseName}.${targetFormat}`);
+        
+        // Write the converted content to the new file
+        await fs.writeFile(outputFilePath, convertedContent, 'utf-8');
+        
+        res.json({ 
+            originalFile: filePath,
+            convertedFile: outputFilePath,
+            targetFormat: targetFormat,
+            content: convertedContent,
+            message: `הקובץ הומר בהצלחה ל-${targetFormat.toUpperCase()}`
+        });
+    } catch (error) {
+        console.error('Error converting file with format:', error);
         if (error.code === 'ENOENT') {
             return res.status(404).json({ error: 'הקובץ לא נמצא' });
         }

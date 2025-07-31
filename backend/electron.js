@@ -190,6 +190,27 @@ app.whenReady().then(() => {
     }
   });
 
+  // IPC handler for showing directory picker
+  ipcMain.handle('show-directory-picker', async () => {
+    const window = BrowserWindow.getFocusedWindow();
+    if (!window) {
+      console.error('No focused window to show directory picker.');
+      return { canceled: true, error: 'No focused window' };
+    }
+
+    try {
+      const result = await dialog.showOpenDialog(window, {
+        properties: ['openDirectory'],
+        title: 'בחר תיקייה לשמירת הקובץ'
+      });
+
+      return result;
+    } catch (error) {
+      console.error('שגיאה בהצגת בוחר התיקיות:', error);
+      return { canceled: true, error: error.message };
+    }
+  });
+
   // IPC handler for closing the application
   ipcMain.handle('close-app', async () => {
     try {

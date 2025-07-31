@@ -39,8 +39,8 @@ x64:
     - '!**/node_modules/**/*.{txt,md,html,png,jpg,jpeg,gif,svg,css,map,test.js,*.yml,*.yaml,.*ignore,.*rc,.*.json,CHANGELOG,README,LICENSE,license,NOTICE,readme}'
 nsis:
   script: |-
-    !include "I:\מחשבים אחרים\המחשב שלי\Disk\תשפה\פרוייקט תוכנות\Torah-IDE\torah-ide\torah-ide\backend\node_modules\app-builder-lib\templates\nsis\include\StdUtils.nsh"
-    !addincludedir "I:\מחשבים אחרים\המחשב שלי\Disk\תשפה\פרוייקט תוכנות\Torah-IDE\torah-ide\torah-ide\backend\node_modules\app-builder-lib\templates\nsis\include"
+    !include "C:\Users\hjkhj\Downloads\Mac-Torah-IDE-Edit\torah-ide\backend\node_modules\app-builder-lib\templates\nsis\include\StdUtils.nsh"
+    !addincludedir "C:\Users\hjkhj\Downloads\Mac-Torah-IDE-Edit\torah-ide\backend\node_modules\app-builder-lib\templates\nsis\include"
     !macro _isUpdated _a _b _t _f
       ${StdUtils.TestParameter} $R9 "updated"
       StrCmp "$R9" "true" `${_t}` `${_f}`
@@ -112,8 +112,8 @@ nsis:
       !insertmacro MUI_LANGUAGE "Vietnamese"
     !macroend
 
-    !include "C:\Users\hjkhj\AppData\Local\Temp\t-nJhtB8\2-messages.nsh"
-    !include "C:\Users\hjkhj\AppData\Local\Temp\t-nJhtB8\3-messages.nsh"
+    !include "C:\Users\hjkhj\AppData\Local\Temp\t-FPHoGJ\2-messages.nsh"
+    !include "C:\Users\hjkhj\AppData\Local\Temp\t-FPHoGJ\3-messages.nsh"
     !addplugindir /x86-unicode "C:\Users\hjkhj\AppData\Local\electron-builder\Cache\nsis\nsis-resources-3.4.1\plugins\x86-unicode"
 
     Var newStartMenuLink

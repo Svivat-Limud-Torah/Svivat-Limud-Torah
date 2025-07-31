@@ -10,12 +10,15 @@ import SummaryView from './SummaryView';
 import SourceResultsDisplay from './SourceResultsDisplay';
 import RepetitionListView from './RepetitionListView';
 import WeeklySummaryDisplay from './WeeklySummaryDisplay'; // Import WeeklySummaryDisplay
+import TextOrganizationProgressModal from './TextOrganizationProgressModal'; // Import progress modal
 // DailyAnswersDisplay would be a new component if we need a dedicated view for it.
 // For now, detailed answers might be shown within WeeklySummaryDisplay or managed by the hook.
 import { getApiKeyDetails } from './ApiKeyModal'; // Import the helper function
+import { useTextOrganizationWithProgress } from '../hooks/useTextOrganizationWithProgress'; // Import the progress hook
 
 import path from '../utils/pathUtils';
 import { APP_DIRECTION, SUPPORTED_IMAGE_EXTENSIONS_CLIENT, HEBREW_TEXT } from '../utils/constants';
+import { storeFullFileBackup } from '../utils/aiOrganizeBackup';
 
 // Helper to parse matchPreview with markers (from your provided code)
 const HighlightedMatchPreview = ({ preview }) => {
@@ -82,6 +85,12 @@ const MainContentArea = ({
   saveSourceFindingResults,
   discardSourceFindingResults,
   
+  // Selected Text AI Features
+  generatePilpultaFromSelectedText,
+  findJewishSourcesFromSelectedText,
+  generateFlashcardsFromSelectedText,
+  generateSummaryFromSelectedText,
+  
   // --- Search V2 Props ---
   searchResults, 
   handleFileSelect, 
@@ -120,17 +129,41 @@ const MainContentArea = ({
   className, // Added className prop
   editorFontSize, // Added from App.jsx
   editorFont, // Added from App.jsx
+  presentationFontSize, // Added from App.jsx
+  selectedAiModel, // Added selectedAiModel prop
   handleOpenNewTab, // Added for the new tab button
+  isZenMode, // Added zen mode state
+  showFormattingToolbar, // Added formatting toolbar state  
+  toggleZenMode, // Added zen mode toggle function
+  toggleFormattingToolbar, // Added formatting toolbar toggle function
+  toggleShowLineNumbers, // Added line numbers toggle function
 }) => {
   // State for markdown preview mode
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
-  const [isOrganizingText, setIsOrganizingText] = useState(false);
+  const [aiOrganizeCompleted, setAiOrganizeCompleted] = useState(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+
+  // Use the text organization progress hook
+  const {
+    isProcessing,
+    progress,
+    result,
+    error,
+    organizeText,
+    cancelProcess,
+    resetState
+  } = useTextOrganizationWithProgress();
 
   const handlePreviewToggle = (isPreview) => {
     setShowMarkdownPreview(isPreview);
   };
 
   const handleOrganizeTextToggle = async () => {
+    // Prevent multiple simultaneous calls
+    if (isProcessing) {
+      return;
+    }
+
     if (!activeTabObject || !activeTabObject.id?.toLowerCase().endsWith('.md')) {
       alert('פיצ\'ר ארגון הטקסט זמין רק עבור קבצי Markdown (.md)');
       return;
@@ -142,69 +175,117 @@ const MainContentArea = ({
       return;
     }
 
-    // קבלת הגדרות AI מהלוקל סטורג' או מהקונטקסט
-    const aiModel = localStorage.getItem('selectedAiModel') || 'gemini-2.5-pro'; // Use the same default as App.jsx
-    const { key: apiKey } = getApiKeyDetails(); // Use the helper function from ApiKeyModal
+    // Large text detection and user notification
+    const textLines = activeTabObject.content.split('\n');
+    const isLargeText = textLines.length > 80;
+    const isVeryLargeText = textLines.length >= 200;
     
-    if (!apiKey) {
-      alert('נדרש מפתח API. אנא הגדר מפתח API באמצעות הכפתור "מפתח API" בתפריט העליון.');
-      return;
+    if (isVeryLargeText) {
+      const userConfirmed = confirm(HEBREW_TEXT.largeFileWarning(textLines.length));
+      if (!userConfirmed) {
+        return;
+      }
+    } else if (isLargeText) {
+      const estimatedTime = textLines.length > 300 ? '2-3 דקות' : '1-2 דקות';
+      const userConfirmed = confirm(`הטקסט מכיל ${textLines.length} שורות. זהו טקסט גדול שיעובד בגישה מותאמת.\n\nזמן עיבוד משוער: ${estimatedTime}\n\nהאם להמשיך?`);
+      if (!userConfirmed) {
+        return;
+      }
     }
 
-    setIsOrganizingText(true);
+    // Store original content as backup for undo functionality
+    storeFullFileBackup(activeTabObject.id, activeTabObject.content);
 
-    try {
-      // יצירת prompt לבינה מלאכותית לארגון הטקסט
-      const prompt = `
-אתה עוזר מקצועי לעיצוב וארגון מסמכי Markdown בעברית. 
-המשימה שלך היא לארגן את הטקסט הבא בצורה מובנית וקריאה:
+    // Get the selected AI model from props or localStorage with fallback
+    const aiModel = selectedAiModel || localStorage.getItem('selectedAiModel') || 'gemini-2.5-pro';
 
-1. ארגן כותרות בהיררכיה ברורה (H1, H2, H3)
-2. חלק לפסקאות לוגיות ומובנות
-3. שפר את הקריאות והזרימה של הטקסט
-4. שמור על כל התוכן המקורי - אל תמחק או תשנה מידע
-5. השתמש בפורמט Markdown מתאים (כותרות, רשימות, הדגשות)
-6. ארגן רשימות בצורה מסודרת
-7. החזר רק את הטקסט המאורגן ללא הסברים נוספים
+    // Create optimized prompt
+    const optimizedPrompt = `
+אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט הבא לפורמט Markdown מושלם.
 
-הטקסט לארגון:
-${activeTabObject.content}
+🔥 חוקים קריטיים - אל תעבור על אלה:
+• שמור על כל התוכן המקורי - אל תמחק או תחסיר מידע
+• אל תחזור על תוכן - כל חלק צריך להופיע פעם אחת בלבד  
+• וודא שהטקסט המאורגן כולל את כל התוכן המקורי
+• אל תוסיף מידע שלא היה בטקסט המקורי
+
+📋 משימות הארגון:
+1. צור היררכיה ברורה עם כותרות H1, H2, H3 לפי הקשר הלוגי
+2. חלק לפסקאות מובנות ונושאיות
+3. ארגן רשימות בפורמט Markdown נכון (-, *, 1., 2., וכו')
+4. הדגש מילות מפתח חשובות (**מילה**, *מילה*)
+5. צור מבנה לוגי וזורם שקל לקריאה
+6. שפר פיסוק ומבנה משפטים ללא שינוי המשמעות
+7. הסר שורות ריקות מיותרות (לא יותר מ-2 שורות ריקות ברצף)
+
+📖 כללי פורמט:
+• השתמש בעברית תקינה וברורה
+• שמור על המינוח המקורי של מושגים יהודיים/תורניים
+• ארגן ציטוטים ומקורות בפורמט אחיד
+• צור מבנה חזותי נעים ומאורגן
+
+החזר אך ורק את הטקסט המאורגן ללא הסברים או הערות נוספות.
 `;
 
-      // קריאה לשירות הבינה המלאכותית
-      const response = await fetch('http://localhost:3001/api/smart-search/organize-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: activeTabObject.content,
-          prompt: prompt,
-          model: aiModel,
-          apiKey: apiKey
-        }),
-      });
+    // Show progress modal and start organization
+    setShowProgressModal(true);
+    await organizeText(activeTabObject.content, aiModel, optimizedPrompt);
+  };
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.organizedText) {
-          // עדכון התוכן בעורך
-          handleEditorChange(result.organizedText);
-          console.log('הטקסט אורגן בהצלחה!');
-        } else {
-          throw new Error('לא התקבל טקסט מאורגן מהשרת');
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || response.statusText);
-      }
-    } catch (error) {
-      console.error('שגיאה בארגון הטקסט:', error);
-      alert(`שגיאה בארגון הטקסט: ${error.message}`);
-    } finally {
-      setIsOrganizingText(false);
+  // Handle progress modal close
+  const handleProgressModalClose = () => {
+    if (!isProcessing) {
+      setShowProgressModal(false);
+      resetState();
     }
-  };  const renderStatsList = (title, files, isLoading, error) => {
+  };
+
+  // Handle cancel organization
+  const handleCancelOrganization = async () => {
+    await cancelProcess();
+    setShowProgressModal(false);
+  };
+
+  // Handle organization completion
+  React.useEffect(() => {
+    if (result && result.organizedText && activeTabObject && !isProcessing) {
+      // Update the editor content with the organized text
+      handleEditorChange(result.organizedText);
+      
+      // Show success message
+      const processingTime = result.processInfo?.duration || 0;
+      const linesProcessed = result.processInfo?.linesProcessed || 0;
+      
+      if (linesProcessed > 80) {
+        alert(`הטקסט אורגן בהצלחה!\nזמן עיבוד: ${(processingTime / 1000).toFixed(1)} שניות\nשורות עובדו: ${linesProcessed}\n\n💡 טיפ: לחזרה לטקסט המקורי, לחץ Ctrl+Z`);
+      } else {
+        console.log('💡 טיפ: לחזרה לטקסט המקורי, לחץ Ctrl+Z');
+      }
+      
+      // Signal that AI organize is complete
+      setAiOrganizeCompleted(Date.now());
+      
+      // Close progress modal after a short delay
+      setTimeout(() => {
+        setShowProgressModal(false);
+      }, 2000);
+      
+      // Reset the result to prevent re-triggering
+      resetState();
+    }
+  }, [result, activeTabObject, isProcessing, handleEditorChange, resetState]);
+
+  // Handle organization error
+  React.useEffect(() => {
+    if (error) {
+      alert(`שגיאה בארגון הטקסט: ${error}`);
+      setShowProgressModal(false);
+      // Reset the error to prevent re-triggering
+      resetState();
+    }
+  }, [error, resetState]);
+
+  const renderStatsList = (title, files, isLoading, error) => {
     if (workspaceFolders.length === 0 && !isLoading) return <p style={{/* fontSize removed */ color: '#a0aec0', padding: '5px 0'}}>{HEBREW_TEXT.addFolderFirst} {HEBREW_TEXT.explorer.toLowerCase()} כדי לראות {title.toLowerCase()}.</p>;
     if (isLoading) return <p style={{/* fontSize removed */ padding: '5px 0', color: '#a0aec0'}}>{HEBREW_TEXT.loading} {title.toLowerCase()}...</p>;
     if (error && files.length ===0) return <p style={{ color: '#fc8181', /* fontSize removed */ padding: '5px 0' }}>{HEBREW_TEXT.error}: {error}</p>;
@@ -294,7 +375,20 @@ ${activeTabObject.content}
             </div>
 
             <div style={{ flexGrow: 1, overflowY: 'auto', /* fontSize removed */ }}>
-                {searchViewError && <p style={{ color: '#fc8181', /* fontSize removed */ margin: '10px 0', whiteSpace: 'pre-wrap' }}>{searchViewError}</p>}
+                {searchViewError && (
+                    <p style={{ 
+                        color: searchViewError.includes('עודכן') || searchViewError.includes('נוקה') ? '#a0aec0' : '#fc8181', 
+                        /* fontSize removed */ 
+                        margin: '10px 0', 
+                        whiteSpace: 'pre-wrap',
+                        padding: '8px 12px',
+                        backgroundColor: searchViewError.includes('עודכן') || searchViewError.includes('נוקה') ? '#1a2332' : 'transparent',
+                        borderRadius: '4px',
+                        border: searchViewError.includes('עודכן') || searchViewError.includes('נוקה') ? '1px solid #374151' : 'none'
+                    }}>
+                        {searchViewError}
+                    </p>
+                )}
                 {searchResults.length > 0 && (
                     <>
                         <p style={{ color: '#a0aec0', marginTop: '0', marginBottom: '10px' }}>{HEBREW_TEXT.searchResultsCount(totalMatchesCount, filesWithMatchesCount)}</p>
@@ -348,9 +442,9 @@ ${activeTabObject.content}
             const isSavingCurrent = savingTabPath === tab.id && tab.type === 'file';
             let tabClassName = isSavingCurrent ? (isActive ? 'tab-saving' : 'tab-inactive-saving') : '';
             return (
-              <div key={tab.id} onClick={() => handleTabClick(tab.id)} className={tabClassName} style={{ padding: '10px 15px', cursor: 'pointer', borderLeft: APP_DIRECTION === 'rtl' ? `1px solid var(--theme-border-color)` : 'none', borderRight: APP_DIRECTION === 'ltr' ? `1px solid var(--theme-border-color)` : (isActive ? 'none' : `1px solid var(--theme-border-color)`), borderBottom: isActive ? `2px solid var(--theme-accent-primary)` : 'none', backgroundColor: isSavingCurrent ? undefined : (isActive ? `var(--theme-bg-primary)` : 'transparent'), color: isSavingCurrent ? undefined : (isActive ? `var(--theme-text-primary)` : `var(--theme-text-secondary)`), display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', fontWeight: (tab.isDirty && tab.type === 'file') ? '600' : '500', /* fontSize removed */ transition: 'background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-bottom 0.15s ease-in-out', flexShrink: 0 }} title={`${path.basename(tab.basePath)}/${tab.relativePath}` + ((tab.isDirty && tab.type === 'file') ? ` (${HEBREW_TEXT.unsavedChanges})` : "")}>
-                <span style={APP_DIRECTION === 'rtl' ? { marginLeft: '8px' } : { marginRight: '8px' }}> {tab.name}{tab.isDirty && tab.type === 'file' && <span style={{ color: `var(--theme-accent-secondary)`, marginLeft: '5px', fontWeight: 'bold' }}>*</span>} </span>
-                <button onClick={(e) => handleCloseTab(tab.id, e)} style={{ background: 'transparent', border: 'none', color: `var(--theme-text-secondary)`, cursor: 'pointer', padding: '0 4px', lineHeight: '1', /* fontSize removed */ borderRadius: '50%', order: APP_DIRECTION === 'rtl' ? -1 : 1, [APP_DIRECTION === 'rtl' ? 'marginRight' : 'marginLeft']: '10px', transition: 'color 0.1s ease-in-out' }} onMouseEnter={(e) => e.currentTarget.style.color = `var(--theme-text-primary)`} onMouseLeave={(e) => e.currentTarget.style.color = `var(--theme-text-secondary)`} title={`${HEBREW_TEXT.close} ${tab.name}`}>×</button>
+              <div key={tab.id} onClick={() => handleTabClick(tab.id)} className={tabClassName} style={{ padding: '10px 15px', cursor: 'pointer', borderLeft: APP_DIRECTION === 'rtl' ? `1px solid var(--theme-border-color)` : 'none', borderRight: APP_DIRECTION === 'ltr' ? `1px solid var(--theme-border-color)` : (isActive ? 'none' : `1px solid var(--theme-border-color)`), borderBottom: isActive ? `2px solid var(--theme-accent-primary)` : 'none', backgroundColor: isSavingCurrent ? undefined : (isActive ? `var(--theme-bg-primary)` : 'transparent'), color: isSavingCurrent ? undefined : (isActive ? `var(--theme-text-primary)` : `var(--theme-text-secondary)`), display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap', fontWeight: (tab.isDirty && tab.type === 'file') ? '600' : '500', /* fontSize removed */ transition: 'background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-bottom 0.15s ease-in-out', flexShrink: 0, gap: '12px' }} title={`${path.basename(tab.basePath)}/${tab.relativePath}` + ((tab.isDirty && tab.type === 'file') ? ` (${HEBREW_TEXT.unsavedChanges})` : "")}>
+                <span> {tab.name}{tab.isDirty && tab.type === 'file' && <span style={{ color: `var(--theme-accent-secondary)`, marginLeft: '5px', fontWeight: 'bold' }}>*</span>} </span>
+                <button onClick={(e) => handleCloseTab(tab.id, e)} style={{ background: 'transparent', border: 'none', color: `var(--theme-text-secondary)`, cursor: 'pointer', padding: '2px', lineHeight: '1', fontSize: '16px', borderRadius: '3px', transition: 'all 0.2s ease-in-out', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, sans-serif', flexShrink: 0 }} onMouseEnter={(e) => { e.currentTarget.style.color = `var(--theme-text-primary)`; e.currentTarget.style.backgroundColor = `var(--theme-bg-secondary)`; }} onMouseLeave={(e) => { e.currentTarget.style.color = `var(--theme-text-secondary)`; e.currentTarget.style.backgroundColor = 'transparent'; }} title={`${HEBREW_TEXT.close} ${tab.name}`}>×</button>
               </div>
             );
           })}
@@ -395,20 +489,30 @@ ${activeTabObject.content}
             
             {activeTabObject.type === 'file' && activeTabObject.content !== undefined && !fileError && !isLoadingFileContent && (
               <>
-                {/* Show Markdown Toolbar only for .md files */}
-                {activeTabObject.id?.toLowerCase().endsWith('.md') && (
+                {/* Show Markdown Toolbar only for .md files when formatting toolbar is enabled */}
+                {activeTabObject.id?.toLowerCase().endsWith('.md') && showFormattingToolbar && (
                   <MarkdownToolbar 
                     editorRef={editorSharedRef}
                     isDisabled={isContentAreaDisabled}
                     onPreviewToggle={handlePreviewToggle}
                     onOrganizeTextToggle={handleOrganizeTextToggle}
-                    isOrganizing={isOrganizingText}
+                    isOrganizing={isProcessing}
+                    hasUnsavedChanges={activeTabObject.isDirty}
+                    onAiOrganizeComplete={aiOrganizeCompleted}
+                    isZenMode={isZenMode}
+                    showLineNumbers={showLineNumbers}
+                    toggleZenMode={toggleZenMode}
+                    toggleFormattingToolbar={toggleFormattingToolbar}
+                    toggleShowLineNumbers={toggleShowLineNumbers}
                   />
                 )}
                 
                 <div style={{ flexGrow: 1, height: '100%' }}>
                   {activeTabObject.id?.toLowerCase().endsWith('.md') && showMarkdownPreview ? (
-                    <MarkdownPreview content={activeTabObject.content} />
+                    <MarkdownPreview 
+                      content={activeTabObject.content} 
+                      presentationFontSize={presentationFontSize}
+                    />
                   ) : (
                     <Editor 
                       ref={editorSharedRef} 
@@ -425,6 +529,11 @@ ${activeTabObject.content}
                       editorFont={editorFont}
                       initialScrollPosition={initialScrollPosition}
                       onScrollPositionChange={onScrollPositionChange}
+                      onSelectedTextPilpulta={generatePilpultaFromSelectedText}
+                      onSelectedTextFindSources={findJewishSourcesFromSelectedText}
+                      onSelectedTextFlashcards={generateFlashcardsFromSelectedText}
+                      onSelectedTextSummary={generateSummaryFromSelectedText}
+                      isAnyAiFeatureLoading={isLoadingFlashcards || isLoadingAiSummary || isLoadingSourceFinding}
                     />
                   )}
                 </div>
@@ -477,6 +586,22 @@ ${activeTabObject.content}
 
 
       </div>
+      
+      {/* Text Organization Progress Modal */}
+      <TextOrganizationProgressModal
+        isOpen={showProgressModal}
+        onClose={handleProgressModalClose}
+        onCancel={isProcessing ? handleCancelOrganization : null}
+        textLength={progress.textLength}
+        selectedAiModel={progress.model}
+        isProcessing={isProcessing}
+        currentStep={progress.currentStep}
+        totalSteps={progress.totalSteps}
+        stepDetails={progress.steps}
+        estimatedTimeRemaining={progress.estimatedTimeRemaining}
+        processingSpeed={progress.processingSpeed}
+        completedSteps={progress.completedSteps}
+      />
     </div>
   );
 };

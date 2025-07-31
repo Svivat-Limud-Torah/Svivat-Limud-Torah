@@ -2,8 +2,8 @@
 .markdown-preview {
   height: 100%;
   overflow-y: auto;
-  background: #1f2937;
-  color: #e5e7eb;
+  background: var(--theme-editor-bg) !important;
+  color: var(--theme-editor-text) !important;  /* Use theme editor text for hard black/white */
   padding: 16px;
   direction: rtl;
   text-align: right;
@@ -17,68 +17,68 @@
 
 .markdown-content h1 {
   font-size: 2rem;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
   margin: 1.5em 0 0.5em 0;
-  border-bottom: 2px solid #374151;
+  border-bottom: 2px solid var(--theme-border-color);
   padding-bottom: 0.3em;
   font-weight: 600;
 }
 
 .markdown-content h2 {
   font-size: 1.5rem;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
   margin: 1.3em 0 0.5em 0;
-  border-bottom: 1px solid #4b5563;
+  border-bottom: 1px solid var(--theme-border-color);
   padding-bottom: 0.2em;
   font-weight: 600;
 }
 
 .markdown-content h3 {
   font-size: 1.25rem;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
   margin: 1.2em 0 0.5em 0;
   font-weight: 600;
 }
 
 .markdown-content h4 {
   font-size: 1.1rem;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
   margin: 1em 0 0.5em 0;
   font-weight: 600;
 }
 
 .markdown-content h5 {
   font-size: 1rem;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
   margin: 1em 0 0.5em 0;
   font-weight: 600;
 }
 
 .markdown-content h6 {
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: var(--theme-text-secondary) !important;
   margin: 1em 0 0.5em 0;
   font-weight: 600;
 }
 
 .markdown-content p {
   margin: 0.8em 0;
-  color: #d1d5db;
+  color: var(--theme-editor-text) !important;
 }
 
 .markdown-content strong {
-  color: #f9fafb;
+  color: var(--theme-editor-text) !important;
   font-weight: 600;
 }
 
 .markdown-content em {
-  color: #d1d5db;
+  color: var(--theme-editor-text) !important;
   font-style: italic;
 }
 
 .markdown-content code {
-  background: #374151;
-  color: #fbbf24;
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-editor-text) !important;
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-family: 'Courier New', monospace;
@@ -86,13 +86,13 @@
 }
 
 .markdown-content pre {
-  background: #111827;
-  color: #e5e7eb;
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-editor-text) !important;
   padding: 1em;
   border-radius: 6px;
   overflow-x: auto;
   margin: 1em 0;
-  border: 1px solid #374151;
+  border: 1px solid var(--theme-border-color);
 }
 
 .markdown-content pre code {
@@ -108,7 +108,7 @@
 
 .markdown-content li {
   margin: 0.3em 0;
-  color: #d1d5db;
+  color: var(--theme-editor-text) !important;
 }
 
 .markdown-content ul li {
@@ -120,30 +120,30 @@
 }
 
 .markdown-content blockquote {
-  border-right: 4px solid #6b7280;
+  border-right: 4px solid var(--theme-border-color);
   padding: 0.5em 1em;
   margin: 1em 0;
-  background: #374151;
-  color: #d1d5db;
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-editor-text) !important;
   border-radius: 0 4px 4px 0;
   font-style: italic;
 }
 
 .markdown-content a {
-  color: #60a5fa;
+  color: var(--theme-accent-primary) !important;
   text-decoration: none;
-  border-bottom: 1px dotted #60a5fa;
+  border-bottom: 1px dotted var(--theme-accent-primary);
 }
 
 .markdown-content a:hover {
-  color: #93c5fd;
-  border-bottom-color: #93c5fd;
+  color: var(--theme-accent-secondary) !important;
+  border-bottom-color: var(--theme-accent-secondary);
 }
 
 .markdown-content hr {
   border: none;
   height: 1px;
-  background: #4b5563;
+  background: var(--theme-border-color) !important;
   margin: 2em 0;
 }
 
@@ -154,19 +154,19 @@
 }
 
 .markdown-content th, .markdown-content td {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--theme-border-color);
   padding: 0.5em;
   text-align: right;
 }
 
 .markdown-content th {
-  background: #374151;
+  background: var(--theme-bg-secondary) !important;
   font-weight: 600;
-  color: #f3f4f6;
+  color: var(--theme-editor-text) !important;
 }
 
 .markdown-content td {
-  color: #d1d5db;
+  color: var(--theme-editor-text) !important;
 }
 
 .markdown-content img {

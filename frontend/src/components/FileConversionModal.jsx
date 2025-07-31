@@ -322,6 +322,11 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                                     <p>
                                         <strong>קבצים שהומרו בהצלחה:</strong> {conversionResults.convertedFiles}
                                     </p>
+                                    {conversionResults.copiedFiles && conversionResults.copiedFiles > 0 && (
+                                        <p>
+                                            <strong>קבצים שהועתקו (תמונות ואחרים):</strong> {conversionResults.copiedFiles}
+                                        </p>
+                                    )}
                                     {conversionResults.failed && conversionResults.failed.length > 0 && (
                                         <p>
                                             <strong>קבצים שנכשלו:</strong> {conversionResults.failed.length}
@@ -352,6 +357,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                                     </p>
                                     <p>
                                         כעת תוכל להתחיל לעבוד עם הקבצים המומרים בסביבת העבודה החדשה.
+                                        כל התמונות והקבצים האחרים הועתקו כמו שהם כדי לשמור על המבנה המקורי.
                                     </p>
                                     <p>
                                         אתה יכול להגיע לאפשרות המרת קבצים בכל עת דרך ההגדרות.

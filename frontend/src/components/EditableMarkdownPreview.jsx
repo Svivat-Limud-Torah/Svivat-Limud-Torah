@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './EditableMarkdownPreview.css';
 
-const EditableMarkdownPreview = ({ content, onContentChange }) => {
+const EditableMarkdownPreview = ({ content, onContentChange, presentationFontSize }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingContent, setEditingContent] = useState('');
   const [editingPosition, setEditingPosition] = useState({ start: 0, end: 0 });
@@ -273,7 +273,7 @@ const EditableMarkdownPreview = ({ content, onContentChange }) => {
   const { html } = convertMarkdownToHtmlWithMapping(content || '');
 
   return (
-    <div className="editable-markdown-preview">
+    <div className="editable-markdown-preview" style={{ fontSize: presentationFontSize ? `${presentationFontSize}px` : undefined }}>
       {!isEditing ? (
         <div className="preview-content">
           <div className="edit-instructions">

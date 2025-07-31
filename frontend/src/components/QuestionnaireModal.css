@@ -352,43 +352,134 @@
   margin-top: 25px;
   padding-top: 15px;
   border-top: 1px solid var(--vscode-editorWidget-border, #454545);
-  text-align: right; /* Align text to the right for Hebrew */
+  text-align: center; /* Center align for better presentation */
 }
 
 .show-weekly-summary-btn {
   background-color: var(--vscode-button-background, #0e639c);
   color: var(--vscode-button-foreground, #ffffff);
   border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
+  padding: 12px 20px; /* Slightly larger padding for better appearance */
+  border-radius: 6px; /* Slightly more rounded corners */
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem; /* Slightly larger font size */
+  font-weight: 500; /* Medium font weight for better visibility */
   margin-bottom: 15px;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s ease; /* Enhanced transition for smoother effects */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  display: inline-block; /* Ensure proper centering */
 }
 
 .show-weekly-summary-btn:hover {
   background-color: var(--vscode-button-hoverBackground, #1177bb);
+  transform: translateY(-1px); /* Subtle lift effect on hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
 }
 
 .show-weekly-summary-btn:disabled {
   background-color: var(--vscode-button-secondaryBackground, #3a3d41);
   cursor: not-allowed;
+  transform: none; /* Remove transform when disabled */
+  box-shadow: none; /* Remove shadow when disabled */
 }
 
 .weekly-summary-content {
-  padding: 15px;
+  padding: 20px;
   background-color: var(--vscode-editorWidget-background, #2c2c2c);
   border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 6px;
-  margin-top: 10px;
+  border-radius: 8px;
+  margin-top: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .weekly-summary-content h4 {
   margin-top: 0;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   color: var(--vscode-settings-headerForeground, #e7e7e7);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--vscode-input-border, #3c3c3c);
+}
+
+.week-date {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--vscode-descriptionForeground, #a0a0a0);
+  font-weight: normal;
+  margin-top: 5px;
+}
+
+.summary-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--vscode-sideBar-background, #252526);
+  border-radius: 6px;
+  border-left: 4px solid var(--vscode-button-background, #0e639c);
+}
+
+.summary-section:last-child {
+  margin-bottom: 0;
+}
+
+.summary-text {
+  margin-top: 8px;
+  line-height: 1.6;
+  color: var(--vscode-editor-foreground, #cccccc);
+  font-size: 0.95rem;
+}
+
+.weekly-summary-loading {
+  text-align: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--vscode-input-border, #3c3c3c);
+  border-top: 2px solid var(--vscode-button-background, #0e639c);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 10px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.weekly-summary-error {
+  text-align: center;
+  padding: 20px;
+}
+
+.retry-btn {
+  background-color: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ffffff);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground, #4a4d51);
+}
+
+.no-summary-message {
+  text-align: center;
+  padding: 20px;
+}
+
+.help-text {
+  color: var(--vscode-descriptionForeground, #a0a0a0);
+  font-size: 0.9rem;
+  margin-top: 10px;
+  font-style: italic;
 }
 
 .weekly-summary-content p {

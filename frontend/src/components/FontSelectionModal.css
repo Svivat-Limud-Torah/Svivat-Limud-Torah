@@ -1,9 +1,16 @@
-/* FontSelectionModal.css */
+   /* FontSelectionModal.css */
 .font-selection-modal {
   max-width: 800px;
   max-height: 80vh;
-  overflow-y: auto;
   direction: rtl;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 0 20px;
 }
 
 .font-tabs {

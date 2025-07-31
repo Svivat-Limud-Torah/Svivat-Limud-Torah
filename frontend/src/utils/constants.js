@@ -6,6 +6,9 @@ export const API_KEY_STORAGE_KEY = 'gemini_api_key'; // Added for consistency
 export const API_KEY_IS_PAID_STORAGE_KEY = 'gemini_api_key_is_paid'; // Key for paid status
 export const GEMINI_MODEL_NAME = 'gemini-1.5-pro-latest'; // Default model if not selected
 
+// Text Organization Settings
+export const DISABLE_ITALIC_FORMATTING_KEY = 'disable_italic_formatting'; // Setting to disable italic formatting in AI text organization
+
 // AI Models available for selection
 export const AI_MODELS = [
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'הגרסה המתקדמת ביותר של Gemini' },
@@ -111,6 +114,94 @@ export const HEBREW_TEXT = {
   apiKeyNotSetAlert: "מפתח Gemini API אינו מוגדר. אנא הגדר אותו באמצעות כפתור 'מפתח API'.",
   apiKeyNotSetError: "מפתח Gemini API אינו מוגדר.",
 
+  // Quota Limit Messages
+  quotaLimitReachedTitle: "הגעת למגבלת השימוש ב-Gemini API",
+  quotaLimitReachedMessage: "נראה שהגעת למגבלת השימוש היומית או החודשית של Gemini API. אנא נסה שוב מאוחר יותר.",
+  quotaLimitReachedAdvice: "טיפים להתמודדות עם מגבלות השימוש:",
+  quotaLimitTip1: "• המתן מספר דקות ונסה שוב",
+  quotaLimitTip2: "• בדוק את מגבלות ה-API שלך ב-Google AI Studio",
+  quotaLimitTip3: "• שקול לשדרג לתוכנית עם מגבלות גבוהות יותר",
+  quotaLimitTip4: "• השתמש בטקסטים קצרים יותר כדי לחסוך בשימוש",
+  quotaLimitCloseButton: "הבנתי",
+  quotaLimitTryLaterButton: "אנסה מאוחר יותר",
+
+  // Model Overloaded Messages
+  modelOverloadedTitle: "המודל עמוס כרגע",
+  modelOverloadedMessage: "מודל Gemini עמוס כרגע ואינו זמין. אנא המתן מספר דקות ונסה שוב מאוחר יותר.",
+  modelOverloadedAdvice: "זהו מצב זמני - המודל יחזור להיות זמין בקרוב:",
+  modelOverloadedTip1: "• המתן 2-5 דקות ונסה שוב",
+  modelOverloadedTip2: "• נסה להפחית את אורך הטקסט",
+  modelOverloadedTip3: "• במקרה של בעיה מתמשכת, נסה מודל אחר",
+  modelOverloadedCloseButton: "הבנתי",
+  modelOverloadedTryLaterButton: "אנסה מאוחר יותר",
+
+  // Function to check if error is quota related
+  isQuotaLimitError: (error) => {
+    if (!error) return false;
+    
+    const errorMessage = error.message || error.toString() || '';
+    const errorStatus = error.status || 0;
+    
+    // Check for HTTP 429 status (Too Many Requests)
+    if (errorStatus === 429) return true;
+    
+    // Check for common quota-related error messages from Gemini API
+    const quotaKeywords = [
+      'quota exceeded',
+      'rate limit',
+      'too many requests',
+      'resource exhausted',
+      'quota',
+      'limit exceeded',
+      'usage limit',
+      'billing quota',
+      'requests per',
+      'per day',
+      'per minute',
+      'per hour',
+      'RESOURCE_EXHAUSTED',
+      'QUOTA_EXCEEDED',
+      'overloaded',
+      'model overloaded',
+      'service overloaded',
+      'temporarily overloaded',
+      'model is overloaded',
+      'service unavailable',
+      'temporarily unavailable',
+      'server overloaded'
+    ];
+    
+    const lowerMessage = errorMessage.toLowerCase();
+    return quotaKeywords.some(keyword => lowerMessage.includes(keyword));
+  },
+
+  // Function to check if error is specifically about model being overloaded
+  isModelOverloadedError: (error) => {
+    if (!error) return false;
+    
+    const errorMessage = error.message || error.toString() || '';
+    const errorStatus = error.status || 0;
+    
+    // Check for HTTP 503 status (Service Unavailable)
+    if (errorStatus === 503) return true;
+    
+    // Check for model overloaded specific keywords
+    const overloadedKeywords = [
+      'overloaded',
+      'model overloaded',
+      'service overloaded',
+      'temporarily overloaded',
+      'model is overloaded',
+      'server overloaded',
+      'service unavailable',
+      'temporarily unavailable',
+      'model unavailable'
+    ];
+    
+    const lowerMessage = errorMessage.toLowerCase();
+    return overloadedKeywords.some(keyword => lowerMessage.includes(keyword));
+  },
+
   // Pilpulta Feature
   generatePilpultaTitle: "צור פלפולתא (קושיות מהטקסט)",
   generatePilpultaButton: "פלפולתא",
@@ -151,6 +242,7 @@ export const HEBREW_TEXT = {
   toggleHighlightLine: (active) => active ? "כבה הדגשת שורה" : "הדלק הדגשת שורה",
   toggleLineNumbers: (active) => active ? "הסתר מספרי שורות" : "הצג מספרי שורות",
   zenMode: (active) => active ? "צא ממצב Zen" : "מצב Zen",
+  toggleFormattingToolbar: (active) => active ? "הסתר כלי עיצוב" : "הצג כלי עיצוב",
 
   // Workspace
   addFolder: "הוסף תיקייה",
@@ -243,6 +335,19 @@ export const HEBREW_TEXT = {
   organizedTextResult: "טקסט מאורגן",
   summarizedTextResult: "סיכום תמלול",
 
+  // Text Organization Large File Warning
+  largeFileWarning: (lineCount) => `⚠️ הקובץ מכיל ${lineCount} שורות
+
+הקובץ גדול ולכן התהליך עלול לקחת זמן
+  האם להמשיך?`,
+
+  // Text Organization Settings
+  textOrganizationSettings: {
+    title: "הגדרות ארגון טקסט",
+    disableItalicFormatting: "בטל עיצוב נטייה",
+    disableItalicFormattingDescription: "מונע מהבינה המלאכותית להוסיף עיצוב נטייה (*טקסט*) בעת ארגון הטקסט"
+  },
+
   // Questionnaire Feature
   questionnaire: {
     buttonText: "שאלון",
@@ -265,12 +370,24 @@ export const HEBREW_TEXT = {
     weeklySummaryViewTitle: "סיכום שבועי",
     weeklySummaryTitle: "סיכום התקדמות שבועי",
     loadingSummary: "טוען סיכום שבועי...",
+    loadingWeeklySummary: "טוען סיכום שבועי...",
     errorLoadingSummary: "שגיאה בטעינת הסיכום:",
+    errorFetchingWeeklySummary: "שגיאה בטעינת הסיכום השבועי. אנא נסה שוב.",
+    networkError: "בעיית רשת. אנא בדוק את החיבור ונסה שוב.",
     noSummaryAvailable: "אין סיכום שבועי זמין עדיין.",
-    completeDailyQuestionnaires: "אנא המשך למלא את השאלונים היומיים.",
+    noWeeklySummaryFound: "לא נמצא סיכום שבועי עדיין.",
+    completeDailyQuestionnaires: "המשך למלא שאלונים יומיים כדי ליצור סיכום שבועי.",
+    showWeeklySummary: "הצג סיכום שבועי",
+    hideWeeklySummary: "הסתר סיכום שבועי",
+    showWeeklySummaryTooltip: "הצג סיכום שבועי של התקדמותך",
+    hideWeeklySummaryTooltip: "הסתר את הסיכום השבועי",
+    retryButton: "נסה שוב",
     overallStatus: "סטטוס כללי והתקדמות:",
     strengths: "נקודות חוזק:",
+    strengthsLabel: "נקודות חוזק:",
     areasForImprovement: "נקודות לשיפור:",
+    areasForImprovementLabel: "נקודות לשיפור:",
+    summaryContentLabel: "תוכן הסיכום:",
     viewWeeklyAnswers: "הצג תשובות יומיות משבוע זה",
     weekOf: "שבוע של",
     triggerSummaryGeneration: "צור סיכום שבועי (ידני)",
@@ -371,6 +488,7 @@ export const HEBREW_TEXT = {
   // AI Model Selection
   selectAiModelButton: "בחר מודל AI",
   selectAiModelTitle: "בחר מודל בינה מלאכותית",
+  textOrganizationProgress: "התקדמות ארגון טקסט",
   openOrotHatorahLink: "פתח ניתוח טקסט",
 
   // New Button Texts
@@ -406,6 +524,8 @@ export const HEBREW_TEXT = {
     buttonText: "גודל גופן",
     title: "הגדר גודל גופן",
     label: "גודל גופן (פיקסלים):",
+    editorLabel: "גודל גופן עורך (פיקסלים):",
+    presentationLabel: "גודל גופן תצוגה (פיקסלים):",
     invalidSizeError: "גודל גופן לא תקין. אנא הזן מספר חיובי."
   },
 };

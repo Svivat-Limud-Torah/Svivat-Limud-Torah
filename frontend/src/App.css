@@ -2,13 +2,13 @@
 /* If you have a global stylesheet, incorporate these there. */
 :root {
   --app-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Arial Hebrew", Arial, sans-serif;
-  --editor-font-family: "Consolas", "Monaco", "Courier New", monospace;
+  --editor-font-family: Arial, "Arial Hebrew", "Consolas", "Monaco", "Courier New", monospace;
 }
 
 body {
   font-family: var(--app-font-family); /* Use CSS variable for font */
-  background-color: #111827; /* Example very dark background for the page */
-  color: #d1d5db; /* Default light text color */
+  background-color: var(--theme-page-bg, #111827); /* Use theme variable */
+  color: var(--theme-text-primary, #d1d5db); /* Use theme text color */
   margin: 0; /* Reset default margin */
   /* For Firefox scrollbar (basic) - uncomment and adjust colors if needed globally */
   /* scrollbar-color: #4b5563 #1f2937; */
@@ -21,18 +21,18 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1f2937; /* Background of the scrollbar track, should match your darker panel backgrounds */
+  background: var(--theme-scrollbar-track, #1f2937); /* Use theme variable */
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #4b5563; /* Color of the scrollbar thumb */
+  background-color: var(--theme-scrollbar-thumb, #4b5563); /* Use theme variable */
   border-radius: 5px;
-  border: 2px solid #1f2937; /* Creates a "padding" effect around the thumb */
+  border: 2px solid var(--theme-scrollbar-track, #1f2937); /* Use theme variable */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #6b7280; /* Thumb color on hover */
+  background-color: var(--theme-scrollbar-thumb-hover, #6b7280); /* Use theme variable */
 }
 
 /* === Original frontend/src/App.css with modifications === */
@@ -90,16 +90,16 @@ body {
 
 @keyframes pulse {
   0% {
-    background-color: #1a1d21;
-    color: #f0f0f0;
+    background-color: var(--theme-tab-bg, #1a1d21);
+    color: var(--theme-text-primary, #f0f0f0);
   }
   50% {
-    background-color: #38a169;
-    color: #ffffff;
+    background-color: var(--theme-success-color, #38a169);
+    color: var(--theme-button-text-color, #ffffff);
   }
   100% {
-    background-color: #1a1d21;
-    color: #f0f0f0;
+    background-color: var(--theme-tab-bg, #1a1d21);
+    color: var(--theme-text-primary, #f0f0f0);
   }
 }
 
@@ -155,7 +155,7 @@ body {
   font-size: 0.9rem; /* Adjusted size */
   width: 18px;
   text-align: center;
-  color: #81c7f5; /* Slightly adjusted icon blue */
+  color: #d0d7de; /* Light gray icon color */
 }
 .tree-folder > .tree-item-icon {
   color: #facc15; /* Brighter, more modern yellow for folders */
@@ -167,11 +167,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
+  color: var(--theme-sidebar-text) !important; /* Use theme sidebar text color */
 }
 
 .tree-folder > .tree-item-name {
   font-weight: 500; /* Slightly bolder for folder names for emphasis */
-  color: #e5e7eb; /* Consistent light text color */
+  color: var(--theme-sidebar-text) !important; /* Use theme sidebar text color */
 }
 
 .tree-item-search-button {
@@ -202,9 +203,9 @@ body {
 
 input[type="text"] {
   border-radius: 5px; /* Slightly more rounded */
-  background-color: #1f2937; /* Darker background to blend better with very dark themes */
+  background-color: var(--theme-input-bg, #1f2937); /* Use theme variable */
   color: #e5e7eb;
-  border: 1px solid #374151; /* Darker, more subtle border */
+  border: 1px solid var(--theme-border-color, #374151); /* Use theme variable */
   /* To remove the border line completely, uncomment the line below and comment out the line above */
   /* border: none; */
   padding: 9px 14px; /* Slightly more padding for a modern feel */
@@ -213,7 +214,7 @@ input[type="text"] {
 }
 input[type="text"]:focus {
   outline: none;
-  border-color: #3b82f6; /* A common modern blue for focus */
+  border-color: #484f58; /* Dark gray border for focus */
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); /* Softer focus shadow */
 }
 
@@ -238,6 +239,15 @@ button, input, textarea, select, .sidebar, .main-content-area, .modal-content {
 /* Apply editor font to code-related elements */
 .cm-editor, .cm-content, .cm-gutters, code, pre, .code, .editor, .font-preview-item {
   font-family: var(--editor-font-family);
+}
+
+/* Apply theme editor background to CodeMirror editor */
+.cm-editor {
+  background-color: var(--theme-editor-bg, #1F2937) !important;
+}
+
+.cm-content {
+  background-color: transparent !important;
 }
 
 /* Repetitions notification dot */

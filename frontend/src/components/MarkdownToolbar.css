@@ -2,7 +2,7 @@
 .markdown-toolbar {
   padding: 8px 12px;
   border-bottom: 1px solid var(--theme-border-color);
-  background: var(--theme-bg-secondary);
+  background: var(--theme-toolbar-bg); /* Same as main toolbar background */
   display: flex;
   gap: 6px;
   align-items: center;
@@ -19,9 +19,9 @@
 }
 
 .markdown-toolbar-button {
-  background: var(--theme-bg-primary);
-  color: var(--theme-text-primary);
-  border: 1px solid var(--theme-border-color);
+  background: var(--theme-button-bg) !important;     /* Use theme button background */
+  color: var(--theme-button-text-color) !important;  /* Use theme button text color */
+  border: 1px solid var(--theme-button-bg);
   padding: 6px 12px;
   height: auto;
   min-height: 32px;
@@ -29,7 +29,7 @@
   border-radius: 4px;
   transition: all 0.2s ease;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;  /* Make markdown toolbar buttons bold */
   margin-left: 2px;
   white-space: nowrap;
   min-width: auto;
@@ -39,13 +39,13 @@
 }
 
 .markdown-toolbar-button:hover:not(:disabled) {
-  background: var(--theme-border-color);
-  border-color: var(--theme-accent-secondary);
-  color: var(--theme-text-primary);
+  background: var(--theme-button-hover-bg) !important; /* Use theme hover color */
+  border-color: var(--theme-button-hover-bg);
+  color: var(--theme-button-text-color) !important;
 }
 
 .markdown-toolbar-button:active:not(:disabled) {
-  background: var(--theme-bg-secondary);
+  background: var(--theme-button-hover-bg) !important;
 }
 
 .markdown-toolbar-button:disabled {
@@ -79,26 +79,40 @@
   margin: 0 8px;
 }
 
+.markdown-toolbar-button.active {
+  background: var(--theme-accent-primary) !important;
+  border-color: var(--theme-accent-primary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
+}
+
+.markdown-toolbar-button.active:hover:not(:disabled) {
+  background: var(--theme-accent-secondary) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
+}
+
 .markdown-toolbar-button.preview-button.active {
-  background: var(--theme-accent-primary);
-  border-color: var(--theme-accent-primary);
-  color: var(--theme-button-text-color);
+  background: var(--theme-accent-primary) !important;
+  border-color: var(--theme-accent-primary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
 }
 
 .markdown-toolbar-button.preview-button.active:hover:not(:disabled) {
-  background: var(--theme-accent-secondary);
-  border-color: var(--theme-accent-secondary);
+  background: var(--theme-accent-secondary) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
 }
 
 .markdown-toolbar-button.organize-text-button {
-  background: var(--theme-accent-primary);
-  border-color: var(--theme-accent-primary);
-  color: var(--theme-button-text-color);
+  background: var(--theme-accent-primary) !important;
+  border-color: var(--theme-accent-primary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
 }
 
 .markdown-toolbar-button.organize-text-button:hover:not(:disabled) {
-  background: var(--theme-accent-secondary);
-  border-color: var(--theme-accent-secondary);
+  background: var(--theme-accent-secondary) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
 }
 
 .markdown-toolbar-button.organize-text-button:disabled {
@@ -108,6 +122,24 @@
   color: var(--theme-text-secondary);
 }
 
+/* אנימציה לכפתור תצוגה כשיש שינויים לא שמורים */
+.markdown-toolbar-button.preview-button.blinking {
+  animation: previewButtonBlink 1.5s infinite;
+}
+@keyframes previewButtonBlink {
+  0%, 50% {
+    background: var(--theme-accent-primary);
+    border-color: var(--theme-accent-primary);
+    color: var(--theme-button-text-color);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+  }
+  100% {
+    background: var(--theme-bg-primary);
+    border-color: var(--theme-border-color);
+    color: var(--theme-text-primary);
+    box-shadow: none;
+  }
+}
 /* אנימציה לכפתור ארגן טקסט */
 .markdown-toolbar-button.organize-text-button.processing {
   animation: organizeTextPulse 1.5s infinite;
