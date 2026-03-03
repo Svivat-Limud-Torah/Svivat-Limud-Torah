@@ -710,6 +710,19 @@ ${historyCtx}`;
     }
     frequent[baseFolderPath] = freqList;
     lsSet(LS.frequentFiles, frequent);
+
+    // Also update web_file_usage_stats openCount (time is tracked by App.jsx)
+    try {
+      const stats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
+      const key = `${baseFolderPath}/${relativePath}`;
+      if (!stats[key]) stats[key] = { path: key, basePath: baseFolderPath, relativePath, fileName, openCount: 0, totalSeconds: 0, lastOpened: 0 };
+      stats[key].openCount = (stats[key].openCount || 0) + 1;
+      stats[key].lastOpened = Date.now();
+      stats[key].fileName = fileName;
+      stats[key].basePath = baseFolderPath;
+      stats[key].relativePath = relativePath;
+      localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
+    } catch (e) {}
   },
 
   // ─── Settings ──────────────────────────────────────────────────────────────

@@ -613,9 +613,10 @@ function App() {
           // Store file time locally
           const stats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
           const key = `${prev.basePath}/${prev.relativePath}`;
-          if (!stats[key]) stats[key] = { path: key, openCount: 0, totalSeconds: 0, lastOpened: 0 };
+          if (!stats[key]) stats[key] = { path: key, basePath: prev.basePath, relativePath: prev.relativePath, fileName: prev.name || prev.relativePath.split('/').pop(), openCount: 0, totalSeconds: 0, lastOpened: 0 };
           stats[key].totalSeconds = (stats[key].totalSeconds || 0) + seconds;
           stats[key].lastOpened = Date.now();
+          if (!stats[key].basePath) { stats[key].basePath = prev.basePath; stats[key].relativePath = prev.relativePath; stats[key].fileName = prev.name || prev.relativePath.split('/').pop(); }
           localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
         } else {
           fetch(`${API_BASE_URL}/file-time`, {
@@ -642,9 +643,10 @@ function App() {
           if (IS_WEB_MODE) {
             const stats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
             const key = `${prev.basePath}/${prev.relativePath}`;
-            if (!stats[key]) stats[key] = { path: key, openCount: 0, totalSeconds: 0, lastOpened: 0 };
+            if (!stats[key]) stats[key] = { path: key, basePath: prev.basePath, relativePath: prev.relativePath, fileName: prev.name || prev.relativePath.split('/').pop(), openCount: 0, totalSeconds: 0, lastOpened: 0 };
             stats[key].totalSeconds = (stats[key].totalSeconds || 0) + seconds;
             stats[key].lastOpened = Date.now();
+            if (!stats[key].basePath) { stats[key].basePath = prev.basePath; stats[key].relativePath = prev.relativePath; stats[key].fileName = prev.name || prev.relativePath.split('/').pop(); }
             localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
           } else {
             navigator.sendBeacon(`${API_BASE_URL}/file-time`,

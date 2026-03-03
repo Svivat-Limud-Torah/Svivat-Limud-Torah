@@ -14,10 +14,30 @@ function buildLocalSnapshot() {
     const summaries = JSON.parse(localStorage.getItem('web_weekly_summaries') || '[]');
     const fileStats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
 
-    const fileEntries = Object.values(fileStats);
-    const totalOpens = fileEntries.reduce((s, f) => s + (f.openCount || 0), 0);
-    const totalTime = fileEntries.reduce((s, f) => s + (f.totalSeconds || 0), 0);
-    const lastTs = fileEntries.reduce((m, f) => Math.max(m, f.lastOpened || 0), 0);
+    // Convert raw stats into the shape UserSnapshotView expects
+    const fileEntries = Object.values(fileStats).map(f => {
+        const openCount = f.openCount || 0;
+        const totalSec = f.totalSeconds || 0;
+        // Extract fileName from stored data or from the key path
+        const fName = f.fileName || (f.relativePath ? f.relativePath.split('/').pop() : (f.path ? f.path.split('/').pop() : ''));
+        return {
+            file_name: fName,
+            path: f.relativePath || f.path || '',
+            base_folder_path: f.basePath || '',
+            rootName: f.basePath || '',
+            access_count: openCount,
+            time_spent_seconds: totalSec,
+            avg_seconds_per_session: openCount > 0 ? Math.round(totalSec / openCount) : 0,
+            last_opened_or_edited: f.lastOpened ? Math.round(f.lastOpened / 1000) : null,
+            // keep raw for aggregation
+            _openCount: openCount,
+            _totalSeconds: totalSec,
+        };
+    });
+
+    const totalOpens = fileEntries.reduce((s, f) => s + f._openCount, 0);
+    const totalTime = fileEntries.reduce((s, f) => s + f._totalSeconds, 0);
+    const lastTs = fileEntries.reduce((m, f) => Math.max(m, f.last_opened_or_edited || 0), 0);
 
     // Questionnaire average rating
     const ratings = questionnaires.map(q => q.overallRating).filter(r => typeof r === 'number');
@@ -29,7 +49,7 @@ function buildLocalSnapshot() {
         activityByHour: [],
         dailyActivity: [],
         questionnaireInsights: { averageRating: avgRating, totalEntries: questionnaires.length, firstEntryDate: questionnaires[0]?.date || null, lastEntryDate: questionnaires[questionnaires.length - 1]?.date || null },
-        topFiles: fileEntries.sort((a, b) => (b.totalSeconds || 0) - (a.totalSeconds || 0)).slice(0, 20),
+        topFiles: fileEntries.sort((a, b) => (b.time_spent_seconds || 0) - (a.time_spent_seconds || 0)).slice(0, 20),
         weeklySummary: summaries[summaries.length - 1] || null,
     };
 }
