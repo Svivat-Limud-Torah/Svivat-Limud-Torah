@@ -1,7 +1,7 @@
 // frontend/src/components/FileConversionModal.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import './FileConversionModal.css';
-import { HEBREW_TEXT, API_BASE_URL } from '../utils/constants';
+import { HEBREW_TEXT, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 
 const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [currentStep, setCurrentStep] = useState('welcome'); // 'welcome', 'converting', 'results'

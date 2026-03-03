@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getApiKeyDetails } from '../components/ApiKeyModal';
-import { DISABLE_ITALIC_FORMATTING_KEY, API_BASE_URL } from '../utils/constants';
+import { DISABLE_ITALIC_FORMATTING_KEY, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import { callAiGenerate } from '../utils/aiProxy';
 
 /**
  * Custom hook for text organization with real-time progress tracking
@@ -82,6 +83,38 @@ export const useTextOrganizationWithProgress = () => {
 
       // Get user settings
       const disableItalicFormatting = localStorage.getItem(DISABLE_ITALIC_FORMATTING_KEY) === 'true';
+
+      if (IS_WEB_MODE) {
+        // Direct Gemini call in web mode (no backend SSE)
+        const lines = text.split('\n');
+        const totalChunks = Math.ceil(lines.length / 80) || 1;
+        setProgress(prev => ({ ...prev, status: 'processing', totalSteps: totalChunks, currentStep: 1 }));
+
+        let organizedParts = [];
+        for (let i = 0; i < totalChunks; i++) {
+          if (abortControllerRef.current.signal.aborted) throw new Error('בוטל.');
+          const chunk = lines.slice(i * 80, (i + 1) * 80).join('\n');
+          const italicNote = disableItalicFormatting ? '\nחשוב: אל תשתמש בעיצוב italic (*כזה*) בשום מקום.' : '';
+          const prompt = customPrompt || `ארגן את הטקסט הבא בצורה נקייה ומסודרת ב-Markdown. שמור על כל התוכן המקורי ללא שינוי. הוסף כותרות, רשימות ועיצוב מתאים.${italicNote}\n\nטקסט:\n${chunk}`;
+          const requestBody = { contents: [{ parts: [{ text: prompt }] }] };
+          const response = await callAiGenerate(selectedAiModel, requestBody, 120000);
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error?.message || 'שגיאה בארגון הטקסט');
+          }
+          const data = await response.json();
+          const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          organizedParts.push(aiText);
+          setProgress(prev => ({ ...prev, completedSteps: i + 1, currentStep: Math.min(i + 2, totalChunks) }));
+        }
+
+        const organizedText = organizedParts.join('\n\n');
+        setProgress(prev => ({ ...prev, status: 'completed', completedSteps: totalChunks }));
+        setResult({ organizedText, processInfo: { model: selectedAiModel, chunks: totalChunks } });
+        setIsProcessing(false);
+        cleanup();
+        return;
+      }
 
       // Start the organization process (apiKey is in server session)
       const response = await fetch(`${API_BASE_URL}/text-organization/organize-with-progress`, {
@@ -184,12 +217,16 @@ export const useTextOrganizationWithProgress = () => {
   }, [calculateProcessingSpeed, cleanup]);
 
   const cancelProcess = useCallback(async () => {
-    if (!processId) return;
+    if (!processId && !IS_WEB_MODE) return;
 
     try {
-      await fetch(`${API_BASE_URL}/text-organization/cancel/${processId}`, {
-        method: 'POST'
-      });
+      if (IS_WEB_MODE) {
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+      } else {
+        await fetch(`${API_BASE_URL}/text-organization/cancel/${processId}`, {
+          method: 'POST'
+        });
+      }
       
       setIsProcessing(false);
       setProgress(prev => ({ ...prev, status: 'cancelled' }));

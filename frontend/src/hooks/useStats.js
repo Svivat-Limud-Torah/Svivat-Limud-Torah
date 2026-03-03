@@ -1,6 +1,7 @@
 // frontend/src/hooks/useStats.js
 import { useState, useCallback, useEffect } from 'react';
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import WebApiService from '../services/WebApiService';
 
 export default function useStats({ workspaceFolders }) {
   const [recentFiles, setRecentFiles] = useState([]);
@@ -17,18 +18,25 @@ export default function useStats({ workspaceFolders }) {
     try {
       for (const folder of workspaceFolders) {
         if (folder.path && !folder.isLoading && !folder.error) {
-          const results = await Promise.allSettled([
-            fetch(`${API_BASE_URL}/files/recent?baseFolderPath=${encodeURIComponent(folder.path)}&limit=10`),
-            fetch(`${API_BASE_URL}/files/frequent?baseFolderPath=${encodeURIComponent(folder.path)}&limit=10`)
-          ]);
-          const [recentResult, frequentResult] = results;
-          if (recentResult.status === 'fulfilled' && recentResult.value.ok) {
-            const recentData = await recentResult.value.json();
-            combinedRecent.push(...recentData.map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
-          }
-          if (frequentResult.status === 'fulfilled' && frequentResult.value.ok) {
-            const frequentData = await frequentResult.value.json();
-            combinedFrequent.push(...frequentData.map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
+          if (IS_WEB_MODE) {
+            const recentRes = await WebApiService.getRecentFiles(folder.path, 10);
+            combinedRecent.push(...(recentRes.data || []).map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
+            const freqRes = await WebApiService.getFrequentFiles(folder.path, 10);
+            combinedFrequent.push(...(freqRes.data || []).map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
+          } else {
+            const results = await Promise.allSettled([
+              fetch(`${API_BASE_URL}/files/recent?baseFolderPath=${encodeURIComponent(folder.path)}&limit=10`),
+              fetch(`${API_BASE_URL}/files/frequent?baseFolderPath=${encodeURIComponent(folder.path)}&limit=10`)
+            ]);
+            const [recentResult, frequentResult] = results;
+            if (recentResult.status === 'fulfilled' && recentResult.value.ok) {
+              const recentData = await recentResult.value.json();
+              combinedRecent.push(...recentData.map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
+            }
+            if (frequentResult.status === 'fulfilled' && frequentResult.value.ok) {
+              const frequentData = await frequentResult.value.json();
+              combinedFrequent.push(...frequentData.map(f => ({ ...f, basePath: folder.path, rootName: folder.name })));
+            }
           }
         }
       }

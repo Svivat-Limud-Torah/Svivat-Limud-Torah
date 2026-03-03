@@ -1,7 +1,8 @@
 // frontend/src/components/ImportExportModal.jsx
 import React, { useState, useRef } from 'react';
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 import LocalFileSystemService from '../services/LocalFileSystemService';
+import WebApiService from '../services/WebApiService';
 
 const FRONTEND_KEYS = [
   'torah-ide-bookmarks',
@@ -74,9 +75,14 @@ export default function ImportExportModal({ isOpen, onClose, workspaceFolders = 
     setIsProcessing(true);
     setStatus(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/user/export-data`);
-      if (!res.ok) throw new Error('שגיאה בייצוא מהשרת');
-      const backendData = await res.json();
+      let backendData;
+      if (IS_WEB_MODE) {
+        backendData = await WebApiService.exportUserData();
+      } else {
+        const res = await fetch(`${API_BASE_URL}/user/export-data`);
+        if (!res.ok) throw new Error('שגיאה בייצוא מהשרת');
+        backendData = await res.json();
+      }
       const frontendData = collectLocalStorageData();
 
       const exportBundle = {
@@ -130,14 +136,18 @@ export default function ImportExportModal({ isOpen, onClose, workspaceFolders = 
       }
 
       // Import backend
-      const res = await fetch(`${API_BASE_URL}/user/import-data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendData),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.error || 'שגיאה בייבוא לשרת');
+      if (IS_WEB_MODE) {
+        await WebApiService.importUserData(backendData);
+      } else {
+        const res = await fetch(`${API_BASE_URL}/user/import-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(backendData),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.error || 'שגיאה בייבוא לשרת');
+        }
       }
 
       // Import frontend

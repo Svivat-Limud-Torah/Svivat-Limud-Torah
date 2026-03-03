@@ -1,6 +1,7 @@
 // frontend/src/hooks/useRepetitions.js
 import { useState, useCallback } from 'react';
-import { API_BASE_URL, HEBREW_TEXT } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE, HEBREW_TEXT } from '../utils/constants';
+import WebApiService from '../services/WebApiService';
 
 const useRepetitions = (globalSetLoadingMessage = () => {}) => {
   const [repetitions, setRepetitions] = useState([]);
@@ -12,12 +13,18 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     globalSetLoadingMessage(HEBREW_TEXT.repetitions.loadingRepetitions);
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorFetchingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorFetchingDefault);
+      let data;
+      if (IS_WEB_MODE) {
+        const res = await WebApiService.getAllRepetitions();
+        data = res.data || [];
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorFetchingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorFetchingDefault);
+        }
+        data = await response.json();
       }
-      const data = await response.json();
       setRepetitions(data);
     } catch (err) {
       console.error("Failed to fetch repetitions:", err);
@@ -33,16 +40,22 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     globalSetLoadingMessage(HEBREW_TEXT.repetitions.addingRepetition);
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(repetitionData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorAddingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorAddingDefault);
+      let newRepetition;
+      if (IS_WEB_MODE) {
+        const res = await WebApiService.addRepetition(repetitionData);
+        newRepetition = res.data;
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(repetitionData),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorAddingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorAddingDefault);
+        }
+        newRepetition = await response.json();
       }
-      const newRepetition = await response.json();
       setRepetitions(prev => [...prev, newRepetition].sort((a,b) => new Date(a.next_reminder_date || 0) - new Date(b.next_reminder_date || 0) || new Date(a.created_at) - new Date(b.created_at)));
       return newRepetition; // Return the newly added repetition
     } catch (err) {
@@ -60,12 +73,16 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     globalSetLoadingMessage(HEBREW_TEXT.repetitions.deletingRepetition);
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorDeletingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorDeletingDefault);
+      if (IS_WEB_MODE) {
+        await WebApiService.deleteRepetition(id);
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorDeletingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorDeletingDefault);
+        }
       }
       setRepetitions(prev => prev.filter(r => r.id !== id));
     } catch (err) {
@@ -85,16 +102,22 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     // No global loading message for quick toggle
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions/${id}/mute`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_muted }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorMutingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorMutingDefault);
+      let updatedRepetition;
+      if (IS_WEB_MODE) {
+        const res = await WebApiService.updateRepetitionMuteStatus(id, is_muted);
+        updatedRepetition = res.data;
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions/${id}/mute`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_muted }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorMutingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorMutingDefault);
+        }
+        updatedRepetition = await response.json();
       }
-      const updatedRepetition = await response.json();
       setRepetitions(prev => prev.map(r => r.id === id ? updatedRepetition : r)
         .sort((a,b) => new Date(a.next_reminder_date || 0) - new Date(b.next_reminder_date || 0) || new Date(a.created_at) - new Date(b.created_at)));
     } catch (err) {
@@ -110,14 +133,20 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     globalSetLoadingMessage(HEBREW_TEXT.repetitions.completingRepetition);
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions/${id}/complete`, {
-        method: 'PUT',
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorCompletingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorCompletingDefault);
+      let updatedRepetition;
+      if (IS_WEB_MODE) {
+        const res = await WebApiService.markRepetitionCompleted(id);
+        updatedRepetition = res.data;
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions/${id}/complete`, {
+          method: 'PUT',
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorCompletingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorCompletingDefault);
+        }
+        updatedRepetition = await response.json();
       }
-      const updatedRepetition = await response.json();
       setRepetitions(prev => prev.map(r => r.id === id ? updatedRepetition : r)
         .sort((a,b) => new Date(a.next_reminder_date || 0) - new Date(b.next_reminder_date || 0) || new Date(a.created_at) - new Date(b.created_at)));
     } catch (err) {
@@ -135,16 +164,22 @@ const useRepetitions = (globalSetLoadingMessage = () => {}) => {
     setRepetitionError(null);
     globalSetLoadingMessage(HEBREW_TEXT.repetitions.updatingRepetition);
     try {
-      const response = await fetch(`${API_BASE_URL}/repetitions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(repetitionData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorUpdatingDefault }));
-        throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorUpdatingDefault);
+      let updatedRepetition;
+      if (IS_WEB_MODE) {
+        const res = await WebApiService.updateRepetition(id, repetitionData);
+        updatedRepetition = res.data;
+      } else {
+        const response = await fetch(`${API_BASE_URL}/repetitions/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(repetitionData),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: HEBREW_TEXT.repetitions.errorUpdatingDefault }));
+          throw new Error(errorData.error || errorData.message || HEBREW_TEXT.repetitions.errorUpdatingDefault);
+        }
+        updatedRepetition = await response.json();
       }
-      const updatedRepetition = await response.json();
       setRepetitions(prev => prev.map(r => r.id === id ? updatedRepetition : r)
         .sort((a,b) => new Date(a.next_reminder_date || 0) - new Date(b.next_reminder_date || 0) || new Date(a.created_at) - new Date(b.created_at)));
       return updatedRepetition;

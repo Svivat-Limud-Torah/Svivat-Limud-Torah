@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import NotificationSettings from './NotificationSettings';
 import DesignSettings from './DesignSettings';
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import WebApiService from '../services/WebApiService';
 import './SettingsModal.css';
 
 const FONT_OPTIONS = [
@@ -251,7 +252,11 @@ const SettingsModal = ({
                   onClick={async () => {
                     if (!confirmDeleteAll) { setConfirmDeleteAll(true); setDeleteAllStatus(null); return; }
                     try {
-                      await fetch(`${API_BASE_URL}/user/reset-all-data`, { method: 'DELETE' });
+                      if (IS_WEB_MODE) {
+                        await WebApiService.resetAllUserData();
+                      } else {
+                        await fetch(`${API_BASE_URL}/user/reset-all-data`, { method: 'DELETE' });
+                      }
                       setDeleteAllStatus({ type: 'success', msg: 'כל הנתונים נמחקו. הדף ייטען מחדש...' });
                       setConfirmDeleteAll(false);
                       setTimeout(() => { if (onDeleteAllData) onDeleteAllData(); else window.location.reload(); }, 2000);

@@ -1,8 +1,9 @@
 // frontend/src/hooks/useTabs.js
 import { useState, useCallback, useEffect, useRef } from 'react';
 import path from '../utils/pathUtils';
-import { SUPPORTED_IMAGE_EXTENSIONS_CLIENT, SUPPORTED_PDF_EXTENSIONS_CLIENT, SUPPORTED_AUDIO_EXTENSIONS_CLIENT, SUPPORTED_VIDEO_EXTENSIONS_CLIENT, API_BASE_URL } from '../utils/constants';
+import { SUPPORTED_IMAGE_EXTENSIONS_CLIENT, SUPPORTED_PDF_EXTENSIONS_CLIENT, SUPPORTED_AUDIO_EXTENSIONS_CLIENT, SUPPORTED_VIDEO_EXTENSIONS_CLIENT, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 import LocalFileSystemService from '../services/LocalFileSystemService';
+import WebApiService from '../services/WebApiService';
 
 export const generateTabId = (basePath, relativePath) => {
   if (basePath === '__new_unsaved__') {
@@ -297,8 +298,12 @@ export default function useTabs({
       setOpenTabs(prevTabs => prevTabs.map(t => t.id === tabId ? { ...t, content: result.content, isDirty: false, type: 'file', isNewUnsaved: false, scrollPosition: t.scrollPosition || 0 } : t));
       setActiveTabPath(tabId);
       if (lineNum !== null) setScrollToLine(lineNum);
-      // Record file usage in backend (fire-and-forget)
-      fetch(`${API_BASE_URL}/record-file-use`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folderName: basePath, relativePath, fileName: tabName }) }).catch(() => {});
+      // Record file usage (fire-and-forget)
+      if (IS_WEB_MODE) {
+        WebApiService.trackFileAccess(basePath, relativePath, tabName);
+      } else {
+        fetch(`${API_BASE_URL}/record-file-use`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folderName: basePath, relativePath, fileName: tabName }) }).catch(() => {});
+      }
       fetchStatsFiles();
     } catch (error) {
       console.error('שגיאה בטעינת תוכן קובץ:', error);

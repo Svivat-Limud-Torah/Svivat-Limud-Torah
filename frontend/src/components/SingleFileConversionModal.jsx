@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import './SettingsModal.css'; // Reuse existing modal styles
 import LocalFileSystemService from '../services/LocalFileSystemService';
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 
 const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSuccess, basePath, relativePath }) => {
   const [selectedFormat, setSelectedFormat] = useState('md');
@@ -52,6 +52,10 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
 
       // Get file extension
       const fileExtension = fileName.split('.').pop().toLowerCase();
+
+      if (IS_WEB_MODE) {
+        throw new Error('המרת קבצים אינה זמינה בגרסת האינטרנט. פיצ\'ר זה דורש את גרסת שולחן העבודה.');
+      }
 
       // Send file content and metadata to backend for conversion
       const response = await fetch(`${API_BASE_URL}/file-conversion/convert-file-content`, {
