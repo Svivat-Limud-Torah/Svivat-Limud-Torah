@@ -1,7 +1,7 @@
-// frontend/src/components/FileConversionModal.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import './FileConversionModal.css';
 import { HEBREW_TEXT, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import { convertFileContent } from '../services/FileConversionWebService';
 
 const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [currentStep, setCurrentStep] = useState('welcome'); // 'welcome', 'converting', 'results'
@@ -12,7 +12,9 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [error, setError] = useState('');
     const [folderAdded, setFolderAdded] = useState(false);
     const [isAddingFolder, setIsAddingFolder] = useState(false);
+    const [webConvertedFiles, setWebConvertedFiles] = useState([]);
     const fileInputRef = useRef(null);
+    const webFilesRef = useRef([]);
 
     // Reset state when modal opens/closes
     useEffect(() => {
@@ -25,6 +27,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
             setError('');
             setFolderAdded(false);
             setIsAddingFolder(false);
+            setWebConvertedFiles([]);
+            webFilesRef.current = [];
         }
     }, [isOpen]);
 
@@ -37,21 +41,24 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const handleFolderChange = (event) => {
         const files = event.target.files;
         if (files.length > 0) {
-            // Get the folder path from the first file
             const firstFile = files[0];
-            // For webkitRelativePath, we need to reconstruct the folder path
             const relativePath = firstFile.webkitRelativePath;
             const folderName = relativePath.split('/')[0];
-            
-            // Try to get the actual path if available (only works in some browsers)
-            if (firstFile.path) {
-                const fullPath = firstFile.path.replace('/' + firstFile.name, '').replace('\\' + firstFile.name, '');
-                setSelectedFolder(fullPath);
+
+            if (IS_WEB_MODE) {
+                // In web mode, store the File objects for client-side conversion
+                webFilesRef.current = Array.from(files);
+                setSelectedFolder(folderName);
             } else {
-                // Fallback: ask user to manually enter the full path
-                const userPath = prompt(`נא הכנס את הנתיב המלא לתיקייה "${folderName}":`);
-                if (userPath) {
-                    setSelectedFolder(userPath.trim());
+                // Try to get the actual path if available (only works in Electron)
+                if (firstFile.path) {
+                    const fullPath = firstFile.path.replace('/' + firstFile.name, '').replace('\\' + firstFile.name, '');
+                    setSelectedFolder(fullPath);
+                } else {
+                    const userPath = prompt(`נא הכנס את הנתיב המלא לתיקייה "${folderName}":`);
+                    if (userPath) {
+                        setSelectedFolder(userPath.trim());
+                    }
                 }
             }
         }
@@ -78,6 +85,46 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
         setConversionResults(null);
 
         try {
+            if (IS_WEB_MODE) {
+                // Client-side conversion
+                const CONVERTIBLE = new Set(['docx', 'pdf', 'html', 'htm', 'rtf', 'txt']);
+                const files = webFilesRef.current;
+                let converted = 0, failed = [], copiedCount = 0;
+                const convertedFiles = [];
+
+                for (const file of files) {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (CONVERTIBLE.has(ext)) {
+                        try {
+                            const arrayBuffer = await file.arrayBuffer();
+                            const result = await convertFileContent(file.name, arrayBuffer, ext, 'md');
+                            const newName = file.name.replace(/\.[^/.]+$/, '.md');
+                            convertedFiles.push({ name: file.webkitRelativePath?.replace(/[^/]+\//, '') || newName, content: result.convertedContent });
+                            converted++;
+                        } catch (err) {
+                            failed.push({ path: file.webkitRelativePath || file.name, error: err.message });
+                        }
+                    } else if (ext === 'md') {
+                        // Already MD — include as-is
+                        const text = await file.text();
+                        convertedFiles.push({ name: file.webkitRelativePath?.replace(/[^/]+\//, '') || file.name, content: text });
+                        copiedCount++;
+                    }
+                }
+
+                setWebConvertedFiles(convertedFiles);
+                setIsConverting(false);
+                setConversionProgress({ type: 'complete' });
+                setConversionResults({
+                    totalFiles: files.length,
+                    convertedFiles: converted,
+                    copiedFiles: copiedCount,
+                    failed,
+                    targetDirectory: selectedFolder + ' (מומר)',
+                });
+                setCurrentStep('results');
+                localStorage.setItem('hasCompletedFileConversion', 'true');
+            } else {
             const response = await fetch(`${API_BASE_URL}/file-conversion/convert-directory`, {
                 method: 'POST',
                 headers: {
@@ -104,6 +151,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
 
             localStorage.setItem('hasCompletedFileConversion', 'true');
 
+            }
         } catch (error) {
             console.error('Conversion error:', error);
             setError(error.message || 'שגיאה לא צפויה בהמרת הקבצים');
@@ -128,6 +176,20 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
         setError('');
         setConversionProgress(null);
         setConversionResults(null);
+    };
+
+    const handleDownloadAll = () => {
+        for (const file of webConvertedFiles) {
+            const blob = new Blob([file.content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name.split('/').pop();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     };
 
     if (!isOpen) return null;
@@ -178,7 +240,10 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                             </div>
 
                             <div className="fcm-safe-note">
-                                🔒 הקבצים המקוריים <strong>לא יימחקו</strong> — תיווצר תיקייה חדשה עם הגרסאות המומרות.
+                                {IS_WEB_MODE
+                                    ? <>🔒 הקבצים המקוריים <strong>לא ישתנו</strong> — הקבצים המומרים יורדו למחשב שלך.</>
+                                    : <>🔒 הקבצים המקוריים <strong>לא יימחקו</strong> — תיווצר תיקייה חדשה עם הגרסאות המומרות.</>
+                                }
                             </div>
 
                             {/* Folder selection */}
@@ -188,10 +253,11 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                                     <input
                                         type="text"
                                         value={selectedFolder}
-                                        onChange={(e) => setSelectedFolder(e.target.value)}
-                                        placeholder="C:\Users\שם\Documents\סיכומים"
+                                        onChange={(e) => !IS_WEB_MODE && setSelectedFolder(e.target.value)}
+                                        placeholder={IS_WEB_MODE ? "לחץ \'עיון\' לבחירת תיקייה" : "C:\\Users\\שם\\Documents\\סיכומים"}
                                         className="fcm-path-input"
                                         disabled={isConverting}
+                                        readOnly={IS_WEB_MODE}
                                         dir="ltr"
                                     />
                                     <button
@@ -285,7 +351,18 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                             )}
 
                             <div className="fcm-actions" style={{ flexDirection: 'column', gap: 10 }}>
-                                {!folderAdded ? (
+                                {IS_WEB_MODE ? (
+                                    <>
+                                        <button
+                                            onClick={handleDownloadAll}
+                                            className="fcm-btn-primary"
+                                            disabled={webConvertedFiles.length === 0}
+                                        >
+                                            📥 הורד קבצים מומרים ({webConvertedFiles.length})
+                                        </button>
+                                        <button onClick={handleClose} className="fcm-btn-primary" style={{ background: 'var(--theme-bg-tertiary)' }}>סגור</button>
+                                    </>
+                                ) : !folderAdded ? (
                                     <button
                                         onClick={async () => {
                                             if (!addWorkspaceFolder) return;

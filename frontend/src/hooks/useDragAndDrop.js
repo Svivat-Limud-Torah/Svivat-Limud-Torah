@@ -1,6 +1,7 @@
 // frontend/src/hooks/useDragAndDrop.js
 import { useState, useCallback, useRef } from 'react';
 import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import { convertFileContent } from '../services/FileConversionWebService';
 
 // File type classification
 const TEXT_EXTENSIONS = new Set([
@@ -97,13 +98,16 @@ export default function useDragAndDrop({
           onOpenBinaryTab(file.name, fileType, objectUrl);
 
         } else if (fileType === 'convertible') {
-          if (IS_WEB_MODE) {
-            setDragError(`המרת קובץ "${file.name}" אינה זמינה במצב אינטרנט. שמור כ-.md או .txt.`);
-            continue;
-          }
           setGlobalLoadingMessage(`ממיר את ${file.name}...`);
           try {
             const ext = getFileExtension(file.name);
+            if (IS_WEB_MODE) {
+              // Client-side conversion
+              const arrayBuffer = await file.arrayBuffer();
+              const result = await convertFileContent(file.name, arrayBuffer, ext, 'md');
+              const newName = file.name.replace(/\.[^/.]+$/, '.md');
+              onConversionResult(newName, result.convertedContent);
+            } else {
             // Read as base64 for binary conversion
             const arrayBuffer = await file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
@@ -134,6 +138,7 @@ export default function useDragAndDrop({
             const result = await response.json();
             const newName = file.name.replace(/\.[^/.]+$/, '.md');
             onConversionResult(newName, result.convertedContent);
+            }
           } finally {
             setGlobalLoadingMessage('');
           }

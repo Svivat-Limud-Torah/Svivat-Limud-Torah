@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import './SettingsModal.css'; // Reuse existing modal styles
 import LocalFileSystemService from '../services/LocalFileSystemService';
 import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import { convertFileContent } from '../services/FileConversionWebService';
 
 const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSuccess, basePath, relativePath }) => {
   const [selectedFormat, setSelectedFormat] = useState('md');
@@ -53,12 +54,13 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
       // Get file extension
       const fileExtension = fileName.split('.').pop().toLowerCase();
 
+      let result;
       if (IS_WEB_MODE) {
-        throw new Error('המרת קבצים אינה זמינה בגרסת האינטרנט. פיצ\'ר זה דורש את גרסת שולחן העבודה.');
-      }
-
-      // Send file content and metadata to backend for conversion
-      const response = await fetch(`${API_BASE_URL}/file-conversion/convert-file-content`, {
+        // Client-side conversion
+        result = await convertFileContent(fileName, fileResult.content, fileExtension, selectedFormat);
+      } else {
+        // Backend conversion
+        const response = await fetch(`${API_BASE_URL}/file-conversion/convert-file-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,11 +74,11 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'שגיאה בהמרת הקובץ');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה בהמרת הקובץ');
+        }
+        result = await response.json();
       }
-
-      const result = await response.json();
       
       // Write the converted file back using LocalFileSystemService
       const newFileName = fileName.replace(/\.[^/.]+$/, `.${selectedFormat}`);
