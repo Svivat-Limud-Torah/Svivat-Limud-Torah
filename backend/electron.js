@@ -1,6 +1,29 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
-const server = require('./server'); // Assuming server.js exports the app or a start function
+// Start backend server and keep a reference for graceful shutdown
+const { httpServer } = require('./server');
+
+// Ensure only a single instance of the app runs
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, focus the main window.
+    if (global.mainWindow) {
+      if (global.mainWindow.isMinimized()) global.mainWindow.restore();
+      global.mainWindow.focus();
+    }
+  });
+}
+
+// Basic global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception in main process:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection in main process:', reason);
+});
 
 // Helper function to find the best matching workspace path
 function getWorkspaceRelativePaths(filePath, workspacePaths) {
@@ -43,7 +66,7 @@ function getWorkspaceRelativePaths(filePath, workspacePaths) {
 
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  global.mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false, // Don't show until ready
@@ -54,13 +77,21 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'), // Optional: if you need a preload script
       contextIsolation: true,
       nodeIntegration: false, // Recommended for security
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      devTools: !app.isPackaged,
     },
   });
 
+  // Remove the menu bar
+  global.mainWindow.setMenuBarVisibility(false);
+  global.mainWindow.setAutoHideMenuBar(true);
+
   // Maximize the window when ready
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.maximize();
-    mainWindow.show();
+  global.mainWindow.once('ready-to-show', () => {
+    global.mainWindow.maximize();
+    global.mainWindow.show();
   });
 
   // Load the frontend.
@@ -71,8 +102,13 @@ function createWindow() {
     // In packaged app, files are in resources/app
     frontendUrl = `file://${path.join(__dirname, 'frontend/dist/index.html')}`;
   } else {
-    // In development, load from relative path
-    frontendUrl = `file://${path.join(__dirname, '../frontend/dist/index.html')}`;
+    // In development, prefer dev server URL if provided, otherwise fall back to built files
+    const devUrl = process.env.VITE_DEV_SERVER_URL || process.env.ELECTRON_START_URL || process.env.ELECTRON_DEV_SERVER_URL;
+    if (devUrl) {
+      frontendUrl = devUrl;
+    } else {
+      frontendUrl = `file://${path.join(__dirname, '../frontend/dist/index.html')}`;
+    }
   }
   
   if (process.env.NODE_ENV === 'development') { 
@@ -80,9 +116,57 @@ function createWindow() {
     // frontendUrl = 'http://localhost:5173'; // Default Vite port, adjust if needed
     // For now, sticking to file protocol, assuming build is always available or handled by start script
   }
-  mainWindow.loadURL(frontendUrl)
+  global.mainWindow.loadURL(frontendUrl)
     .then(() => console.log('Frontend loaded successfully from:', frontendUrl))
     .catch(err => console.error('Failed to load frontend from:', frontendUrl, err));
+
+  // Prevent new windows and external navigation inside the app; open externally instead
+  global.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try { 
+      shell.openExternal(url); 
+    } catch (e) {
+      console.error('Failed to open external URL:', url, e);
+    }
+    return { action: 'deny' };
+  });
+  
+  global.mainWindow.webContents.on('will-navigate', (e, url) => {
+    // Block navigations that aren't the current app URL
+    if (url !== global.mainWindow.webContents.getURL()) {
+      e.preventDefault();
+      try { 
+        shell.openExternal(url); 
+      } catch (e) {
+        console.error('Failed to open external URL:', url, e);
+      }
+    }
+  });
+
+  // Handle new window requests (like target="_blank" links) - for older Electron versions
+  global.mainWindow.webContents.on('new-window', (e, url) => {
+    e.preventDefault();
+    try {
+      shell.openExternal(url);
+    } catch (error) {
+      console.error('Failed to open external URL:', url, error);
+    }
+  });
+
+  // Additional handling for external protocols and links
+  global.mainWindow.webContents.on('will-frame-navigate', (e, url) => {
+    // Check if navigating to external URL
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      const currentURL = global.mainWindow.webContents.getURL();
+      if (!url.startsWith(currentURL.split('#')[0]) && !url.includes('localhost')) {
+        e.preventDefault();
+        try {
+          shell.openExternal(url);
+        } catch (error) {
+          console.error('Failed to open external URL:', url, error);
+        }
+      }
+    }
+  });
 
   // Open the DevTools (optional, for debugging)
   // mainWindow.webContents.openDevTools();
@@ -92,34 +176,41 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Start the backend server
-  // Assuming server.js starts listening on a port.
-  // If server.js exports a function to start, call it here.
-  // For now, just requiring it might be enough if it starts itself.
-  // If your server.js exports the Express app instance, you might need to call app.listen here.
-  // For simplicity, let's assume server.js handles its own start.
-  // If not, we'll need to adjust this.
-  // Example: if server.js exports a start function:
-  // const { startServer } = require('./server');
-  // startServer().then(() => createWindow());
+  if (process.platform === 'win32') {
+    // Needed for notifications and proper taskbar grouping on Windows
+    app.setAppUserModelId('SvivatLimudTorah.TorahIDE');
+  }
 
-  // For now, assuming server.js starts itself upon require
-  // If it doesn't, the backend won't run.
-  // We will need to check how server.js is structured.
-  console.log('Backend server (server.js) starting via require()...');
-  // No explicit start call here, assuming server.js does it.
-  // This is a common pattern, but might need adjustment.
+  // Remove the default menu completely
+  Menu.setApplicationMenu(null);
+   // Start the backend server
+   // Assuming server.js starts listening on a port.
+   // If server.js exports a function to start, call it here.
+   // For now, just requiring it might be enough if it starts itself.
+   // If your server.js exports the Express app instance, you might need to call app.listen here.
+   // For simplicity, let's assume server.js handles its own start.
+   // If not, we'll need to adjust this.
+   // Example: if server.js exports a start function:
+   // const { startServer } = require('./server');
+   // startServer().then(() => createWindow());
 
-  createWindow();
+   // For now, assuming server.js starts itself upon require
+   // If it doesn't, the backend won't run.
+   // We will need to check how server.js is structured.
+   console.log('Backend server (server.js) starting via require()...');
+   // No explicit start call here, assuming server.js does it.
+   // This is a common pattern, but might need adjustment.
 
-  // IPC handler for showing save dialog
-  ipcMain.handle('show-save-dialog', async (event, args) => {
-    const { defaultPath, defaultName, workspacePaths } = args;
-    const window = BrowserWindow.getFocusedWindow();
-    if (!window) {
-      console.error('No focused window to show save dialog.');
-      return { cancelled: true, error: 'No focused window' };
-    }
+   createWindow();
+
+   // IPC handler for showing save dialog
+   ipcMain.handle('show-save-dialog', async (event, args) => {
+     const { defaultPath, defaultName, workspacePaths } = args;
+    const window = BrowserWindow.getFocusedWindow() || global.mainWindow;
+     if (!window) {
+       console.error('No focused window to show save dialog.');
+       return { canceled: true, error: 'No focused window' };
+     }
 
     let dialogDefaultPath = defaultPath;
     if (defaultPath && defaultName && defaultPath !== '__new_unsaved__') {
@@ -161,7 +252,7 @@ app.whenReady().then(() => {
       });
 
       if (result.canceled || !result.filePath) {
-        return { cancelled: true };
+        return { canceled: true };
       }
 
       const selectedFilePath = result.filePath.replace(/\\/g, '/');
@@ -173,26 +264,26 @@ app.whenReady().then(() => {
         // For now, returning an error to align with expected newBasePath/newRelativePath structure.
         console.error(`שגיאה: הקובץ נשמר מחוץ לתיקיות העבודה המוגדרות. נתיב: ${selectedFilePath}`);
         return { 
-            cancelled: true, 
+            canceled: true, 
             error: 'הקובץ חייב להישמר בתוך אחת מתיקיות העבודה המוגדרות.' 
         };
       }
       
       return {
-        cancelled: false,
+        canceled: false,
         filePath: selectedFilePath, // Full path
         newBasePath: pathDetails.basePath, // Workspace base path
         newRelativePath: pathDetails.relativePath, // Path relative to workspace base
       };
     } catch (error) {
       console.error('שגיאה בהצגת דיאלוג שמירה:', error);
-      return { cancelled: true, error: error.message };
+      return { canceled: true, error: error.message };
     }
   });
 
   // IPC handler for showing directory picker
   ipcMain.handle('show-directory-picker', async () => {
-    const window = BrowserWindow.getFocusedWindow();
+    const window = BrowserWindow.getFocusedWindow() || global.mainWindow;
     if (!window) {
       console.error('No focused window to show directory picker.');
       return { canceled: true, error: 'No focused window' };
@@ -222,6 +313,17 @@ app.whenReady().then(() => {
     }
   });
 
+  // IPC handler for opening external URLs
+  ipcMain.handle('open-external', async (event, url) => {
+    try {
+      await shell.openExternal(url);
+      return true;
+    } catch (error) {
+      console.error('Error opening external URL:', url, error);
+      return false;
+    }
+  });
+
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -238,6 +340,17 @@ app.on('window-all-closed', function () {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+// Graceful shutdown of backend HTTP server
+app.on('before-quit', () => {
+  try {
+    if (httpServer && typeof httpServer.close === 'function') {
+      httpServer.close();
+    }
+  } catch (e) {
+    console.warn('Failed to close HTTP server on quit:', e.message);
+  }
+});
 
 // Optional: Create a preload.js if you need to expose Node.js APIs to the renderer securely
 // For example, backend/preload.js:

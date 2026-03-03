@@ -14,8 +14,9 @@ const getFormattedDate = (date) => {
 
 const useQuestionnaire = (setGlobalLoadingMessage = () => {}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('daily');
   const [selectedDateForQuestionnaire, setSelectedDateForQuestionnaire] = useState(getFormattedDate(new Date()));
-  const [questionnaireData, setQuestionnaireData] = useState(null); // { fixedQuestions: [], aiQuestions: [], submitted_data: {} }
+  const [questionnaireData, setQuestionnaireData] = useState(null);
   const [isLoadingQuestionnaire, setIsLoadingQuestionnaire] = useState(false);
   const [questionnaireError, setQuestionnaireError] = useState(null);
   const [isSubmittedForSelectedDate, setIsSubmittedForSelectedDate] = useState(false);
@@ -29,6 +30,13 @@ const useQuestionnaire = (setGlobalLoadingMessage = () => {}) => {
   const [weeklyAnswersError, setWeeklyAnswersError] = useState(null);
   const [currentWeeklyAnswersRange, setCurrentWeeklyAnswersRange] = useState({ startDate: null, endDate: null });
 
+  const [personalInsights, setPersonalInsights] = useState(null);
+  const [isInsightsLoading, setIsInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState(null);
+
+  const [chatMessages, setChatMessages] = useState([]); // { role: 'user'|'model', content: string }
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState(null);
 
   const [notificationSettings, setNotificationSettings] = useState({
     enable_daily_questionnaire_reminder: true,
@@ -36,7 +44,7 @@ const useQuestionnaire = (setGlobalLoadingMessage = () => {}) => {
   });
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
-  const [shouldShowReminderIcon, setShouldShowReminderIcon] = useState(false); // For the button icon
+  const [shouldShowReminderIcon, setShouldShowReminderIcon] = useState(false);
 
 
   const fetchQuestionnaireForDate = useCallback(async (dateString) => {
@@ -269,12 +277,50 @@ const useQuestionnaire = (setGlobalLoadingMessage = () => {}) => {
   }, [isSubmittedForSelectedDate, selectedDateForQuestionnaire, notificationSettings.enable_daily_questionnaire_reminder, notificationSettings.reminder_time]);
 
 
+  const generateInsights = useCallback(async () => {
+    setIsInsightsLoading(true);
+    setInsightsError(null);
+    try {
+      const result = await apiService.generatePersonalInsights();
+      setPersonalInsights(result.data);
+    } catch (err) {
+      console.error('Failed to generate personal insights:', err);
+      setInsightsError(err.message || 'שגיאה ביצירת תובנות אישיות.');
+    } finally {
+      setIsInsightsLoading(false);
+    }
+  }, []);
+
+  const sendChatMessage = useCallback(async (userMessage) => {
+    if (!userMessage.trim()) return;
+    const newHistory = [...chatMessages, { role: 'user', content: userMessage }];
+    setChatMessages(newHistory);
+    setIsChatLoading(true);
+    setChatError(null);
+    try {
+      const result = await apiService.chatWithPersonalAI(newHistory);
+      setChatMessages(prev => [...prev, { role: 'model', content: result.reply }]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setChatError(err.message || 'שגיאה בשיחה.');
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [chatMessages]);
+
+  const clearChat = useCallback(() => {
+    setChatMessages([]);
+    setChatError(null);
+  }, []);
+
   return {
     isModalOpen,
     openQuestionnaireModal,
     closeQuestionnaireModal,
+    activeTab,
+    setActiveTab,
     selectedDateForQuestionnaire,
-    setSelectedDateForQuestionnaire: (date) => { // Allow parent to set date and trigger fetch
+    setSelectedDateForQuestionnaire: (date) => {
         const dateString = getFormattedDate(date);
         setSelectedDateForQuestionnaire(dateString);
         fetchQuestionnaireForDate(dateString);
@@ -303,7 +349,19 @@ const useQuestionnaire = (setGlobalLoadingMessage = () => {}) => {
     setShowNotificationSettings,
     isLoadingSettings,
     shouldShowReminderIcon,
-    getFormattedDate, // Expose helper
+
+    personalInsights,
+    isInsightsLoading,
+    insightsError,
+    generateInsights,
+
+    chatMessages,
+    isChatLoading,
+    chatError,
+    sendChatMessage,
+    clearChat,
+
+    getFormattedDate,
   };
 };
 

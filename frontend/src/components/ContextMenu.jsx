@@ -1,9 +1,34 @@
 // frontend/src/components/ContextMenu.jsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './ContextMenu.css';
 
 const ContextMenu = ({ x, y, menuItems, onClose }) => {
   const menuRef = useRef(null);
+  const [pos, setPos] = useState({ top: y, left: x, opacity: 0 });
+
+  // After render, measure and clamp position to keep menu fully on-screen
+  useLayoutEffect(() => {
+    if (!menuRef.current) return;
+    const { offsetWidth: w, offsetHeight: h } = menuRef.current;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 6;
+
+    let left = x;
+    let top = y;
+
+    // Flip left if would overflow right edge
+    if (left + w + MARGIN > vw) left = Math.max(MARGIN, x - w);
+    // Clamp to left edge
+    if (left < MARGIN) left = MARGIN;
+
+    // Flip up if would overflow bottom edge
+    if (top + h + MARGIN > vh) top = Math.max(MARGIN, y - h);
+    // Clamp to top edge
+    if (top < MARGIN) top = MARGIN;
+
+    setPos({ top, left, opacity: 1 });
+  }, [x, y, menuItems]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -24,8 +49,7 @@ const ContextMenu = ({ x, y, menuItems, onClose }) => {
     <div
       ref={menuRef}
       className="context-menu"
-      style={{ top: y, left: x }}
-      // onClick={(e) => e.stopPropagation()} // Prevent click on menu itself from closing if not handled by list item
+      style={{ top: pos.top, left: pos.left, opacity: pos.opacity }}
     >
       <ul>
         {menuItems.map((menuItem, index) => (
@@ -36,7 +60,6 @@ const ContextMenu = ({ x, y, menuItems, onClose }) => {
               if (!menuItem.disabled && menuItem.action) {
                 menuItem.action();
               }
-              // Always close after an action is attempted or if it's just a click on a non-actionable item (though all should have actions or be headers)
               onClose(); 
             }}
             className={menuItem.disabled ? 'disabled' : ''}

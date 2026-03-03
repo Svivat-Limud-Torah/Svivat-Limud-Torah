@@ -1,3 +1,442 @@
+﻿/* ═══════════════════════════════════════════
+   Judaism Chat Modal — Full Redesign
+   (old class names kept for compat, new jc-* classes below)
+   ═══════════════════════════════════════════ */
+
+/* ── Overlay ── */
+.jc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  direction: rtl;
+  padding: 16px;
+}
+
+/* ── Modal container ── */
+.jc-modal {
+  background: var(--theme-bg-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 14px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+  width: 100%;
+  max-width: 700px;
+  height: 82vh;
+  max-height: 780px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: jc-slide-in 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes jc-slide-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Header ── */
+.jc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--theme-accent-primary) 20%, var(--theme-bg-secondary)),
+    var(--theme-bg-secondary)
+  );
+  border-bottom: 1px solid var(--theme-border-color);
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.jc-header-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--theme-text-primary);
+}
+
+.jc-header-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.jc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Toggle switch ── */
+.jc-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--theme-text-secondary);
+  user-select: none;
+}
+
+.jc-toggle {
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--theme-bg-primary);
+  border: 1px solid var(--theme-border-color);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.jc-toggle--on {
+  background: var(--theme-accent-primary);
+  border-color: var(--theme-accent-primary);
+}
+
+.jc-toggle-knob {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--theme-text-secondary);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.jc-toggle--on .jc-toggle-knob {
+  transform: translateX(-16px);
+  background: #fff;
+}
+
+/* ── Icon buttons in header ── */
+.jc-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 5px 7px;
+  border-radius: 6px;
+  color: var(--theme-text-secondary);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.jc-icon-btn:hover {
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+
+.jc-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--theme-text-secondary);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.jc-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ── Chat body ── */
+.jc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-border-color) transparent;
+}
+
+/* ── Welcome / Empty state ── */
+.jc-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: auto;
+  padding: 20px 10px;
+  max-width: 420px;
+  gap: 10px;
+}
+
+.jc-welcome-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.jc-welcome h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+  line-height: 1.4;
+}
+
+.jc-welcome p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--theme-text-secondary);
+  line-height: 1.5;
+}
+
+.jc-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.jc-suggestion-chip {
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-size: 0.8rem;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: right;
+  direction: rtl;
+}
+
+.jc-suggestion-chip:hover {
+  background: color-mix(in srgb, var(--theme-accent-primary) 15%, var(--theme-bg-secondary));
+  border-color: var(--theme-accent-primary);
+  color: var(--theme-text-primary);
+  transform: translateY(-1px);
+}
+
+/* ── Messages ── */
+.jc-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  animation: jc-msg-in 0.18s ease-out;
+  max-width: 88%;
+}
+
+@keyframes jc-msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* User message — right side (RTL) */
+.jc-message--user {
+  flex-direction: row-reverse;
+  align-self: flex-start;
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* AI message — left side (RTL) */
+.jc-message--ai {
+  flex-direction: row;
+  align-self: flex-end;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.jc-message-avatar {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 50%;
+}
+
+.jc-message-bubble {
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* User bubble */
+.jc-message--user .jc-message-bubble {
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color, #fff);
+  border-bottom-right-radius: 4px;
+}
+
+/* AI bubble */
+.jc-message--ai .jc-message-bubble {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  border-bottom-left-radius: 4px;
+}
+
+/* Error bubble */
+.jc-message--error .jc-message-bubble {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+/* Formatted text in AI bubbles */
+.jc-message-text {
+  direction: rtl;
+  text-align: right;
+}
+
+.jc-bullet {
+  padding-right: 16px;
+  position: relative;
+  margin-top: 2px;
+}
+
+.jc-bullet::before {
+  content: '•';
+  position: absolute;
+  right: 0;
+  color: var(--theme-accent-primary);
+}
+
+/* ── Typing indicator ── */
+.jc-typing {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px;
+  height: 20px;
+}
+
+.jc-typing span {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--theme-text-secondary);
+  animation: jc-bounce 1.2s infinite ease-in-out;
+}
+
+.jc-typing span:nth-child(1) { animation-delay: 0s;   }
+.jc-typing span:nth-child(2) { animation-delay: 0.2s; }
+.jc-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes jc-bounce {
+  0%, 60%, 100% { transform: translateY(0);    opacity: 0.4; }
+  30%            { transform: translateY(-6px); opacity: 1;   }
+}
+
+/* ── Footer ── */
+.jc-footer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 18px 8px;
+  border-top: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-secondary);
+  flex-shrink: 0;
+}
+
+.jc-input {
+  flex: 1;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  direction: rtl;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  line-height: 1.45;
+}
+
+.jc-input:focus {
+  outline: none;
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent-primary) 25%, transparent);
+}
+
+.jc-input::placeholder {
+  color: var(--theme-text-tertiary);
+}
+
+.jc-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.jc-send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color, #fff);
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  line-height: 1;
+}
+
+.jc-send-btn:hover:not(:disabled) {
+  background: var(--theme-accent-secondary, var(--theme-accent-primary));
+  transform: scale(1.06);
+}
+
+.jc-send-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.jc-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.jc-footer-hint {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--theme-text-tertiary);
+  padding: 0 18px 8px;
+  background: var(--theme-bg-secondary);
+  direction: rtl;
+  flex-shrink: 0;
+}
+
+/* ─── Legacy classes kept for potential external references ─── */
 .judaism-chat-modal-overlay {
   position: fixed;
   top: 0;
@@ -16,7 +455,7 @@
   background-color: var(--theme-bg-primary);
   color: var(--theme-text-primary);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 2px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   width: 90%;
   max-width: 600px;
@@ -58,7 +497,7 @@
 .judaism-chat-recommendation {
   background-color: var(--theme-bg-secondary);
   border: 1px solid var(--theme-border-color);
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 12px 15px;
   margin-bottom: 15px;
   text-align: center;
@@ -75,20 +514,23 @@
 
 .google-ai-studio-link {
   display: inline-block;
-  color: var(--theme-accent-primary);
+  color: #007acc; /* Force blue color for visibility */
   text-decoration: none;
-  font-weight: 500;
-  padding: 6px 12px;
-  border: 1px solid var(--theme-accent-primary);
-  border-radius: 4px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 2px solid #007acc;
+  border-radius: 2px;
   transition: all 0.2s ease;
-  background-color: transparent;
+  background-color: rgba(59, 130, 246, 0.1);
+  font-size: 0.95em;
 }
 
 .google-ai-studio-link:hover {
-  background-color: var(--theme-accent-primary);
-  color: var(--theme-button-text-color);
+  background-color: #007acc;
+  color: white;
   text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .judaism-chat-modal-body {
@@ -104,7 +546,7 @@
 .judaism-chat-message {
   margin-bottom: 12px;
   padding: 10px 15px;
-  border-radius: 18px;
+  border-radius: 0;
   max-width: 85%;
   word-wrap: break-word;
   line-height: 1.5;

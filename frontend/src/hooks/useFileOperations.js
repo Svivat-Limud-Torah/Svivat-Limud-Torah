@@ -1,8 +1,8 @@
 // frontend/src/hooks/useFileOperations.js
 import { useState, useCallback } from 'react';
 import path from '../utils/pathUtils';
-import { API_BASE_URL } from '../utils/constants';
 import { generateTabId } from './useTabs'; // Assuming generateTabId is exported from useTabs or a util
+import LocalFileSystemService from '../services/LocalFileSystemService';
 
 export default function useFileOperations({
   openTabs, // from useTabs
@@ -23,8 +23,8 @@ export default function useFileOperations({
   const handleSaveFile = useCallback(async (saveAs = false) => {
     const activeTabObject = openTabs.find(tab => tab.id === activeTabPath);
 
-    if (!activeTabObject || activeTabObject.type === 'image') {
-      if (activeTabObject && activeTabObject.type === 'image') { /* Allow silent return for images */ }
+    if (!activeTabObject || activeTabObject.type === 'image' || activeTabObject.type === 'audio' || activeTabObject.type === 'video') {
+      if (activeTabObject && (activeTabObject.type === 'image' || activeTabObject.type === 'audio' || activeTabObject.type === 'video')) { /* Allow silent return for binary files */ }
       else { console.warn("No active text file to save or missing file info."); }
       return;
     }
@@ -87,19 +87,15 @@ export default function useFileOperations({
     setGlobalLoadingMessage(`שומר את ${targetFileName}...`);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/save-file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseFolderPath: targetBasePath,
-          relativeFilePath: targetRelativePath,
-          content: activeTabObject.content,
-          fileName: targetFileName, // Use the potentially new file name
-          styles: activeTabObject.styles || []
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
+      const result = await LocalFileSystemService.writeFile(
+        targetBasePath,
+        targetRelativePath,
+        activeTabObject.content
+      );
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save file');
+      }
       
       const newTabId = generateTabId(targetBasePath, targetRelativePath);
 
@@ -158,19 +154,17 @@ export default function useFileOperations({
 
       setActiveTabPathApp(newTabId); // Update active tab to the new ID/path
       
-      // If the file was saved into a workspace folder, update its structure
+      // Update workspace folder structure by rescanning
       const targetWorkspaceFolder = workspaceFolders.find(wf => wf.path === targetBasePath);
-      if (targetWorkspaceFolder && data.directoryStructure) {
-          updateWorkspaceFolderStructure(targetBasePath, data.directoryStructure);
-      } else if (targetWorkspaceFolder && !data.directoryStructure) {
-          // If backend didn't send structure, DO NOT update with null.
-          // The existing structure will remain, preventing folders from disappearing.
-          // A more robust solution might involve explicitly re-fetching the structure.
-          console.warn(`Directory structure not returned from backend for ${targetBasePath} after save. Sidebar might display a stale structure until next refresh.`);
+      if (targetWorkspaceFolder) {
+        const directoryHandle = LocalFileSystemService.directoryHandles.get(targetBasePath);
+        if (directoryHandle) {
+          const structure = await LocalFileSystemService.scanDirectory(directoryHandle);
+          updateWorkspaceFolderStructure(targetBasePath, structure);
+        }
       }
 
-
-      console.log(data.message);
+      console.log('File saved successfully');
       fetchStatsFiles();
     } catch (error) {
       console.error(`שגיאה בשמירת הקובץ (${saveAs ? 'Save As' : 'Save'}):`, error);
@@ -186,21 +180,13 @@ export default function useFileOperations({
     setGlobalLoadingMessage(`שומר את ${path.basename(relativePath)}...`);
     try {
       const fileName = path.basename(relativePath);
-      const response = await fetch(`${API_BASE_URL}/save-file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          baseFolderPath: basePath, 
-          relativeFilePath: relativePath, 
-          content: content,
-          fileName: fileName
-        })
-      });
+      const result = await LocalFileSystemService.writeFile(basePath, relativePath, content);
       
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save file');
+      }
 
-      console.log(data.message);
+      console.log('File saved successfully');
       
       // Update tab information
       const fullPath = path.join(basePath, relativePath);
@@ -226,8 +212,12 @@ export default function useFileOperations({
       // Update active tab path if this was the active tab
       setActiveTabPathApp(newTabId);
       
-      // Update workspace structure
-      updateWorkspaceFolderStructure(basePath, data.directoryStructure);
+      // Refresh workspace structure by rescanning
+      const directoryHandle = LocalFileSystemService.directoryHandles.get(basePath);
+      if (directoryHandle) {
+        const structure = await LocalFileSystemService.scanDirectory(directoryHandle);
+        updateWorkspaceFolderStructure(basePath, structure);
+      }
       
       // Refresh stats
       fetchStatsFiles();
@@ -249,23 +239,29 @@ export default function useFileOperations({
     }
     setGlobalLoadingMessage(`יוצר את ${path.basename(relativeNewFilePath)}...`);
     try {
-      const response = await fetch(`${API_BASE_URL}/create-file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseFolderPath, newFilePath: relativeNewFilePath, content })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
+      const result = await LocalFileSystemService.writeFile(baseFolderPath, relativeNewFilePath, content);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create file');
+      }
 
-      console.log(data.message);
-      updateWorkspaceFolderStructure(baseFolderPath, data.directoryStructure);
+      console.log('File created successfully');
+      
+      // Rescan directory structure
+      const directoryHandle = LocalFileSystemService.directoryHandles.get(baseFolderPath);
+      if (directoryHandle) {
+        const structure = await LocalFileSystemService.scanDirectory(directoryHandle);
+        updateWorkspaceFolderStructure(baseFolderPath, structure);
+      }
 
-      if (openAfterCreate && data.newFile) {
+      if (openAfterCreate) {
         const targetFolder = workspaceFolders.find(wf => wf.path === baseFolderPath);
         if (targetFolder) {
           const fileToOpen = {
-            name: data.newFile.name, path: data.newFile.path,
-            isFolder: data.newFile.isFolder, type: data.newFile.type
+            name: path.basename(relativeNewFilePath), 
+            path: relativeNewFilePath,
+            isFolder: false, 
+            type: 'file'
           };
           handleFileSelect(targetFolder, fileToOpen);
         }
@@ -301,15 +297,22 @@ export default function useFileOperations({
     const newFolderRelativePath = path.join(relativeParentPath, newFolderName.trim());
     setGlobalLoadingMessage(`יוצר תיקייה ${newFolderName}...`);
     try {
-      const response = await fetch(`${API_BASE_URL}/create-folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseFolderPath: baseFolder.path, newFolderRelativePath })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
-      console.log(data.message);
-      updateWorkspaceFolderStructure(baseFolder.path, data.directoryStructure);
+      // Create the folder using LocalFileSystemService
+      const result = await LocalFileSystemService.createFolder(baseFolder.path, newFolderRelativePath);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create folder');
+      }
+      
+      console.log('Folder created successfully');
+      
+      // Rescan the directory structure
+      const dirHandle = await LocalFileSystemService.getDirectoryHandle(baseFolder.path);
+      if (dirHandle) {
+        const structure = await LocalFileSystemService.scanDirectory(dirHandle, '');
+        updateWorkspaceFolderStructure(baseFolder.path, structure);
+      }
+      
       fetchStatsFiles();
     } catch (error) {
       console.error("שגיאה ביצירת תיקייה:", error);
@@ -322,15 +325,21 @@ export default function useFileOperations({
   const deleteItemFromExplorer = useCallback(async (itemToDelete, baseFolder) => {
     setGlobalLoadingMessage(`מוחק את ${itemToDelete.name}...`);
     try {
-      const response = await fetch(`${API_BASE_URL}/delete-item`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseFolderPath: baseFolder.path, relativePathToDelete: itemToDelete.path })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
-      console.log(data.message);
-      updateWorkspaceFolderStructure(baseFolder.path, data.directoryStructure);
+      // Delete the item using LocalFileSystemService
+      const result = await LocalFileSystemService.deleteItem(baseFolder.path, itemToDelete.path);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete item');
+      }
+      
+      console.log('Item deleted successfully');
+      
+      // Rescan the directory structure
+      const dirHandle = await LocalFileSystemService.getDirectoryHandle(baseFolder.path);
+      if (dirHandle) {
+        const structure = await LocalFileSystemService.scanDirectory(dirHandle, '');
+        updateWorkspaceFolderStructure(baseFolder.path, structure);
+      }
 
       const tabsToClose = openTabs.filter(tab => {
         if (tab.basePath !== baseFolder.path) return false;
@@ -354,19 +363,42 @@ export default function useFileOperations({
     if (newName.includes('/') || newName.includes('\\')) {
       alert("שם חדש אינו יכול לכלול '/' או '\\'."); return;
     }
-    setGlobalLoadingMessage(`משנה שם ל-${newName}...`);
+    
+    // If it's a file and the new name doesn't have an extension, preserve the original extension
+    let finalNewName = newName;
+    if (!itemToRename.isFolder) {
+      const oldExtension = path.extname(itemToRename.name);
+      const newExtension = path.extname(newName);
+      
+      // If new name has no extension but old name did, add the old extension
+      if (!newExtension && oldExtension) {
+        finalNewName = newName + oldExtension;
+      }
+    }
+    
+    setGlobalLoadingMessage(`משנה שם ל-${finalNewName}...`);
     try {
-      const response = await fetch(`${API_BASE_URL}/rename-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseFolderPath: baseFolder.path, oldRelativePath: itemToRename.path, newName })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
-      console.log(data.message);
-      updateWorkspaceFolderStructure(baseFolder.path, data.directoryStructure);
+      // Rename the item using LocalFileSystemService
+      const result = await LocalFileSystemService.renameItem(
+        baseFolder.path,
+        itemToRename.path,
+        finalNewName
+      );
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to rename item');
+      }
+      
+      console.log('Item renamed successfully');
+      
+      // Rescan the directory structure
+      const dirHandle = await LocalFileSystemService.getDirectoryHandle(baseFolder.path);
+      if (dirHandle) {
+        const structure = await LocalFileSystemService.scanDirectory(dirHandle, '');
+        updateWorkspaceFolderStructure(baseFolder.path, structure);
+      }
 
-      const { oldRelativePath, newRelativePath, isFolder } = data.renamedItem;
+      const { oldRelativePath, newRelativePath, isFolder } = result.renamedItem;
       const oldPrefix = oldRelativePath + (isFolder ? '/' : '');
 
       setOpenTabs(prevTabs => prevTabs.map(tab => {
@@ -381,7 +413,7 @@ export default function useFileOperations({
         } else {
           if (tab.relativePath === oldRelativePath) {
             updatedTab.relativePath = newRelativePath;
-            updatedTab.name = newName;
+            updatedTab.name = finalNewName;
             pathChanged = true;
           }
         }
@@ -423,28 +455,38 @@ export default function useFileOperations({
 
     setGlobalLoadingMessage(`מעביר את ${itemName}...`);
     try {
-      const response = await fetch(`${API_BASE_URL}/move-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sourceBaseFolderPath, sourceRelativePath,
-          targetBaseFolderPath: targetBaseFolder.path,
-          targetParentRelativePath
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
-      console.log(data.message);
-      if (data.updatedSourceStructure) {
-        updateWorkspaceFolderStructure(sourceBaseFolderPath, data.updatedSourceStructure);
+      // Move the item using LocalFileSystemService
+      const result = await LocalFileSystemService.moveItem(
+        sourceBaseFolderPath,
+        sourceRelativePath,
+        targetBaseFolder.path,
+        targetParentRelativePath
+      );
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to move item');
       }
-      updateWorkspaceFolderStructure(targetBaseFolder.path, data.updatedTargetStructure);
+      
+      console.log('Item moved successfully');
+      
+      // Rescan both source and target directory structures
+      const sourceHandle = await LocalFileSystemService.getDirectoryHandle(sourceBaseFolderPath);
+      if (sourceHandle) {
+        const sourceStructure = await LocalFileSystemService.scanDirectory(sourceHandle, '');
+        updateWorkspaceFolderStructure(sourceBaseFolderPath, sourceStructure);
+      }
+      
+      const targetHandle = await LocalFileSystemService.getDirectoryHandle(targetBaseFolder.path);
+      if (targetHandle) {
+        const targetStructure = await LocalFileSystemService.scanDirectory(targetHandle, '');
+        updateWorkspaceFolderStructure(targetBaseFolder.path, targetStructure);
+      }
 
       const {
         originalSourceBaseFolderPath, originalSourceRelativePath,
         newTargetBaseFolderPath, newTargetRelativePath,
         isFolder: movedItemIsFolder
-      } = data.movedItemDetails;
+      } = result.movedItemDetails;
       const oldItemPrefix = originalSourceRelativePath + (movedItemIsFolder ? '/' : '');
 
       setOpenTabs(prevTabs => prevTabs.map(tab => {

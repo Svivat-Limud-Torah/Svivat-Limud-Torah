@@ -1,0 +1,371 @@
+/* AnnotationsPanel.css */
+.annotations-panel {
+  width: 280px;
+  min-width: 220px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-bg-secondary);
+  border-right: 2px solid var(--theme-border-color);
+  direction: rtl;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.annotations-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-secondary);
+  flex-shrink: 0;
+}
+
+.annotations-panel-header h3 {
+  margin: 0;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.annotations-panel-header .annotations-count {
+  font-size: 0.8em;
+  color: var(--theme-text-secondary);
+  font-weight: 400;
+}
+
+.annotations-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-width: thin;
+}
+
+.annotations-empty {
+  text-align: center;
+  color: var(--theme-text-tertiary);
+  padding: 24px 12px;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+/* Individual annotation card */
+.annotation-card {
+  position: relative;
+  background: var(--theme-bg-primary);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border-right: 4px solid transparent;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+
+.annotation-card:hover {
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
+.annotation-card.annotation-card--selected {
+  box-shadow: 0 0 0 1px var(--theme-accent-primary);
+}
+
+.annotation-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+}
+
+.annotation-card-text {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+  direction: rtl;
+}
+
+.annotation-card-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.annotation-card-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--theme-text-secondary);
+  transition: background-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.annotation-card-actions button:hover {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-primary);
+}
+
+/* Color dots for picking color */
+.annotation-color-dots {
+  display: flex;
+  gap: 5px;
+  padding: 4px 10px 6px;
+}
+
+.annotation-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.annotation-color-dot:hover {
+  transform: scale(1.2);
+}
+
+.annotation-color-dot.active {
+  border-color: var(--theme-text-primary);
+}
+
+/* Note area */
+.annotation-note {
+  padding: 0 10px 8px;
+}
+
+.annotation-note textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 100px;
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  font-size: 0.8em;
+  padding: 6px 8px;
+  resize: vertical;
+  direction: rtl;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.annotation-note textarea:focus {
+  border-color: var(--theme-accent-primary);
+}
+
+.annotation-note textarea::placeholder {
+  color: var(--theme-text-tertiary);
+}
+
+.annotation-card-line {
+  font-size: 0.7em;
+  color: var(--theme-text-tertiary);
+  padding: 0 10px 6px;
+}
+
+/* ── Tab bar ─────────────────────────────────── */
+.annotations-panel-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-secondary);
+}
+
+.annotations-tab {
+  flex: 1;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--theme-text-secondary);
+  font-size: 0.82em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  direction: rtl;
+  white-space: nowrap;
+}
+.annotations-tab:hover {
+  color: var(--theme-text-primary);
+  background: rgba(255,255,255,0.04);
+}
+.annotations-tab.active {
+  color: var(--theme-accent-color, #60a5fa);
+  border-bottom-color: var(--theme-accent-color, #60a5fa);
+  background: transparent;
+}
+.annotations-tab .annotations-count {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+/* ── Drawing tools panel ─────────────────────── */
+.drawing-tools {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scrollbar-width: thin;
+}
+
+.drawing-section-label {
+  font-size: 0.75em;
+  color: var(--theme-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 6px;
+}
+
+.drawing-tools-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.drawing-tool-btn {
+  flex: 1;
+  min-width: 60px;
+  padding: 6px 8px;
+  background: var(--theme-bg-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  color: var(--theme-text-secondary);
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.drawing-tool-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--theme-text-primary);
+}
+.drawing-tool-btn.active {
+  background: var(--theme-accent-color, #3b82f6);
+  border-color: var(--theme-accent-color, #3b82f6);
+  color: #fff;
+}
+
+/* Color swatches */
+.drawing-color-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.drawing-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+  box-sizing: border-box;
+  outline: 1px solid rgba(255,255,255,0.18);
+}
+.drawing-color-swatch:hover {
+  transform: scale(1.18);
+}
+.drawing-color-swatch.active {
+  border-color: var(--theme-accent-color, #60a5fa);
+  transform: scale(1.2);
+  outline: 1px solid var(--theme-accent-color, #60a5fa);
+}
+
+.drawing-color-input {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  outline: 1px solid rgba(255,255,255,0.18);
+}
+.drawing-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.drawing-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+/* Thickness slider */
+.drawing-width-slider {
+  width: 100%;
+  accent-color: var(--theme-accent-color, #3b82f6);
+  cursor: pointer;
+}
+
+/* Action buttons */
+.drawing-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.drawing-action-btn {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--theme-bg-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  color: var(--theme-text-secondary);
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.drawing-action-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.07);
+  color: var(--theme-text-primary);
+}
+.drawing-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.drawing-action-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* Status */
+.drawing-status {
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 0.78em;
+  color: var(--theme-text-tertiary);
+  background: rgba(255,255,255,0.04);
+  text-align: center;
+  border: 1px solid var(--theme-border-color);
+}
+.drawing-status.active {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+.drawing-status.active.clickable {
+  cursor: pointer;
+}
+.drawing-status.active.clickable:hover {
+  background: rgba(74, 222, 128, 0.16);
+}
+
+.drawing-saved-note {
+  font-size: 0.75em;
+  color: var(--theme-text-tertiary);
+  text-align: center;
+  padding: 4px 0;
+  opacity: 0.7;
+}

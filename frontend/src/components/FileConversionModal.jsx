@@ -10,7 +10,6 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [conversionProgress, setConversionProgress] = useState(null);
     const [conversionResults, setConversionResults] = useState(null);
     const [error, setError] = useState('');
-    const [dontShowAgain, setDontShowAgain] = useState(false);
     const fileInputRef = useRef(null);
 
     // Reset state when modal opens/closes
@@ -22,7 +21,6 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
             setConversionProgress(null);
             setConversionResults(null);
             setError('');
-            setDontShowAgain(false);
         }
     }, [isOpen]);
 
@@ -56,11 +54,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     };
 
     const handleWelcomeClose = () => {
-        if (dontShowAgain) {
-            onClose('never');
-        } else {
-            onClose('postpone');
-        }
+        // Closing welcome = never show again on this browser
+        onClose('never');
     };
 
     const handleStartConversion = () => {
@@ -187,52 +182,39 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                         <div className="welcome-step">
                             <div className="welcome-message">
                                 <p className="welcome-intro">
-                                    שמחים שבחרת להשתמש בסביבת לימוד תורה החדשה שלנו! 
+                                    ברוכים הבאים לסביבת לימוד תורה! 
                                 </p>
                                 <p>
-                                    כדי שתוכל ליהנות מכל היכולות המתקדמות של התוכנה, 
-                                    אנחנו מציעים לך להמיר את הסיכומים והקבצים הקיימים שלך לפורמט המותאם של התוכנה.
+                                    כדי להתחיל לעבוד, פשוט לחץ על כפתור <strong>"בחר תיקייה מהמחשב"</strong> בצד ימין.
                                 </p>
                                 <div className="benefits-list">
-                                    <h4>היתרונות של ההמרה:</h4>
+                                    <h4>היכולות המתקדמות של התוכנה:</h4>
                                     <ul>
-                                        <li>עבודה מהירה ונוחה יותר עם הקבצים</li>
-                                        <li>יכולות חיפוש מתקדמות</li>
-                                        <li>תמיכה מלאה בכל התכונות החכמות של התוכנה</li>
-                                        <li>ארגון טוב יותר של החומרים</li>
+                                        <li>עריכת קבצים ישירות מהמחשב שלך - ללא העלאה!</li>
+                                        <li>חיפוש מתקדם בכל הקבצים</li>
+                                        <li>צ׳אט AI חכם לשאלות בתורה</li>
+                                        <li>יצירת כרטיסי לימוד וסיכומים</li>
+                                        <li>ארגון אוטומטי של החומר</li>
                                     </ul>
                                 </div>
                                 <div className="safety-notice">
-                                    <p><strong>חשוב לדעת:</strong> הקבצים המקוריים שלך לא יימחקו!</p>
-                                    <p>ייווצר עותק חדש בתיקייה נפרדת עם הקבצים המומרים.</p>
+                                    <p><strong>חשוב לדעת:</strong> כל הקבצים נשארים במחשב שלך!</p>
+                                    <p>התוכנה קוראת וכותבת ישירות מהדיסק המקומי שלך בצורה מאובטחת.</p>
+                                    <p style={{fontSize: '0.9em', color: 'var(--theme-text-tertiary)'}}>* נתמך בדפדפני Chrome ו-Edge בלבד</p>
+                                    <p style={{fontSize: '0.9em', color: 'var(--theme-error-color)', fontWeight: 'bold'}}>** משתמשי Mac - יש להוריד את האפליקציה מהאתר</p>
                                 </div>
                             </div>
                             
                             <div className="welcome-actions">
                                 <button 
-                                    onClick={handleStartConversion}
+                                    onClick={() => onClose('never')}
                                     className="btn btn-primary welcome-convert-button"
                                 >
-                                    כן, אני רוצה להמיר את הקבצים שלי
-                                </button>
-                                <button 
-                                    onClick={handleWelcomeClose}
-                                    className="btn welcome-skip-button"
-                                >
-                                    לא, אני אעשה זאת מאוחר יותר
+                                    הבנתי, בואו נתחיל!
                                 </button>
                             </div>
                             
-                            <div className="dont-show-again">
-                                <label>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={dontShowAgain}
-                                        onChange={(e) => setDontShowAgain(e.target.checked)}
-                                    />
-                                    לא להציג הודעה זו שוב
-                                </label>
-                            </div>
+                            {/* Removed "don't show again" checkbox - closing modal once = never show again */}
                         </div>
                     )}
 
@@ -240,7 +222,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                         <div className="converting-step">
                             <div className="file-conversion-explanation">
                                 <p>התוכנה תמיר קבצים מהסוגים הבאים: TXT, DOCX, PDF, HTML, RTF</p>
-                                <p style={{ fontWeight: 'bold', color: '#2c5282' }}>
+                                <p style={{ fontWeight: 'bold', color: 'var(--theme-accent-primary)' }}>
                                     הקבצים המקוריים שלך לא יימחקו! יתיצרה תיקייה חדשה עם הקבצים המומרים.
                                 </p>
                             </div>
@@ -351,7 +333,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                                 )}
 
                                 <div className="conversion-success-message">
-                                    <p style={{ color: '#28a745', fontWeight: 'bold' }}>
+                                    <p style={{ color: 'var(--theme-success-color)', fontWeight: 'bold' }}>
                                         מעולה! התיקייה החדשה "סביבת לימוד תורה" נוצרה והוספה 
                                         לסביבת העבודה שלך.
                                     </p>

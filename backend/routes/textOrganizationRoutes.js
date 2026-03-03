@@ -8,14 +8,15 @@ const textOrganizationService = require('../services/TextOrganizationProgressSer
  */
 router.post('/organize-with-progress', async (req, res) => {
     try {
-        const { text, prompt, model, apiKey, disableItalicFormatting } = req.body;
+        const { text, prompt, model, disableItalicFormatting } = req.body;
+        const apiKey = req.session?.apiKey;
         
         if (!text || !text.trim()) {
             return res.status(400).json({ error: 'נדרש טקסט לארגון' });
         }
         
         if (!apiKey) {
-            return res.status(400).json({ error: 'נדרש מפתח API' });
+            return res.status(401).json({ error: 'נדרש מפתח API. אנא הגדר מפתח API תחילה.' });
         }
 
         const processId = `organize_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

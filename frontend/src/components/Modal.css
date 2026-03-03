@@ -1,162 +1,154 @@
-/* Modal.css - סגנונות כלליים למודלים */
+﻿/* Shared Modal Styles */
 
 .modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1500;
   direction: rtl;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .modal-content {
-  background-color: var(--theme-bg-primary, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  width: 90%;
-  max-width: 500px;
-  border: 1px solid var(--theme-border-color, #ddd);
-  color: var(--theme-text-primary, #333);
+  width: min(92vw, 540px);
+  max-height: min(88vh, 860px);
   overflow: hidden;
+  border-radius: 0;
+  border: 1px solid var(--theme-border-color);
+  background: #1e1e1e;
+  color: var(--theme-text-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px 25px;
-  border-bottom: 1px solid var(--theme-border-color, #ddd);
-  background-color: var(--theme-bg-secondary, #f8f9fa);
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: #1e1e1e;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: var(--theme-text-primary, #333);
-  font-size: 1.2em;
+  font-size: 1.05rem;
+  color: var(--theme-text-primary, #edf2ff);
 }
 
 .modal-close-btn {
-  background: none;
+  width: 32px;
+  height: 32px;
   border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--theme-text-secondary, #666);
+  border-radius: 2px;
   padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
 }
 
 .modal-close-btn:hover {
-  background-color: var(--theme-hover-bg, #f0f0f0);
-  color: var(--theme-text-primary, #333);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--theme-text-primary);
 }
 
 .modal-body {
-  padding: 25px;
+  padding: 20px;
+  overflow: auto;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 20px 25px;
-  border-top: 1px solid var(--theme-border-color, #ddd);
-  background-color: var(--theme-bg-secondary, #f8f9fa);
+  padding: 14px 20px;
+  border-top: 1px solid var(--theme-border-color);
+  background: #1e1e1e;
 }
 
-/* Form Elements */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--theme-text-primary, #333);
+  margin-bottom: 7px;
+  font-weight: 600;
+  color: var(--theme-text-primary, #edf2ff);
 }
 
 .form-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--theme-border-color, #ddd);
-  border-radius: 4px;
+  border-radius: 2px;
+  border: 1px solid var(--theme-border-color);
+  background: var(--theme-input-bg);
+  color: var(--theme-text-primary);
   font-size: 14px;
-  background-color: var(--theme-input-bg, #ffffff);
-  color: var(--theme-text-primary, #333);
   box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--theme-accent-color, #4a90e2);
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+  border-color: var(--theme-accent-primary);
+  box-shadow: none;
 }
 
-/* Error Messages */
 .error-message {
-  color: var(--theme-error-color, #e53e3e);
+  color: var(--theme-error-color, #ff6f80);
   font-size: 0.9em;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
-/* Modal Button Styles - Only for modal buttons */
 .modal-content .modal-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
+  min-width: 86px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 2px;
+  padding: 9px 16px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 80px;
 }
 
 .modal-content .modal-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .modal-content .modal-btn-primary {
-  background-color: var(--theme-accent-color, #4a90e2);
-  color: white;
+  background: var(--theme-button-bg, rgba(133, 163, 215, 0.16));
+  color: var(--theme-button-text-color, #f2f6ff);
 }
 
 .modal-content .modal-btn-primary:hover:not(:disabled) {
-  background-color: var(--theme-accent-hover, #357abd);
+  background: var(--theme-button-hover-bg, rgba(149, 184, 245, 0.24));
 }
 
 .modal-content .modal-btn-secondary {
-  background-color: var(--theme-bg-tertiary, #6c757d);
-  color: white;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--theme-text-primary, #edf2ff);
 }
 
 .modal-content .modal-btn-secondary:hover:not(:disabled) {
-  background-color: var(--theme-bg-quaternary, #5a6268);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .modal-content .modal-btn-danger {
-  background-color: var(--theme-error-color, #e53e3e);
-  color: white;
+  background: rgba(255, 96, 120, 0.16);
+  color: #ffdbe1;
+  border-color: rgba(255, 111, 128, 0.42);
 }
 
 .modal-content .modal-btn-danger:hover:not(:disabled) {
-  background-color: var(--theme-error-hover, #c53030);
+  background: rgba(255, 96, 120, 0.24);
 }
 
-/* Specific Modal Styles */
-
-/* Confirm Delete Modal */
 .confirm-delete-modal .modal-content {
   max-width: 450px;
 }
@@ -166,40 +158,19 @@
 }
 
 .confirm-delete-message p {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   line-height: 1.6;
 }
 
 .confirm-delete-message strong {
-  color: var(--theme-accent-color, #4a90e2);
+  color: var(--theme-accent-primary, #8eb7ff);
 }
 
 .warning-text {
-  color: var(--theme-warning-color, #ed8936);
-  font-size: 0.9em;
-  font-style: italic;
+  color: var(--theme-warning-color, #f8ba63);
+  font-size: 0.88em;
 }
 
-/* Create Folder Modal */
 .create-folder-modal .modal-content {
-  max-width: 400px;
-}
-
-/* Dark theme adjustments */
-@media (prefers-color-scheme: dark) {
-  .modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.8);
-  }
-  
-  .modal-content {
-    background-color: var(--theme-bg-primary, #2d3748);
-    border-color: var(--theme-border-color, #4a5568);
-    color: var(--theme-text-primary, #ffffff);
-  }
-  
-  .form-input {
-    background-color: var(--theme-input-bg, #1a202c);
-    border-color: var(--theme-border-color, #4a5568);
-    color: var(--theme-text-primary, #ffffff);
-  }
+  max-width: 420px;
 }

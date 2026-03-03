@@ -149,7 +149,7 @@ const TextOrganizationSettings = ({ isInModal = true }) => {
             textAlign: 'right',
             lineHeight: '1.5'
           }}>
-            <strong style={{ color: 'var(--theme-text-primary, #E4E4E7)' }}>💡 הסבר:</strong>
+            <strong style={{ color: 'var(--theme-text-primary, #E4E4E7)' }}>הסבר:</strong>
             <br />
             כאשר האפשרות מופעלת, הבינה המלאכותית לא תוסיף עיצוב נטייה (כמו *טקסט*) בעת ארגון הטקסט. 
             היא עדיין תוכל להשתמש בעיצוב מודגש (**טקסט**) וכותרות.

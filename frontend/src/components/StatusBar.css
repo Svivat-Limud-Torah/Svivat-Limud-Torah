@@ -1,0 +1,75 @@
+/* frontend/src/components/StatusBar.css */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 10px;
+  background-color: var(--theme-button-bg, #27272A);
+  border-top: 1px solid var(--theme-border-color, #3F3F46);
+  color: var(--theme-text-secondary, #9CA3AF);
+  font-size: 11.5px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  flex-shrink: 0;
+  user-select: none;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.status-bar__section {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.status-bar__item {
+  padding: 0 7px;
+  white-space: nowrap;
+  line-height: 24px;
+}
+
+.status-bar__divider {
+  width: 1px;
+  height: 14px;
+  background-color: var(--theme-border-color, #3F3F46);
+  flex-shrink: 0;
+}
+
+.status-bar__cursor {
+  font-weight: 600;
+  color: var(--theme-text-primary, #E4E4E7);
+  letter-spacing: 0.02em;
+}
+
+.status-bar__filetype {
+  color: var(--theme-accent-primary, #3B82F6);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.status-bar__model {
+  color: var(--theme-text-tertiary, #71717A);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-bar__save--clean {
+  color: #22C55E;
+}
+
+.status-bar__save--dirty {
+  color: #F59E0B;
+}
+
+.status-bar__save--saving {
+  color: #60A5FA;
+  animation: status-bar-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes status-bar-pulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}

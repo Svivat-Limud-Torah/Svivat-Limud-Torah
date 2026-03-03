@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './ApiKeyModal.css';
 import { HEBREW_TEXT } from '../utils/constants';
+import { setApiKey as sendApiKeyToServer, getApiKeyStatus } from '../utils/aiProxy';
 
-const API_KEY_STORAGE_KEY = 'gemini_api_key';
+const HAS_KEY_FLAG = 'gemini_has_key';
+const IS_PAID_FLAG = 'gemini_api_key_is_paid';
+const STORED_KEY = 'gemini_api_key_val';
 
 function ApiKeyModal({ isOpen, onClose }) {
   const [apiKey, setApiKey] = useState('');
@@ -11,17 +14,25 @@ function ApiKeyModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
-      const storedKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
-      setApiKey(storedKey);
-      setSavedMessage(''); // Clear message when opening
+      const hasKey = localStorage.getItem(HAS_KEY_FLAG) === 'true';
+      setApiKey(hasKey ? '••••••••••••••••' : '');
+      setSavedMessage('');
     }
   }, [isOpen]);
 
-  const handleSave = () => {
-    localStorage.setItem(API_KEY_STORAGE_KEY, apiKey.trim());
-    setSavedMessage(HEBREW_TEXT.geminiApiKeySaved);
-    // Optionally close the modal after saving, or let the user close it
-    // onClose();
+  const handleSave = async () => {
+    if (!apiKey.trim() || apiKey.startsWith('••')) {
+      return;
+    }
+    try {
+      const isPaid = localStorage.getItem(IS_PAID_FLAG) === 'true';
+      await sendApiKeyToServer(apiKey.trim(), isPaid);
+      localStorage.setItem(HAS_KEY_FLAG, 'true');
+      localStorage.setItem(STORED_KEY, apiKey.trim());
+      setSavedMessage(HEBREW_TEXT.geminiApiKeySaved);
+    } catch (err) {
+      setSavedMessage('שגיאה בשמירת המפתח: ' + err.message);
+    }
   };
 
   const handleInputChange = (event) => {
@@ -41,31 +52,75 @@ function ApiKeyModal({ isOpen, onClose }) {
         <h2>{HEBREW_TEXT.geminiApiKeyModalTitle}</h2>
         <p>
           הדבק כאן את מפתח ה-API שלך עבור Google Gemini כדי להפעיל תכונות AI.
-          ניתן להשיג מפתח בחינם דרך
-          <a href="https://ai.google.com/studio" target="_blank" rel="noopener noreferrer"> Google AI Studio</a>.
-          
+          המפתח נשמר אצלך בלבד ואינו נשלח לאף שרת חיצוני.
         </p>
-        
+
         <div className="instructions-section">
-          <button 
+          <button
             type="button"
             className="instructions-toggle-btn"
             onClick={() => setShowInstructions(!showInstructions)}
           >
-            {showInstructions ? 'הסתר הוראות' : 'מדריך צעד אחר צעד'}
+            {showInstructions ? 'הסתר הסבר' : 'איך מקבלים מפתח API?'}
           </button>
-          
+
           {showInstructions && (
             <div className="instructions-content">
-              <h3>איך להשיג מפתח API של Google Gemini:</h3>
+
+              <h3>אפשרות א׳ — מפתח חינמי (Google AI Studio)</h3>
+              <p style={{ marginBottom: '8px', color: 'var(--theme-text-secondary)' }}>
+                גוגל מאפשרת קבלת מפתח חינמי עם מכסת שימוש מוגבלת — מתאים לשימוש יומיומי רגיל.
+              </p>
               <ol className="instructions-list">
-                <li>חפשו בגוגל "Google AI Studio" וכנסו לאפשרות הראשונה</li>
-                <li>היכנסו עם חשבון הגוגל שלכם</li>
-                <li>ודאו שאתם בתוך צ'אט בוט</li>
-                <li>בחלק העליון של המסך תראו כפתור שכתוב עליו "Get API Key" - לחצו עליו</li>
-                <li>לחצו על "Create API Key"</li>
-                <li>צרו את המפתח והעתיקו את המפתח החדש שקיבלתם</li>
-                <li>הדביקו את המפתח בשדה למטה</li>
+                <li>
+                  כנסו ל-
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (window.electronAPI && window.electronAPI.openExternal) {
+                        window.electronAPI.openExternal('https://aistudio.google.com/apikey');
+                      } else {
+                        window.open('https://aistudio.google.com/apikey', '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    style={{ color: 'var(--theme-accent-secondary)', textDecoration: 'underline', cursor: 'pointer' }}
+                  > Google AI Studio</a>
+                </li>
+                <li>היכנסו עם חשבון Google שלכם</li>
+                <li>לחצו על <strong>"Create API key"</strong></li>
+                <li>בחרו פרויקט קיים או צרו חדש</li>
+                <li>העתיקו את המפתח שנוצר והדביקו אותו בשדה למטה</li>
+              </ol>
+
+              <h3 style={{ marginTop: '16px' }}>אפשרות ב׳ — מפתח בתשלום (Google Cloud)</h3>
+              <p style={{ marginBottom: '8px', color: 'var(--theme-text-secondary)' }}>
+                המפתח בתשלום מאפשר גישה למודלי Gemini המתקדמים יותר (כמו Gemini Pro ו-Gemini Ultra)
+                עם מכסות גבוהות בהרבה. <strong>התשלום מתבצע ישירות מול גוגל</strong> — לא דרך מערכת זו.
+                בעצם, גוגל מוכרת לך זמן חישוב על המודלים שלהם, ואתה משלם לפי כמות השימוש.
+              </p>
+              <ol className="instructions-list">
+                <li>
+                  כנסו ל-
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (window.electronAPI && window.electronAPI.openExternal) {
+                        window.electronAPI.openExternal('https://console.cloud.google.com/');
+                      } else {
+                        window.open('https://console.cloud.google.com/', '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    style={{ color: 'var(--theme-accent-secondary)', textDecoration: 'underline', cursor: 'pointer' }}
+                  > Google Cloud Console</a>
+                </li>
+                <li>צרו פרויקט חדש (או השתמשו בקיים)</li>
+                <li>הפעילו את <strong>Generative Language API</strong> בפרויקט</li>
+                <li>הגדירו אמצעי תשלום בחשבון ה-Cloud שלכם</li>
+                <li>עברו ל-<strong>APIs &amp; Services → Credentials</strong></li>
+                <li>לחצו <strong>"Create Credentials → API key"</strong></li>
+                <li>העתיקו את המפתח והדביקו אותו למטה</li>
               </ol>
 
             </div>
@@ -92,10 +147,11 @@ function ApiKeyModal({ isOpen, onClose }) {
   );
 }
 
-// Helper function to get the key details, can be imported elsewhere
+// Returns { hasKey, isPaid } — the actual key is never on the client.
 export const getApiKeyDetails = () => {
-    const key = localStorage.getItem(API_KEY_STORAGE_KEY);
-    return { key };
+    const hasKey = localStorage.getItem('gemini_has_key') === 'true';
+    const isPaid = localStorage.getItem('gemini_api_key_is_paid') === 'true';
+    return { hasKey, isPaid };
 };
 
 

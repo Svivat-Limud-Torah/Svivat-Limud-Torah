@@ -3,7 +3,7 @@ import React from 'react';
 import { HEBREW_TEXT } from '../utils/constants';
 import './HelpModal.css';
 
-const HelpModal = ({ isOpen, onClose }) => {
+const HelpModal = ({ isOpen, onClose, onStartTour }) => {
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
@@ -14,7 +14,11 @@ const HelpModal = ({ isOpen, onClose }) => {
 
   const openYouTubeChannel = () => {
     // כאן נוסיף את הקישור לערוץ יוטיוב בפועל
-    window.open('https://www.youtube.com/@Svivat-Limud-Torah', '_blank');
+    if (window.electronAPI && window.electronAPI.openExternal) {
+      window.electronAPI.openExternal('https://www.youtube.com/@Svivat-Limud-Torah');
+    } else {
+      window.open('https://www.youtube.com/@Svivat-Limud-Torah', '_blank');
+    }
   };
 
   return (
@@ -26,6 +30,18 @@ const HelpModal = ({ isOpen, onClose }) => {
         </div>
         
         <div className="help-modal-body">
+          {/* מדריך אינטראקטיבי */}
+          <div className="help-section">
+            <h3>מדריך אינטראקטיבי</h3>
+            <p>הפעל את המדריך כדי להכיר את התכונות העיקריות של התוכנה צעד אחר צעד.</p>
+            <button
+              className="help-link-button tour-button"
+              onClick={onStartTour}
+            >
+              הפעל מדריך
+            </button>
+          </div>
+
           {/* ערוץ יוטיוב */}
           <div className="help-section">
             <h3>{HEBREW_TEXT.helpModalYoutubeTitle}</h3>
@@ -34,7 +50,7 @@ const HelpModal = ({ isOpen, onClose }) => {
               className="help-link-button youtube-button"
               onClick={openYouTubeChannel}
             >
-              🎥 {HEBREW_TEXT.helpModalYoutubeLink}
+              {HEBREW_TEXT.helpModalYoutubeLink}
             </button>
           </div>
 

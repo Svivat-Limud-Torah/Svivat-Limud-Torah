@@ -20,7 +20,7 @@ const ModelOverloadedModal = ({ isOpen, onClose }) => {
     <div className="model-overloaded-modal-backdrop" onClick={handleBackdropClick}>
       <div className="model-overloaded-modal">
         <div className="model-overloaded-header">
-          <h2 className="model-overloaded-title">🔄 {HEBREW_TEXT.modelOverloadedTitle}</h2>
+          <h2 className="model-overloaded-title">{HEBREW_TEXT.modelOverloadedTitle}</h2>
           <button 
             className="model-overloaded-close-btn" 
             onClick={handleClose}

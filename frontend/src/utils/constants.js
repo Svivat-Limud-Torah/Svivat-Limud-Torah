@@ -1,19 +1,29 @@
 // frontend/src/utils/constants.js
 export const APP_DIRECTION = 'rtl';
 export const SUPPORTED_IMAGE_EXTENSIONS_CLIENT = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+export const SUPPORTED_PDF_EXTENSIONS_CLIENT = ['.pdf'];
+export const SUPPORTED_AUDIO_EXTENSIONS_CLIENT = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.opus', '.weba'];
+export const SUPPORTED_VIDEO_EXTENSIONS_CLIENT = ['.mp4', '.webm', '.mkv', '.avi', '.mov', '.ogv', '.m4v'];
 // export const GEMINI_API_KEY = 'YOUR_API_KEY_HERE'; // Key is now managed via ApiKeyModal and localStorage
 export const API_KEY_STORAGE_KEY = 'gemini_api_key'; // Added for consistency
 export const API_KEY_IS_PAID_STORAGE_KEY = 'gemini_api_key_is_paid'; // Key for paid status
-export const GEMINI_MODEL_NAME = 'gemini-1.5-pro-latest'; // Default model if not selected
+export const GEMINI_MODEL_NAME = 'gemini-3-flash-preview'; // Default model if not selected
 
 // Text Organization Settings
 export const DISABLE_ITALIC_FORMATTING_KEY = 'disable_italic_formatting'; // Setting to disable italic formatting in AI text organization
 
-// AI Models available for selection
-export const AI_MODELS = [
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'הגרסה המתקדמת ביותר של Gemini' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'גרסה מהירה של Gemini 2.5' }
+// AI Models available for selection (March 2026)
+export const AI_MODELS_FREE = [
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'מהיר ויעיל — מתאים למשימות פשוטות ותגובות מהירות' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite', description: 'הכי מהיר וקל — לשימוש יומיומי בזמן אמת' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', description: 'Gemini 3 מהיר — הדור הבא, ביצועים מדהימים במהירות' },
 ];
+export const AI_MODELS_PAID = [
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview', description: 'המתקדם ביותר — מעולה למשימות מורכבות, מציאת מקורות וחשיבה עמוקה' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'חכם במיוחד — אידיאלי לניתוח טקסטים, קוד מתקדם ומשימות הדורשות דיוק' },
+];
+// Keep AI_MODELS for backwards compatibility
+export const AI_MODELS = AI_MODELS_FREE;
 
 export const DEFAULT_FONT_SIZE_PX = 16;
 // FONT_SIZE_INCREMENT_PX הוסר - לא נדרש יותר
@@ -66,6 +76,7 @@ export const HEBREW_TEXT = {
   searchFiles: "חיפוש קבצים",
   recentFiles: "קבצים אחרונים",
   frequentFiles: "קבצים נפוצים",
+  userSnapshot: "תמונת מצב",
 
   // Search
   searchIn: (scope) => `חפש ב${scope}`,
@@ -138,13 +149,13 @@ export const HEBREW_TEXT = {
   // Function to check if error is quota related
   isQuotaLimitError: (error) => {
     if (!error) return false;
-    
+
     const errorMessage = error.message || error.toString() || '';
     const errorStatus = error.status || 0;
-    
+
     // Check for HTTP 429 status (Too Many Requests)
     if (errorStatus === 429) return true;
-    
+
     // Check for common quota-related error messages from Gemini API
     const quotaKeywords = [
       'quota exceeded',
@@ -168,9 +179,11 @@ export const HEBREW_TEXT = {
       'model is overloaded',
       'service unavailable',
       'temporarily unavailable',
-      'server overloaded'
+      'server overloaded',
+      'high demand',
+      'try again later',
     ];
-    
+
     const lowerMessage = errorMessage.toLowerCase();
     return quotaKeywords.some(keyword => lowerMessage.includes(keyword));
   },
@@ -178,13 +191,13 @@ export const HEBREW_TEXT = {
   // Function to check if error is specifically about model being overloaded
   isModelOverloadedError: (error) => {
     if (!error) return false;
-    
+
     const errorMessage = error.message || error.toString() || '';
     const errorStatus = error.status || 0;
-    
+
     // Check for HTTP 503 status (Service Unavailable)
     if (errorStatus === 503) return true;
-    
+
     // Check for model overloaded specific keywords
     const overloadedKeywords = [
       'overloaded',
@@ -195,9 +208,16 @@ export const HEBREW_TEXT = {
       'server overloaded',
       'service unavailable',
       'temporarily unavailable',
-      'model unavailable'
+      'model unavailable',
+      'high demand',
+      'try again later',
     ];
-    
+
+    // Also detect "503" embedded in error message strings
+    if (lowerMessage.includes('503')) return true;
+    // Detect timeout/abort
+    if (lowerMessage.includes('בזמן') || lowerMessage.includes('timeout') || lowerMessage.includes('aborted') || lowerMessage.includes('abort')) return true;
+
     const lowerMessage = errorMessage.toLowerCase();
     return overloadedKeywords.some(keyword => lowerMessage.includes(keyword));
   },
@@ -217,21 +237,42 @@ export const HEBREW_TEXT = {
   // Smart Search Feature
   smartSearchButtonText: "חיפוש חכם",
   smartSearchModalTitle: "חיפוש חכם",
-  smartSearchInputPlaceholder: "הקלד שאילתה לחיפוש חכם...",
+  smartSearchInputPlaceholder: "מה אתה מחפש? (לדוגמה: איפה כתבתי על אבולוציה)",
   smartSearchModalSearchButton: "חפש",
-  smartSearchLoadingFileList: "מאחזר רשימת קבצים...",
-  smartSearchLoadingAnalyzingNames: "מנתח שמות קבצים באמצעות בינה מלאכותית...",
-  smartSearchLoadingSearchingFiles: "מחפש בקבצים נבחרים...",
+  smartSearchLoadingLocal: "מחפש בקבצים...",
+  smartSearchLoadingAI: "מנתח עם בינה מלאכותית...",
   smartSearchLoadingProcessingResults: "מעבד תוצאות...",
-  smartSearchResultQuote: "נמצא ציטוט:",
+  smartSearchResultQuote: "ציטוט:",
   smartSearchResultExplanation: "הסבר:",
-  smartSearchResultSource: "מקור:",
+  smartSearchResultSource: "קובץ:",
   smartSearchResultLine: "שורה:",
   smartSearchFilesScanned: "קבצים שנסרקו:",
-  smartSearchNotFound: "לא נמצאו תוצאות העונות לשאילתה.",
-  smartSearchErrorPrefix: "שגיאה בחיפוש החכם:",
-  smartSearchButtonTooltip: "בצע חיפוש חכם בכל קבצי הטקסט שלך",
+  smartSearchNotFound: "לא נמצאו תוצאות.",
+  smartSearchErrorPrefix: "שגיאה בחיפוש:",
+  smartSearchButtonTooltip: "חיפוש חכם בכל הקבצים (AI)",
   smartSearchInitialMessage: "הזן שאילתה ובצע חיפוש",
+  smartSearchModeLocal: "חיפוש מהיר (ללא AI)",
+  smartSearchModeDeep: "חיפוש עמוק (עם AI)",
+  smartSearchKeywords: "מילות מפתח:",
+  smartSearchRelatedTerms: "מונחים קשורים:",
+  smartSearchSummary: "סיכום:",
+  smartSearchResultsCount: (count) => `${count} תוצאות נמצאו`,
+  smartSearchDuration: (ms) => `חיפוש ארך ${(ms / 1000).toFixed(1)} שניות`,
+  smartSearchNumFilesLabel: "מספר קבצים לסריקה:",
+  smartSearchNoWorkspace: "לא נבחרה תיקיית עבודה. אנא פתח תיקייה כדי להשתמש בחיפוש.",
+
+  // Simple Search Feature
+  simpleSearchButtonText: "חיפוש טקסט",
+  simpleSearchButtonTooltip: "חיפוש טקסט פשוט בכל הקבצים",
+  simpleSearchModalTitle: "חיפוש טקסט בקבצים",
+  simpleSearchPlaceholder: "הקלד טקסט לחיפוש...",
+  simpleSearchButton: "חפש",
+  simpleSearchCaseSensitive: "רגיש לאותיות",
+  simpleSearchWholeWord: "מילה שלמה",
+  simpleSearchFilterPlaceholder: "סנן לפי נתיב (אופציונלי, לדוגמה: docs/)",
+  simpleSearchNoResults: "לא נמצאו תוצאות.",
+  simpleSearchResultsCount: (total, files) => `${total} התאמות ב-${files} קבצים`,
+  simpleSearchLoading: "מחפש...",
 
 
   // Top Bar & Settings
@@ -336,7 +377,7 @@ export const HEBREW_TEXT = {
   summarizedTextResult: "סיכום תמלול",
 
   // Text Organization Large File Warning
-  largeFileWarning: (lineCount) => `⚠️ הקובץ מכיל ${lineCount} שורות
+  largeFileWarning: (lineCount) => `⚠ הקובץ מכיל ${lineCount} שורות
 
 הקובץ גדול ולכן התהליך עלול לקחת זמן
   האם להמשיך?`,
@@ -471,7 +512,7 @@ export const HEBREW_TEXT = {
     errorPrefix: "שגיאה",
     chatButtonText: "צ'אט הלכה ויהדות", // Text for the button to open the chat
     rememberHistory: 'זכור היסטוריה', // Added text for remember history checkbox
-    googleAiStudioRecommendation: "💡 במקום הצ'אט הנוכחי - מומלץ להשתמש ב-Google AI Studio לתוצאות הרבה יותר מדויקות! לא לשכוח להפעיל את הכפתור 'Grounding with Google Search' (ללא עלות).",
+    googleAiStudioRecommendation: "במקום הצ'אט הנוכחי - מומלץ להשתמש ב-Google AI Studio לתוצאות הרבה יותר מדויקות! לא לשכוח להפעיל את הכפתור 'Grounding with Google Search' (ללא עלות).",
     googleAiStudioLink: "https://aistudio.google.com/",
     openGoogleAiStudio: "פתח Google AI Studio",
   },
@@ -489,7 +530,7 @@ export const HEBREW_TEXT = {
   selectAiModelButton: "בחר מודל AI",
   selectAiModelTitle: "בחר מודל בינה מלאכותית",
   textOrganizationProgress: "התקדמות ארגון טקסט",
-  openOrotHatorahLink: "פתח ניתוח טקסט",
+  openOrotHatorahLink: "ניתוח טקסט",
 
   // New Button Texts
   smartDiscussionButton: "דיון חכם",
@@ -509,7 +550,7 @@ export const HEBREW_TEXT = {
   helpModalFeatures: [
     "אין לכם כח לסדר כותרות? בלחיצת כפתור המערכת תארגן לכם את הטקסט",
     "רוצים לראות אם יש מקור לחידוש שלכם? נסו את הפיצר 'מצא מקורות'",
-    "כלי פלפולתא - יצירת קושיות וניתוחים מהטקסט בלחיצת כפתור", 
+    "כלי פלפולתא - יצירת קושיות וניתוחים מהטקסט בלחיצת כפתור",
     "עיבוד תמלול - ארגון וסיכום של שיעורים וחברותות על פי תמלול",
     "הפכו את הטקסט שלכם לכרטיסיות חזרה",
     "גרף לימוד אישי למעקב אחר ההתקדמות בזמן",

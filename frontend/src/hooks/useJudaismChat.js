@@ -1,19 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react'; // Added useEffect
 import { HEBREW_TEXT } from '../utils/constants';
 import { getApiKeyDetails } from '../components/ApiKeyModal';
+import { callAiGenerate } from '../utils/aiProxy';
 
 export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiModel }) { // Added selectedAiModel
   const [chatHistory, setChatHistory] = useState([]);
   const [isJudaismChatLoading, setIsJudaismChatLoading] = useState(false);
   const [judaismChatError, setJudaismChatError] = useState(null);
-  const [rememberHistory, setRememberHistory] = useState(false); // State for remembering history
   const chatInputRef = useRef(null);
-  const chatBodyRef = useRef(null); // Ref for scrolling chat body
-
-  // Function to toggle history remembering
-  const toggleRememberHistory = useCallback(() => {
-    setRememberHistory(prev => !prev);
-  }, []);
+  const chatBodyRef = useRef(null);
 
   // Scroll to bottom when chat history updates
   useEffect(() => {
@@ -37,28 +32,17 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
     let apiContents = [];
     const systemPrompt = `אתה עוזר AI המתמחה בנושאי יהדות. עליך לענות על שאלות הקשורות ליהדות, טקסטים יהודיים (כגון תנ"ך, תלמוד, מדרש, ספרי הלכה), הגות יהודית, רבנים, היסטוריה יהודית, ארמית בהקשר יהודי, וכדומה. אתה יכול גם לענות על ברכות נימוס בסיסיות כמו "שלום", "תודה", "כיף להכיר" וכדומה בצורה קצרה ונעימה. אם תישלח אליך שאלה או בקשה שאינה קשורה לנושאי יהדות או לנימוסים בסיסיים, עליך להשיב אך ורק: '${HEBREW_TEXT.judaismChat.cannotAnswer}'. אל תיכנס לדיבורי סרק או נושאים כלליים.`;
 
-    // History logic
-    if (rememberHistory && chatHistory.length > 0) {
-      // Include history, mapping sender to API roles
-      apiContents.push({ role: 'user', parts: [{ text: systemPrompt }] }); // System prompt as first user message
-      apiContents.push({ role: 'model', parts: [{ text: "בסדר, הבנתי. אני מוכן לענות על שאלות בנושאי יהדות." }] }); // Initial model response acknowledging the prompt
+    // Always include full conversation history so the AI remembers context within the session
+    apiContents.push({ role: 'user', parts: [{ text: systemPrompt }] });
+    apiContents.push({ role: 'model', parts: [{ text: "בסדר, הבנתי. אני מוכן לענות על שאלות בנושאי יהדות." }] });
 
-      chatHistory.forEach(msg => {
-        // Map sender ('user'/'ai') to API role ('user'/'model')
-        const role = msg.sender === 'ai' ? 'model' : 'user';
-        // Skip error messages from history
-        if (!msg.isError) {
-          apiContents.push({ role: role, parts: [{ text: msg.text }] });
-        }
-      });
-      // Add the latest user message
-      apiContents.push({ role: 'user', parts: [{ text: userMessage }] });
-
-    } else {
-      // No history or history not remembered: Send only system prompt + user message
-      const combinedPrompt = `${systemPrompt}\n\nהשאלה של המשתמש היא:\n---\n${userMessage}\n---`;
-      apiContents = [{ role: 'user', parts: [{ text: combinedPrompt }] }];
-    }
+    chatHistory.forEach(msg => {
+      const role = msg.sender === 'ai' ? 'model' : 'user';
+      if (!msg.isError) {
+        apiContents.push({ role, parts: [{ text: msg.text }] });
+      }
+    });
+    apiContents.push({ role: 'user', parts: [{ text: userMessage }] });
 
     const requestBody = {
       contents: apiContents,
@@ -68,21 +52,17 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
 
 
     try {
-      const { key: apiKey } = getApiKeyDetails(); // Use the new helper and destructure the key
-      if (!apiKey) {
+      const { hasKey } = getApiKeyDetails();
+      if (!hasKey) {
         alert("מפתח Gemini API אינו מוגדר. אנא הגדר אותו באמצעות כפתור 'מפתח API'.");
         throw new Error("מפתח Gemini API אינו מוגדר. אנא הגדר אותו.");
       }
 
-      // Use the selected AI model directly (no special model for Google search)
+      // Use the selected AI model directly
       const modelToUse = selectedAiModel;
-      console.log(`Using model: ${modelToUse} for this request.`); // Log the model being used
+      console.log(`Using model: ${modelToUse} for this request.`);
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody) // Use the constructed request body
-      });
+      const response = await callAiGenerate(modelToUse, requestBody);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -119,7 +99,7 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
         chatInputRef.current.focus();
       }
     }
-  }, [chatHistory, selectedAiModel, setGlobalLoadingMessage]); // Added selectedAiModel to dependencies
+  }, [chatHistory, selectedAiModel, setGlobalLoadingMessage]);
 
   const clearJudaismChat = useCallback(() => {
     setChatHistory([]);
@@ -133,8 +113,6 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
     sendMessageToJudaismChat,
     clearJudaismChat,
     chatInputRef,
-    chatBodyRef, // Return chat body ref
-    rememberHistory, // Return state
-    toggleRememberHistory, // Return toggle function
+    chatBodyRef,
   };
 }

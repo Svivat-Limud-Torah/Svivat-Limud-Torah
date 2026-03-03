@@ -5,28 +5,28 @@ import { HEBREW_TEXT } from '../utils/constants';
 const WeeklySummaryDisplay = ({ summary, isLoading, error, onFetchPreviousAnswers, currentWeekDateRange }) => {
   const containerStyle = {
     padding: '20px',
-    backgroundColor: '#2a2f37', 
+    backgroundColor: 'var(--theme-bg-secondary)',
     borderRadius: '8px',
-    color: '#e0e0e0',
+    color: 'var(--theme-text-primary)',
     maxWidth: '800px',
     margin: '20px auto',
     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    border: '1px solid #3a3f47',
+    border: '1px solid var(--theme-border-color)',
     direction: 'rtl',
   };
 
   const titleStyle = {
     // fontSize removed - using h2 global style
-    color: '#50c878', 
+    color: 'var(--theme-success-color)',
     marginBottom: '15px',
     textAlign: 'center',
-    borderBottom: '1px solid #3a3f47',
+    borderBottom: '1px solid var(--theme-border-color)',
     paddingBottom: '10px',
   };
 
   const sectionTitleStyle = {
     // fontSize removed - using h3 global style
-    color: '#a0aec0',
+    color: 'var(--theme-text-secondary)',
     marginTop: '20px',
     marginBottom: '8px',
   };
@@ -34,15 +34,15 @@ const WeeklySummaryDisplay = ({ summary, isLoading, error, onFetchPreviousAnswer
   const contentStyle = {
     // fontSize removed - using p global style
     lineHeight: '1.6',
-    whiteSpace: 'pre-wrap', 
-    backgroundColor: '#30353c',
+    whiteSpace: 'pre-wrap',
+    backgroundColor: 'var(--theme-bg-tertiary)',
     padding: '10px',
     borderRadius: '4px',
   };
 
   const buttonStyle = {
     padding: '10px 15px',
-    backgroundColor: '#0ea5e9',
+    backgroundColor: 'var(--theme-accent-primary)',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
@@ -65,7 +65,7 @@ const WeeklySummaryDisplay = ({ summary, isLoading, error, onFetchPreviousAnswer
   }
 
   if (error) {
-    return <div style={{...containerStyle, color: '#ef4444'}}>{HEBREW_TEXT.questionnaire?.errorLoadingSummary || "שגיאה בטעינת הסיכום:"} {error}</div>;
+    return <div style={{...containerStyle, color: 'var(--theme-error-color)'}}>{HEBREW_TEXT.questionnaire?.errorLoadingSummary || "שגיאה בטעינת הסיכום:"} {error}</div>;
   }
 
   // Use currentWeekDateRange if summary itself doesn't have week_start_date (e.g. during generation)
@@ -78,7 +78,7 @@ const WeeklySummaryDisplay = ({ summary, isLoading, error, onFetchPreviousAnswer
         <div style={noSummaryStyle}>
             <p>{HEBREW_TEXT.questionnaire?.noSummaryAvailable || "אין סיכום שבועי זמין עדיין."}</p>
             {displayWeekStartDate && (
-                 <p style={{/* fontSize removed */ color: '#a0aec0'}}>
+                 <p style={{/* fontSize removed */ color: 'var(--theme-text-secondary)'}}>
                     ({HEBREW_TEXT.questionnaire?.weekOf || "שבוע של"} {new Date(displayWeekStartDate + "T00:00:00").toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                 </p>
             )}
@@ -93,7 +93,7 @@ const WeeklySummaryDisplay = ({ summary, isLoading, error, onFetchPreviousAnswer
       <h2 style={titleStyle}>
         {HEBREW_TEXT.questionnaire?.weeklySummaryTitle || "סיכום התקדמות שבועי"}
         {displayWeekStartDate && (
-            <span style={{/* fontSize removed */ display: 'block', color: '#a0aec0', marginTop: '5px'}}>
+            <span style={{/* fontSize removed */ display: 'block', color: 'var(--theme-text-secondary)', marginTop: '5px'}}>
                 ({HEBREW_TEXT.questionnaire?.weekOf || "שבוע של"} {new Date(displayWeekStartDate + "T00:00:00").toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })})
             </span>
         )}

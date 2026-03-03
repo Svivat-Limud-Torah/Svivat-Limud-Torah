@@ -1,282 +1,589 @@
-/* General body styles - Apply these if this CSS is the primary style sheet or to a main app container */
-/* If you have a global stylesheet, incorporate these there. */
-:root {
-  --app-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Arial Hebrew", Arial, sans-serif;
-  --editor-font-family: Arial, "Arial Hebrew", "Consolas", "Monaco", "Courier New", monospace;
-}
-
-body {
-  font-family: var(--app-font-family); /* Use CSS variable for font */
-  background-color: var(--theme-page-bg, #111827); /* Use theme variable */
-  color: var(--theme-text-primary, #d1d5db); /* Use theme text color */
-  margin: 0; /* Reset default margin */
-  /* For Firefox scrollbar (basic) - uncomment and adjust colors if needed globally */
-  /* scrollbar-color: #4b5563 #1f2937; */
-}
-
-/* Dark Webkit Scrollbar Styles */
-::-webkit-scrollbar {
-  width: 10px; /* Width of vertical scrollbar */
-  height: 10px; /* Height of horizontal scrollbar */
-}
-
-::-webkit-scrollbar-track {
-  background: var(--theme-scrollbar-track, #1f2937); /* Use theme variable */
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--theme-scrollbar-thumb, #4b5563); /* Use theme variable */
-  border-radius: 5px;
-  border: 2px solid var(--theme-scrollbar-track, #1f2937); /* Use theme variable */
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--theme-scrollbar-thumb-hover, #6b7280); /* Use theme variable */
-}
-
-/* === Original frontend/src/App.css with modifications === */
-
-.app-container {
+﻿.app-container {
+  position: relative;
   display: flex;
-  flex-direction: column; /* Changed from row to column to match App.jsx structure */
-  height: 100vh;
+  flex-direction: column;
   width: 100%;
+  height: 100%;
   overflow: hidden;
-  background-color: var(--theme-bg-primary);
-  direction: rtl; /* Set base direction for the app */
-  font-family: var(--app-font-family); /* Apply app font to entire container */
+  direction: rtl;
+  font-family: var(--app-font-family);
+  color: var(--theme-text-primary);
+  background: var(--theme-page-bg);
 }
 
-/* Styles for the main layout components if App.jsx is structured with Sidebar and MainContentArea */
-/* These might need to be adjusted based on the actual JSX structure in App.jsx */
+/* ── Drag & Drop overlay ── */
+.drag-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+
+.drag-drop-overlay__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 64px;
+  border: 3px dashed var(--theme-accent-primary, #60a5fa);
+  border-radius: 16px;
+  background: var(--theme-bg-secondary, rgba(30, 30, 30, 0.9));
+  box-shadow: 0 0 40px rgba(96, 165, 250, 0.3);
+}
+
+.drag-drop-overlay__icon {
+  font-size: 48px;
+  color: var(--theme-accent-primary, #60a5fa);
+  line-height: 1;
+  animation: drag-pulse 1s ease-in-out infinite;
+}
+
+.drag-drop-overlay__text {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--theme-text-primary, #f0f0f0);
+}
+
+.drag-drop-overlay__subtext {
+  font-size: 14px;
+  color: var(--theme-text-secondary, #a0a0a0);
+}
+
+@keyframes drag-pulse {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(8px); }
+}
+
+.drag-drop-error-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  background: var(--theme-accent-secondary, #f87171);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  direction: rtl;
+}
+
+/* Remove decorative blobs */
+.app-container::before,
+.app-container::after {
+  display: none;
+}
+
+.app-container.is-zen-mode {
+  background: var(--theme-editor-bg);
+}
+
+.app-container.is-zen-mode .app-topbar,
+.app-container.is-zen-mode .editor-toolbar {
+  display: none;
+}
+
+/* Focus mode per-element hiding */
+.app-container.focus-hide-topbar .app-topbar {
+  display: none;
+}
+
+.app-container.focus-hide-editor-toolbar .editor-toolbar {
+  display: none;
+}
+
+.global-loading-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  padding: 6px 16px;
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-primary);
+  border-bottom: 1px solid var(--theme-border-color);
+  text-align: center;
+}
+
+.app-topbar {
+  padding: 4px 12px;
+  background: var(--theme-bg-secondary);
+  border-bottom: 1px solid var(--theme-border-color);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.app-topbar .btn {
+  padding: 0.38rem 0.72rem;
+  min-height: 31px;
+  font-size: 0.78rem;
+  border-color: transparent !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-topbar .btn:hover:not(:disabled) {
+  border-color: var(--theme-border-color) !important;
+}
+
+/* Kill all glass pseudo-elements in App.css too */
+.app-topbar::before,
+.sidebar::before,
+.main-content-area::before,
+.global-loading-banner::before,
+.editor-toolbar::before {
+  display: none;
+}
+
+.app-topbar::after,
+.sidebar::after,
+.main-content-area::after,
+.global-loading-banner::after,
+.editor-toolbar::after {
+  display: none;
+}
+
+.app-topbar>*,
+.sidebar>*,
+.main-content-area>*,
+.global-loading-banner>*,
+.editor-toolbar>* {
+  position: relative;
+  z-index: 1;
+}
+
+.zen-floating-toggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1600;
+  border-radius: 2px;
+  padding-inline: 12px;
+}
+
 .app-layout {
   display: flex;
-  flex-grow: 1;
-  overflow: hidden; /* Prevent double scrollbars if children manage their own scroll */
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-layout.is-zen-mode {
+  padding: 0;
+  gap: 0;
+}
+
+/* ── Resize handle (draggable splitter between sidebar & editor) ── */
+.resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color 0.15s ease;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  right: -2px;
+  /* invisible wider hit-area */
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--theme-accent-primary);
 }
 
 .sidebar {
-  width: 280px; /* Adjusted width */
-  min-width: 220px; /* Minimum width */
-  background-color: var(--theme-bg-secondary);
-  padding: 1rem;
-  overflow-y: auto;
-  border-left: 1px solid var(--theme-border-color); /* For RTL, this will be on the "inner" side */
-  direction: rtl; /* Explicitly set for sidebar content */
+  height: 100%;
   display: flex;
   flex-direction: column;
+  background: var(--theme-bg-secondary);
+  border-inline-start: 1px solid var(--theme-border-color);
+  overflow: hidden;
+  direction: rtl;
 }
 
-.main-content-area { /* Renamed to match component name if applicable */
-  flex-grow: 1;
-  padding: 0; /* MainContentArea might handle its own padding */
-  overflow-y: auto;
-  background-color: var(--theme-bg-primary);
-  direction: rtl; /* Explicitly set for main content */
+.sidebar h2,
+.sidebar h3,
+.sidebar h4 {
+  letter-spacing: 0.01em;
+}
+
+.sidebar .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.sidebar input[type="text"],
+.sidebar input[type="password"] {
+  background: var(--theme-input-bg);
+}
+
+.sidebar-tree-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-scrollbar-thumb) transparent;
+}
+
+.sidebar-tree-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-tree-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-tree-scroll::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb);
+}
+
+.sidebar-workspace-root {
   display: flex;
-  flex-direction: column;
-}
-
-/* Remove or adjust h1 style if it's too generic or conflicts */
-/* .app-container h1 {
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  margin: 0;
+  padding: 9px 10px;
+  background: var(--theme-bg-tertiary);
+  border-bottom: 1px solid var(--theme-border-color);
   color: var(--theme-text-primary);
-} */
+  font-weight: 700;
+}
 
-/* אנימציית שמירה בטאב */
+.sidebar-workspace-root-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-actions .sidebar-action-btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.sidebar-actions .sidebar-action-btn.is-active {
+  background: rgba(0, 122, 204, 0.15) !important;
+  border-color: transparent !important;
+  box-shadow: none;
+}
+
+.main-content-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-editor-bg);
+  overflow: hidden;
+  direction: rtl;
+}
+
+.main-content-area.is-zen-mode {
+  border: none;
+  background: var(--theme-editor-bg);
+}
+
+.main-content-area.is-zen-mode .editor-tabs-bar {
+  display: none;
+}
+
+.main-content-area.is-zen-mode .main-view-shell,
+.main-content-area.is-zen-mode .editor-workspace {
+  background: var(--theme-editor-bg);
+}
+
+.main-content-area.is-zen-mode .editor-tab {
+  border-inline-end-color: var(--theme-border-color);
+}
+
+.main-content-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.editor-toolbar {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-secondary);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 36px;
+}
+
+.editor-toolbar .btn {
+  border-color: transparent !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.editor-toolbar .btn:hover:not(:disabled) {
+  border-color: var(--theme-border-color) !important;
+}
+
+.editor-tabs-bar {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--theme-border-color);
+  background: var(--theme-bg-primary);
+  scrollbar-width: thin;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-inline-end: 1px solid var(--theme-border-color);
+  border-bottom: 2px solid transparent;
+  color: var(--theme-text-secondary);
+  background: var(--theme-bg-primary);
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.editor-tab:hover {
+  color: var(--theme-text-primary);
+  background: var(--theme-bg-tertiary);
+}
+
+.editor-tab.is-active {
+  color: var(--theme-editor-text);
+  border-bottom-color: var(--theme-accent-primary);
+  background: var(--theme-editor-bg);
+}
+
+.editor-tab.is-dirty>span:first-child {
+  font-weight: 700;
+}
+
+.tab-close-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  min-height: auto;
+  border: none !important;
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  border-radius: 2px;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.tab-close-btn:hover {
+  color: var(--theme-text-primary) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.new-tab-btn {
+  min-height: auto;
+  padding: 8px 12px;
+  border: none !important;
+  border-inline-end: 1px solid var(--theme-border-color);
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
+  font-size: 1.15rem;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+.new-tab-btn:hover {
+  color: var(--theme-text-primary) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.main-view-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-editor-bg);
+}
+
+.main-view-shell.is-secondary {
+  background: var(--theme-editor-bg);
+}
+
+.editor-workspace {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--theme-text-secondary);
+  text-align: center;
+}
+
+.editor-empty-state p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
 .tab-saving {
-  animation: pulse 0.7s ease-in-out;
+  animation: pulse 0.75s ease-in-out;
+}
+
+.tab-inactive-saving {
+  animation: pulse-inactive 0.75s ease-in-out;
 }
 
 @keyframes pulse {
   0% {
-    background-color: var(--theme-tab-bg, #1a1d21);
-    color: var(--theme-text-primary, #f0f0f0);
+    background-color: rgba(0, 122, 204, 0.1);
   }
-  50% {
-    background-color: var(--theme-success-color, #38a169);
-    color: var(--theme-button-text-color, #ffffff);
-  }
-  100% {
-    background-color: var(--theme-tab-bg, #1a1d21);
-    color: var(--theme-text-primary, #f0f0f0);
-  }
-}
 
-.tab-inactive-saving {
-  animation: pulse-inactive 0.7s ease-in-out;
+  50% {
+    background-color: rgba(0, 122, 204, 0.25);
+  }
+
+  100% {
+    background-color: rgba(0, 122, 204, 0.1);
+  }
 }
 
 @keyframes pulse-inactive {
   0% {
-    background-color: transparent; /* צבע רקע של טאב לא פעיל */
-    color: #a0aec0;
+    background-color: transparent;
   }
+
   50% {
-    background-color: #2f855a; /* ירוק כהה יותר לטאב לא פעיל */
-    color: #e2e8f0;
+    background-color: rgba(0, 122, 204, 0.15);
   }
+
   100% {
     background-color: transparent;
-    color: #a0aec0;
   }
 }
-/* סוף אנימציית שמירה */
 
-/* סגנון בסיסי לעץ קבצים */
 .tree-item {
-  padding: 3px 8px; /* Slightly more vertical padding for better touch/click */
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  font-size: 0.875rem; /* Using rem for better global font scaling */
-  color: #cdd5e0; /* Slightly adjusted text color */
-  transition: background-color 0.1s ease-in-out;
-  min-height: 24px; /* Adjusted min-height */
-  font-family: inherit; /* Ensure it inherits the body's improved font stack */
+  margin-inline: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: var(--theme-sidebar-text) !important;
+  font-weight: 560;
 }
 
 .tree-item:hover {
-  background-color: #374151; /* Darker, more subtle hover background */
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
-.tree-item-toggle-icon {
-  margin-right: 5px; /* Adjusted margin */
-  color: #9ca3af; /* Softer gray for icons */
-  width: 12px;
-  display: inline-block;
-  text-align: center;
-  font-size: 0.75rem; /* Adjusted size */
-}
-
-.tree-item-icon {
-  margin-right: 7px; /* Adjusted margin */
-  font-size: 0.9rem; /* Adjusted size */
-  width: 18px;
-  text-align: center;
-  color: #d0d7de; /* Light gray icon color */
-}
-.tree-folder > .tree-item-icon {
-  color: #facc15; /* Brighter, more modern yellow for folders */
-}
-
-
-.tree-item-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-grow: 1;
-  color: var(--theme-sidebar-text) !important; /* Use theme sidebar text color */
-}
-
-.tree-folder > .tree-item-name {
-  font-weight: 500; /* Slightly bolder for folder names for emphasis */
-  color: var(--theme-sidebar-text) !important; /* Use theme sidebar text color */
+.tree-item.drag-over-folder {
+  background: rgba(0, 122, 204, 0.15);
+  outline-color: var(--theme-accent-primary);
 }
 
 .tree-item-search-button {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: #9ca3af; /* Matched toggle icon color */
-  cursor: pointer;
-  padding: 2px 5px; /* Adjusted padding */
-  font-size: 0.9rem;
-  border-radius: 4px; /* Slightly larger radius */
-  opacity: 0;
-  transition: opacity 0.15s ease-in-out, background-color 0.15s ease-in-out;
-}
-
-.tree-item:hover .tree-item-search-button {
-  opacity: 1;
+  border-radius: 2px;
 }
 
 .tree-item-search-button:hover {
-  background-color: #4b5563; /* Consistent hover states */
-  color: #f0f2f5; /* Brighter text on hover */
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--theme-text-primary);
 }
 
-
-/* סגנונות נוספים להעשרת המראה */
-/* Removed generic button styles from here - rely on index.css */
-
-input[type="text"] {
-  border-radius: 5px; /* Slightly more rounded */
-  background-color: var(--theme-input-bg, #1f2937); /* Use theme variable */
-  color: #e5e7eb;
-  border: 1px solid var(--theme-border-color, #374151); /* Use theme variable */
-  /* To remove the border line completely, uncomment the line below and comment out the line above */
-  /* border: none; */
-  padding: 9px 14px; /* Slightly more padding for a modern feel */
-  transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out;
-  font-family: inherit; /* Ensure inputs use the global font stack */
-}
-input[type="text"]:focus {
-  outline: none;
-  border-color: #484f58; /* Dark gray border for focus */
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); /* Softer focus shadow */
+.tree-item-rename-input {
+  background-color: var(--theme-input-bg);
 }
 
-/* סגנון להדגשת חיפוש בתוך העורך */
+.sidebar .tree-item-name {
+  color: var(--theme-sidebar-text) !important;
+  text-shadow: none;
+}
+
+.sidebar .tree-item-icon,
+.sidebar .tree-item-toggle-icon {
+  color: var(--theme-text-secondary) !important;
+}
+
 .editor-search-highlight {
-  background-color: rgba(250, 204, 21, 0.4); /* Adjusted yellow, slightly less transparent for visibility */
-  border-radius: 3px; /* Slightly larger radius */
+  background-color: rgba(255, 207, 0, 0.22);
+  border-radius: 0;
 }
 
-/* סגנון למספרי שורות אם Monaco לא מטפל בזה אוטומטית עם RTL */
-.monaco-editor .line-numbers {
-  /* Usually handled by Monaco. These are placeholders. */
-  /* Forcing LTR for numbers if RTL is an issue, e.g., unicode-bidi: bidi-override; direction: ltr; */
-  font-family: var(--editor-font-family) !important; /* Apply editor font to line numbers */
-}
-
-/* Apply app font to all UI elements */
-button, input, textarea, select, .sidebar, .main-content-area, .modal-content {
-  font-family: var(--app-font-family);
-}
-
-/* Apply editor font to code-related elements */
-.cm-editor, .cm-content, .cm-gutters, code, pre, .code, .editor, .font-preview-item {
-  font-family: var(--editor-font-family);
-}
-
-/* Apply theme editor background to CodeMirror editor */
-.cm-editor {
-  background-color: var(--theme-editor-bg, #1F2937) !important;
-}
-
-.cm-content {
-  background-color: transparent !important;
-}
-
-/* Repetitions notification dot */
 .repetitions-notification-dot {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -3px;
+  right: -3px;
   width: 8px;
   height: 8px;
-  background-color: #ff4444;
   border-radius: 50%;
-  border: 1px solid white;
-  box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
-  animation: pulse-red 2s infinite;
+  border: 1px solid var(--theme-bg-secondary);
+  background-color: var(--theme-accent-primary);
+  box-shadow: none;
+  animation: pulse-blue 1.8s infinite;
 }
 
-@keyframes pulse-red {
+@keyframes pulse-blue {
   0% {
-    box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
+    opacity: 1;
   }
+
   50% {
-    box-shadow: 0 0 8px rgba(255, 68, 68, 0.9);
+    opacity: 0.5;
   }
+
   100% {
-    box-shadow: 0 0 3px rgba(255, 68, 68, 0.6);
+    opacity: 1;
   }
 }
 
-html {
-  background-color: #111827;
+@media (max-width: 1200px) {
+  .sidebar {
+    /* width controlled by JS */
+  }
 }
-*/
+
+@media (max-width: 980px) {
+  .sidebar {
+    /* width controlled by JS */
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    /* width controlled by JS */
+  }
+}

@@ -1,64 +1,48 @@
 // frontend/src/components/MarkdownPreview.jsx
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './MarkdownPreview.css';
 
 const MarkdownPreview = ({ content, presentationFontSize }) => {
-  const convertMarkdownToHtml = (text) => {
-    if (!text) return '';
-
-    let html = text;
-
-    // Headers - improved for Hebrew
-    html = html.replace(/^### (.+)$/gim, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gim, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gim, '<h1>$1</h1>');
-
-    // Bold - improved
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-    // Italic - improved  
-    html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-
-    // Code inline - improved
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Code blocks
-    html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-
-    // Links - improved
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-    // Unordered lists - improved
-    html = html.replace(/^[\s]*[-*+] (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-
-    // Ordered lists - improved
-    html = html.replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>');
-    
-    // Blockquotes - improved
-    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-
-    // Horizontal rules
-    html = html.replace(/^---$/gm, '<hr>');
-
-    // Line breaks and paragraphs
-    html = html.split('\n\n').map(paragraph => {
-      if (paragraph.trim() === '') return '';
-      if (paragraph.match(/^<(h[1-6]|ul|ol|li|blockquote|pre|hr)/)) {
-        return paragraph;
-      }
-      return `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
-    }).join('\n');
-
-    return html;
-  };
-
   return (
     <div className="markdown-preview" style={{ fontSize: presentationFontSize ? `${presentationFontSize}px` : undefined }}>
-      <div 
-        className="markdown-content"
-        dangerouslySetInnerHTML={{ __html: convertMarkdownToHtml(content) }}
-      />
+      <div className="markdown-content">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Open external links safely
+            a: ({ href, children }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+            ),
+            // Wrap tables in a scrollable container
+            table: ({ children }) => (
+              <div className="md-table-wrapper"><table>{children}</table></div>
+            ),
+            // Style images, show alt text as caption
+            img: ({ src, alt }) => (
+              <figure className="md-figure">
+                <img src={src} alt={alt || ''} />
+                {alt && <figcaption className="md-figcaption">{alt}</figcaption>}
+              </figure>
+            ),
+            // Render task-list checkboxes as styled elements
+            input: ({ type, checked, disabled }) => {
+              if (type !== 'checkbox') return null;
+              return (
+                <span
+                  className={`md-checkbox${checked ? ' md-checkbox--checked' : ''}`}
+                  aria-hidden="true"
+                >
+                  {checked ? '☑' : '☐'}
+                </span>
+              );
+            },
+          }}
+        >
+          {content || ''}
+        </ReactMarkdown>
+      </div>
     </div>
   );
 };

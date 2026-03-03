@@ -297,14 +297,14 @@ const EditableMarkdownPreview = ({ content, onContentChange, presentationFontSiz
                 onClick={handleSaveEdit}
                 title="שמור (Ctrl+Enter)"
               >
-                💾 שמור
+                שמור
               </button>
               <button 
                 className="cancel-btn"
                 onClick={handleCancelEdit}
                 title="בטל (Escape)"
               >
-                ❌ בטל
+                בטל
               </button>
             </div>
           </div>

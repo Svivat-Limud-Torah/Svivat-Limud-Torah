@@ -4,23 +4,18 @@ const path = require('path');
 const fg = require('fast-glob');
 const https = require('https');
 
-// Create a custom HTTPS agent that ignores SSL certificate issues
-const httpsAgent = new https.Agent({
-    rejectUnauthorized: false
-});
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-// Constants inspired by searchLogicV2.js (can be adjusted or moved)
-const DEFAULT_TEXT_EXTENSIONS_FOR_SMART_SEARCH = [
+const TEXT_EXTENSIONS = [
     '.txt', '.md', '.json', '.js', '.jsx', '.ts', '.tsx', '.html', '.htm', '.css', '.scss', '.less',
     '.xml', '.yaml', '.yml', '.ini', '.cfg', '.conf', '.log', '.sh', '.bash', '.py', '.rb', '.php',
     '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.go', '.rs', '.swift', '.kt', '.kts', '.dart',
     '.vue', '.svelte', '.pl', '.pm', '.tcl', '.vb', '.vbs', '.csv', '.tsv', '.rtf', '.tex', '.text'
 ];
 
-const DEFAULT_EXCLUDE_PATTERNS_FOR_SMART_SEARCH = [
+const EXCLUDE_PATTERNS = [
     'node_modules/**', '.git/**', 'dist/**', 'build/**', 'coverage/**',
     '.vscode/**', '.idea/**', '*.lock',
-    // Excluding common binary types explicitly to be safe, though extension filter should catch most
     '*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.ico', '*.webp', '*.svg',
     '*.mp3', '*.wav', '*.ogg', '*.flac', '*.mp4', '*.mov', '*.avi', '*.mkv',
     '*.pdf', '*.doc', '*.docx', '*.xls', '*.xlsx', '*.ppt', '*.pptx',
@@ -30,320 +25,749 @@ const DEFAULT_EXCLUDE_PATTERNS_FOR_SMART_SEARCH = [
     '*.DS_Store'
 ];
 
-// Helper to dynamically import node-fetch
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
 const GOOGLE_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
+// ============================================================
+//  UTILITY HELPERS
+// ============================================================
+
 /**
- * Utility function to clean AI responses and extract valid JSON
- * @param {string} responseText - The raw response text from AI
- * @returns {string} - Cleaned JSON string ready for parsing
+ * Strip internal fields (like _content) from result objects before sending to client.
  */
+function stripInternalFields(results) {
+    if (!Array.isArray(results)) return results;
+    return results.map(({ _content, ...rest }) => rest);
+}
+
 function cleanAIResponseForJSON(responseText) {
     if (!responseText || typeof responseText !== 'string') {
         throw new Error('Invalid response text provided');
     }
-    
     let cleaned = responseText.trim();
-    
-    // Remove markdown code blocks (various formats)
     cleaned = cleaned.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '');
-    
-    // Remove any leading/trailing quotes or backticks that might wrap the JSON
     cleaned = cleaned.replace(/^["'`]+|["'`]+$/g, '');
-    
-    // Remove extra whitespace and newlines at start/end
     cleaned = cleaned.trim();
-    
-    // If the response contains explanatory text before/after JSON, try to extract just the JSON part
     const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-    if (jsonMatch) {
-        cleaned = jsonMatch[0];
-    }
-    
+    if (jsonMatch) cleaned = jsonMatch[0];
     return cleaned;
 }
 
 /**
- * Step 1: Gets all text file paths within a workspace.
- * Returns name, relativePath, and absolutePath.
- * @param {string} workspacePath - Absolute path to the workspace.
- * @returns {Promise<Array<{ name: string, relativePath: string, absolutePath: string }>>}
+ * Extract meaningful keywords from a Hebrew/English query.
+ * Strips common Hebrew stop-words and returns unique tokens.
  */
-async function getAllTextFilePathsWithAbsolute(workspacePath) {
-    const globPatterns = DEFAULT_TEXT_EXTENSIONS_FOR_SMART_SEARCH.map(ext => `**/*${ext}`);
+function extractKeywords(query) {
+    const hebrewStopWords = new Set([
+        'של', 'על', 'את', 'עם', 'הוא', 'היא', 'הם', 'הן', 'אני', 'זה', 'זו', 'זאת',
+        'לא', 'כן', 'או', 'אם', 'גם', 'רק', 'אבל', 'כי', 'מה', 'איפה', 'מתי', 'למה',
+        'איך', 'כמה', 'כל', 'היה', 'היו', 'יהיה', 'להיות', 'יש', 'אין', 'בו', 'בה',
+        'לו', 'לה', 'שלו', 'שלה', 'כמו', 'אחרי', 'לפני', 'בין', 'תחת', 'מעל', 'ליד',
+        'דרך', 'בלי', 'עד', 'מאוד', 'כבר', 'עוד', 'שם', 'פה', 'כאן', 'אולי', 'ממש',
+        'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+        'may', 'might', 'shall', 'can', 'to', 'of', 'in', 'for', 'on', 'with',
+        'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after',
+        'above', 'below', 'between', 'and', 'but', 'or', 'not', 'no', 'nor',
+        'so', 'very', 'just', 'about', 'up', 'out', 'if', 'then', 'than',
+        'too', 'also', 'that', 'this', 'these', 'those', 'it', 'its',
+        'כתבתי', 'כתוב', 'נמצא', 'בעבר', 'פעם', 'מישהו', 'משהו',
+    ]);
+
+    const raw = query
+        .replace(/["""״׳'`\-–—,.;:!?()[\]{}<>\/\\@#$%^&*+=~|]/g, ' ')
+        .split(/\s+/)
+        .map(w => w.trim())
+        .filter(w => w.length > 1 && !hebrewStopWords.has(w));
+
+    return [...new Set(raw)];
+}
+
+/**
+ * Remove Hebrew prefix letters (ב, ה, ו, כ, ל, מ, ש) to get the root form.
+ */
+function removeHebrewPrefixes(word) {
+    const prefixes = /^[בהוכלמש]/;
+    if (word.length > 3 && prefixes.test(word)) {
+        return [word, word.slice(1)];
+    }
+    return [word];
+}
+
+// ============================================================
+//  LAYER 1 — LOCAL INTELLIGENCE  (0 AI calls)
+// ============================================================
+
+/**
+ * Discover all text files in the workspace via fast-glob.
+ */
+async function discoverFiles(workspacePath) {
+    const globPatterns = TEXT_EXTENSIONS.map(ext => `**/*${ext}`);
     const files = await fg(globPatterns, {
         cwd: workspacePath,
         dot: true,
-        ignore: DEFAULT_EXCLUDE_PATTERNS_FOR_SMART_SEARCH,
+        ignore: EXCLUDE_PATTERNS,
         onlyFiles: true,
-        absolute: true, // Get absolute paths
+        absolute: true,
         caseSensitiveMatch: false,
         followSymbolicLinks: false,
     });
-
-    return files.map(absoluteFilePath => ({
-        name: path.basename(absoluteFilePath),
-        relativePath: path.relative(workspacePath, absoluteFilePath).replace(/\\/g, '/'),
-        absolutePath: absoluteFilePath.replace(/\\/g, '/'), // Ensure consistent slash format
+    return files.map(abs => ({
+        name: path.basename(abs),
+        relativePath: path.relative(workspacePath, abs).replace(/\\/g, '/'),
+        absolutePath: abs.replace(/\\/g, '/'),
     }));
 }
 
 /**
- * Step 2: Selects the top N relevant files using AI.
- * AI is given file data (including absolute paths for context) but should return relative paths.
- * @param {Array<{ name: string, relativePath: string, absolutePath: string }>} allFilesData - List of all text files.
- * @param {string} userQuery - The user's search query.
- * @param {number} numFilesToScan - The number of files the AI should select.
- * @param {string} model - The AI model to use.
- * @param {string} apiKey - The Google API key.
- * @returns {Promise<Array<string>>} - Array of up to N relative file paths deemed most relevant.
+ * Score a file by how well its path/name matches the query keywords.
+ * Returns a number 0-100.
  */
-async function selectTopNFilesWithAI(allFilesData, userQuery, numFilesToScan, model, apiKey) {
-    if (!allFilesData || allFilesData.length === 0) {
-        return [];
+function scoreFileByPath(fileData, keywords) {
+    const { name, relativePath } = fileData;
+    const nameLower = name.toLowerCase();
+    const pathLower = relativePath.toLowerCase();
+    let score = 0;
+
+    for (const kw of keywords) {
+        const kwLower = kw.toLowerCase();
+        const variants = removeHebrewPrefixes(kwLower);
+        for (const variant of variants) {
+            if (nameLower.includes(variant)) score += 30;
+            else if (pathLower.includes(variant)) score += 15;
+        }
     }
-
-    // Provide AI with name, absolutePath (for its decision making), and relativePath (for it to return)
-    const filesForPrompt = allFilesData.map(f => ({
-        name: f.name,
-        absolutePath: f.absolutePath,
-        relativePath: f.relativePath
-    }));
-
-    const prompt = `בהינתן שאילתת המשתמש: "${userQuery}" ורשימת הקבצים הבאה (הכוללת שם, נתיב מלא, ונתיב יחסי):
-${JSON.stringify(filesForPrompt, null, 2)}
-
-אנא בחר את ${numFilesToScan} הקבצים שהכי סביר שיכילו את התשובה לשאילתה.
-הבדיקה שלך צריכה להתבסס גם על שם הקובץ וגם על הנתיב המלא שלו (absolutePath).
-
-הפלט הנדרש:
-החזר מערך JSON של הנתיבים היחסיים ( הערך של 'relativePath' מהקלט שקיבלת עבור כל קובץ) של עד ${numFilesToScan} הקבצים שנבחרו.
-לדוגמה, אם קלטת קובץ עם 'absolutePath': "/user/project/src/module.txt" ו-'relativePath': "src/module.txt",
-ובחרת אותו, הפלט עבור קובץ זה צריך להיות "src/module.txt".
-אם יש פחות מ-${numFilesToScan} קבצים רלוונטיים, החזר את כל הרלוונטיים.
-אם אף קובץ אינו נראה רלוונטי, החזר מערך ריק [].
-
-פורמט הפלט לדוגמה: ["src/important_doc.txt", "user_guides/guide.txt", "config/settings.json"]
-
-חשוב מאוד: הפלט שלך חייב להיות אך ורק מחרוזת JSON תקינה. אל תכלול שום טקסט נוסף, הסברים, או סימוני markdown לפני או אחרי ה-JSON.
-`;
-
-    try {
-        const fetch = require('node-fetch');
-        const response = await fetch(`${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-            agent: httpsAgent // Use our custom agent
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Google API Error (selectTopNFilesWithAI, N=${numFilesToScan}):`, response.status, errorText);
-            throw new Error(`Google API error: ${response.status} ${response.statusText}. Details: ${errorText}`);
-        }
-        const data = await response.json();
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textResponse) {
-            console.warn(`No text response from AI for file selection (top ${numFilesToScan}).`);
-            return [];
-        }
-        // Clean the response more thoroughly to handle various markdown formats
-        const cleanedResponse = cleanAIResponseForJSON(textResponse);
-        const relevantRelativePaths = JSON.parse(cleanedResponse);
-
-        if (Array.isArray(relevantRelativePaths)) {
-            const originalRelativePathsSet = new Set(allFilesData.map(f => f.relativePath));
-            return relevantRelativePaths.filter(p => typeof p === 'string' && originalRelativePathsSet.has(p)).slice(0, numFilesToScan);
-        }
-        console.warn(`AI response for file selection (top ${numFilesToScan}) was not a valid JSON array:`, cleanedResponse);
-        return [];
-    } catch (error) {
-        console.error(`Error selecting top ${numFilesToScan} relevant files with AI:`, error);
-        return []; // Graceful failure: proceed with no selection
-    }
+    return Math.min(score, 100);
 }
 
 /**
- * Step 3 (part 2): Extracts answer from the content of multiple files using AI.
- * @param {Array<{filePath: string, content: string}>} filesWithContent - Array of objects, each with relative filePath and its content.
- * @param {string} userQuery - The user's search query.
- * @param {string} model - The AI model to use.
- * @param {string} apiKey - The Google API key.
- * @returns {Promise<object>} - Object with { quote, sourceFile, lineNumber, found: boolean, error?: string }
+ * Search inside a single file for keyword matches.
+ * Returns an array of match objects with context.
+ * If fileData.content is already set (provided by frontend), skips fs.readFile.
  */
-async function extractAnswerFromMultipleContents(filesWithContent, userQuery, model, apiKey) {
-    if (!filesWithContent || filesWithContent.length === 0) {
-        return { found: false, error: "No content provided to search." };
-    }
+async function searchFileContent(fileData, keywords, workspacePath) {
+    // Use != null so that empty-string content ("") is treated as "already have content"
+    // and we don't fall through to the fs.readFile path with a possibly-null workspacePath.
+    const hasProvidedContent = fileData.content != null;
+    let content = hasProvidedContent ? fileData.content : null;
 
-    const contentForPrompt = filesWithContent.map(file => ({
-        filePath: file.filePath, // This is the relative path
-        content: file.content
-    }));
-
-    const prompt = `בהינתן שאילתת המשתמש: "${userQuery}" והתוכן של הקבצים הבאים:
-${JSON.stringify(contentForPrompt, null, 2)}
-
-אנא בצע את הפעולות הבאות:
-1.  עבור על תוכן כל הקבצים שסופקו.
-2.  מצא את התשובה הטובה ביותר לשאילתת המשתמש.
-3.  צטט את קטע הטקסט המדויק מהמקור המכיל את התשובה.
-4.  ציין את הנתיב המדויק של הקובץ ('filePath') שממנו נלקח הציטוט (כפי שסופק לך במערך הקלט).
-5.  ציין את מספר השורה שבה מתחיל הציטוט בתוך אותו קובץ (השורה הראשונה היא 1).
-
-הפלט הנדרש:
-החזר אובייקט JSON בודד עם המפתחות הבאים:
--   "quote": (string) הציטוט המדויק.
--   "sourceFile": (string) ה-'filePath' של הקובץ המכיל את הציטוט.
--   "lineNumber": (number) מספר השורה של תחילת הציטוט.
--   "found": (boolean) true אם נמצאה תשובה, false אחרת.
-
-אם לא נמצאה תשובה באף אחד מהקבצים, החזר אובייקט עם "found": false. במקרה זה, שדות "quote", "sourceFile", "lineNumber" יכולים להיות ריקים, null, או לא להיכלל.
-ודא שהציטוט הוא מדויק מהטקסט שסופק.
-
-שאילתת המשתמש: "${userQuery}"
-
-חשוב מאוד: הפלט שלך חייב להיות אך ורק מחרוזת JSON תקינה. אל תכלול שום טקסט נוסף, הסברים, או סימוני markdown לפני או אחרי ה-JSON.
-`;
-
-    try {
-        const fetch = require('node-fetch');
-        const response = await fetch(`${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-            agent: httpsAgent // Use our custom agent
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Google API Error (extractAnswerFromMultipleContents):", response.status, errorText);
-            return { found: false, error: `Google API error: ${response.statusText}. Details: ${errorText}` };
+    if (!hasProvidedContent) {
+        if (!workspacePath) {
+            return { matches: [], totalScore: 0, content: null };
         }
-        const data = await response.json();
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textResponse) {
-            console.warn("No text response from AI for answer extraction from multiple contents.");
-            return { found: false, error: "No text response from AI." };
-        }
-        // Clean the response more thoroughly to handle various markdown formats
-        const cleanedResponse = cleanAIResponseForJSON(textResponse);
-        const result = JSON.parse(cleanedResponse);
+        const absolutePath = path.isAbsolute(fileData.absolutePath)
+            ? fileData.absolutePath
+            : path.join(workspacePath, fileData.relativePath);
 
-        if (typeof result.found === 'boolean') {
-            if (result.found) {
-                if (!result.quote || !result.sourceFile || typeof result.lineNumber !== 'number') {
-                    console.warn("AI found an answer but response structure is incomplete:", cleanedResponse);
-                    return { ...result, found: true, error: "Incomplete answer structure from AI."};
-                }
-                if (!filesWithContent.some(f => f.filePath === result.sourceFile)) {
-                    console.warn("AI returned a sourceFile not in the input list:", result.sourceFile, "Expected one of:", filesWithContent.map(f=>f.filePath));
-                    return { found: false, error: "AI returned an invalid sourceFile not present in the input." };
-                }
-            }
-            return result; // Contains quote, sourceFile, lineNumber, found
-        }
-        console.warn("AI response for answer extraction was not a valid JSON object with 'found' field:", cleanedResponse);
-        return { found: false, error: "Invalid JSON structure from AI." };
-    } catch (error) {
-        console.error("Error extracting answer from multiple contents with AI:", error);
-        return { found: false, error: error.message };
-    }
-}
-
-/**
- * Main function to perform the 4-step smart search.
- * @param {string} workspacePath - Absolute path to the workspace.
- * @param {string} userQuery - The user's search query.
- * @param {number} numFilesToScan - The number of files the AI should select and scan.
- * @param {string} model - The AI model to use.
- * @param {string} apiKey - The Google API key.
- * @returns {Promise<object>} - Result object { quote, sourceFile, lineNumber, found: true } or { notFound: true, reason: string, ...details }
- */
-async function performSmartSearch(workspacePath, userQuery, numFilesToScan, model, apiKey) {
-    // Step 1: Get all text files
-    let allFilesData;
-    try {
-        allFilesData = await getAllTextFilePathsWithAbsolute(workspacePath);
-    } catch (error) {
-        console.error("Smart Search - Step 1 Error (getAllTextFilePathsWithAbsolute):", error);
-        return { notFound: true, reason: `שגיאה בשלב 1: קריאת רשימת הקבצים מהתיקייה. ${error.message}` };
-    }
-
-    if (!allFilesData || allFilesData.length === 0) {
-        return { notFound: true, reason: "לא נמצאו קבצי טקסט לחיפוש בסביבת העבודה.", filesConsideredCount: 0 };
-    }
-
-    // Step 2: Select top N relevant files using AI
-    let topNRelativePaths;
-    try {
-        // Ensure numFilesToScan is a positive integer, default to a sensible value if not.
-        const validNumFilesToScan = (typeof numFilesToScan === 'number' && numFilesToScan > 0) ? numFilesToScan : 2; // Default to 2 if invalid
-        topNRelativePaths = await selectTopNFilesWithAI(allFilesData, userQuery, validNumFilesToScan, model, apiKey);
-    } catch (error) { 
-        console.error("Smart Search - Step 2 Error (selectTopNFilesWithAI):", error);
-        return { notFound: true, reason: `שגיאה בשלב 2: בחירת קבצים רלוונטיים. ${error.message}`, filesConsideredCount: allFilesData.length };
-    }
-
-    if (!topNRelativePaths || topNRelativePaths.length === 0) {
-        return { notFound: true, reason: "הבינה המלאכותית לא בחרה קבצים רלוונטיים לשאילתה.", filesConsideredCount: allFilesData.length, filesSelectedCount: 0 };
-    }
-
-    // Step 3 (part 1): Read content of the selected files
-    const filesWithContent = [];
-    for (const relativeFilePath of topNRelativePaths) {
-        const absoluteFilePath = path.join(workspacePath, relativeFilePath); // Reconstruct absolute path
         try {
-            const content = await fs.readFile(absoluteFilePath, 'utf-8');
-            filesWithContent.push({ filePath: relativeFilePath, content });
-        } catch (readError) {
-            console.warn(`Smart Search - Step 3a Warning: Skipping file ${relativeFilePath} due to read error: ${readError.message}`);
+            content = await fs.readFile(absolutePath, 'utf-8');
+        } catch {
+            return { matches: [], totalScore: 0, content: null };
         }
     }
 
-    if (filesWithContent.length === 0) {
-        return { notFound: true, reason: "לא ניתן היה לקרוא את תוכן הקבצים שנבחרו.", filesConsideredCount: allFilesData.length, filesSelectedCount: topNRelativePaths.length, filesReadAttemptedCount: topNRelativePaths.length, filesReadSuccessCount: 0 };
+    if (!content) {
+        // Empty file — no matches possible
+        return { matches: [], totalScore: 0, content };
     }
 
-    // Step 3 (part 2) & Step 4: Extract answer from these contents and prepare response
-    let answerResult;
-    try {
-        answerResult = await extractAnswerFromMultipleContents(filesWithContent, userQuery, model, apiKey);
-    } catch (error) { 
-        console.error("Smart Search - Step 3b Error (extractAnswerFromMultipleContents):", error);
-        return { notFound: true, reason: `שגיאה בשלב 3: ניתוח תוכן הקבצים. ${error.message}`, filesConsideredCount: allFilesData.length, filesSelectedCount: topNRelativePaths.length, filesReadCount: filesWithContent.length };
+    const lines = content.split('\n');
+    const matches = [];
+    let totalScore = 0;
+
+    // Build an array of all keyword variants for matching
+    const allVariants = [];
+    for (const kw of keywords) {
+        for (const v of removeHebrewPrefixes(kw.toLowerCase())) {
+            allVariants.push(v);
+        }
     }
 
-    if (answerResult && answerResult.found) {
-        // Successfully found an answer
-        return {
-            quote: answerResult.quote,
-            sourceFile: answerResult.sourceFile,
-            lineNumber: answerResult.lineNumber,
-            found: true,
-            // Optional debug/info:
-            // _debug: {
-            //     filesConsideredCount: allFilesData.length,
-            //     filesSelectedByAI: topNRelativePaths,
-            //     filesAnalyzedForContent: filesWithContent.map(f => f.filePath)
-            // }
-        };
+    for (let i = 0; i < lines.length; i++) {
+        const lineLower = lines[i].toLowerCase();
+        let lineScore = 0;
+        const matchedKeywords = [];
+
+        for (const variant of allVariants) {
+            if (lineLower.includes(variant)) {
+                lineScore += 10;
+                matchedKeywords.push(variant);
+            }
+        }
+
+        if (lineScore > 0) {
+            // Bonus for multiple keywords on same line (proximity)
+            if (matchedKeywords.length > 1) {
+                lineScore += matchedKeywords.length * 5;
+            }
+
+            const contextStart = Math.max(0, i - 2);
+            const contextEnd = Math.min(lines.length - 1, i + 2);
+            const context = lines.slice(contextStart, contextEnd + 1).join('\n');
+
+            matches.push({
+                lineNumber: i + 1,
+                lineText: lines[i],
+                context,
+                score: lineScore,
+                matchedKeywords,
+            });
+            totalScore += lineScore;
+        }
+    }
+
+    // Sort matches within the file by score
+    matches.sort((a, b) => b.score - a.score);
+
+    return { matches: matches.slice(0, 5), totalScore, content };
+}
+
+/**
+ * Layer 1 main: Local keyword search across the workspace.
+ * Returns ranked results WITHOUT using AI.
+ * If providedFiles is given (from browser File System Access API),
+ * uses those instead of discovering files from disk.
+ */
+async function localSearch(workspacePath, query, providedFiles = null) {
+    const keywords = extractKeywords(query);
+    if (keywords.length === 0) {
+        return { results: [], filesScanned: 0, keywords: [] };
+    }
+
+    // Use provided files or discover them from disk
+    let allFiles;
+    if (providedFiles && providedFiles.length > 0) {
+        allFiles = providedFiles.map(f => ({
+            name: f.name || f.path.split('/').pop(),
+            relativePath: f.path,
+            absolutePath: f.path,
+            content: f.content,
+        }));
     } else {
-        // No answer found or an error occurred during extraction
-        const reason = (answerResult && answerResult.error) ? `שגיאה בניתוח התוכן: ${answerResult.error}` : "לא נמצאה תשובה מתאימה בקבצים שנסרקו.";
+        allFiles = await discoverFiles(workspacePath);
+    }
+    if (allFiles.length === 0) {
+        return { results: [], filesScanned: 0, keywords };
+    }
+
+    // 2. Score by path/name first to prioritise promising files
+    const scored = allFiles.map(f => ({ ...f, pathScore: scoreFileByPath(f, keywords) }));
+    scored.sort((a, b) => b.pathScore - a.pathScore);
+
+    // 3. Search inside files
+    // When content is already in memory (browser-provided), scan ALL files — no I/O cost.
+    // When reading from disk, cap at 50 to avoid performance issues.
+    const filesToScan = (providedFiles && providedFiles.length > 0) ? scored : scored.slice(0, 50);
+    const fileResults = [];
+
+    for (const fileData of filesToScan) {
+        const { matches, totalScore, content } = await searchFileContent(fileData, keywords, workspacePath);
+        if (matches.length > 0 || fileData.pathScore > 0) {
+            fileResults.push({
+                relativePath: fileData.relativePath,
+                name: fileData.name,
+                pathScore: fileData.pathScore,
+                contentScore: totalScore,
+                combinedScore: fileData.pathScore + totalScore,
+                matches,
+                content,
+            });
+        }
+    }
+
+    // 4. Sort by combined score
+    fileResults.sort((a, b) => b.combinedScore - a.combinedScore);
+
+    // 5. Build result objects
+    const results = fileResults.slice(0, 10).map(fr => {
+        const bestMatch = fr.matches[0];
+        return {
+            sourceFile: fr.relativePath,
+            fileName: fr.name,
+            score: fr.combinedScore,
+            matchCount: fr.matches.length,
+            lineNumber: bestMatch ? bestMatch.lineNumber : null,
+            quote: bestMatch ? bestMatch.lineText.trim() : null,
+            context: bestMatch ? bestMatch.context : null,
+            matchedKeywords: bestMatch ? bestMatch.matchedKeywords : [],
+            _content: fr.content || null, // Keep content for aiDeepAnalysis (stripped before returning to client)
+        };
+    });
+
+    return {
+        results,
+        filesScanned: filesToScan.length,
+        totalFiles: allFiles.length,
+        keywords,
+    };
+}
+
+// ============================================================
+//  LAYER 2 — AI DEEP ANALYSIS  (1 Gemini call)
+// ============================================================
+
+/**
+ * Takes the top local-search results and asks AI to find the best answer
+ * with context, explanation, and related terms.
+ * Uses exactly ONE API call.
+ */
+async function aiDeepAnalysis(localResults, query, model, apiKey, workspacePath) {
+    // Pick top 5 files from local results that have content
+    const topFiles = localResults.results
+        .filter(r => r.score > 0)
+        .slice(0, 5);
+
+    if (topFiles.length === 0) {
+        return null;
+    }
+
+    // Read content for the top files — use _content from localSearch if available
+    const filesWithContent = [];
+    for (const result of topFiles) {
+        // Use != null so empty-string content is treated as valid (avoids path.join with null)
+        const hasProvidedContent = result._content != null;
+        let content = hasProvidedContent ? result._content : null;
+        if (!hasProvidedContent) {
+            if (!workspacePath) continue; // can't read from disk without a path
+            const absPath = path.join(workspacePath, result.sourceFile);
+            try {
+                content = await fs.readFile(absPath, 'utf-8');
+            } catch {
+                continue; // skip unreadable
+            }
+        }
+        // Trim to first 3000 chars to save tokens
+        filesWithContent.push({
+            filePath: result.sourceFile,
+            content: content.length > 3000 ? content.substring(0, 3000) + '\n... (קובץ קוצר)' : content,
+        });
+    }
+
+    if (filesWithContent.length === 0) return null;
+
+    const prompt = `אתה עוזר חיפוש חכם. המשתמש מחפש: "${query}"
+
+הנה תוכן הקבצים הרלוונטיים ביותר שנמצאו:
+${filesWithContent.map((f, i) => `--- קובץ ${i + 1}: ${f.filePath} ---\n${f.content}`).join('\n\n')}
+
+מצא את התוצאות הכי רלוונטיות לשאילתה.
+
+החזר אובייקט JSON בפורמט הבא:
+{
+  "results": [
+    {
+      "quote": "ציטוט מדויק מהטקסט",
+      "explanation": "הסבר קצר למה זה רלוונטי",
+      "sourceFile": "נתיב הקובץ כפי שסופק",
+      "lineNumber": 1,
+      "relevanceScore": 95
+    }
+  ],
+  "relatedTerms": ["מונח קשור 1", "מונח קשור 2"],
+  "summary": "תקציר קצר של מה שנמצא"
+}
+
+כללים:
+- החזר עד 5 תוצאות, מהרלוונטית ביותר לפחות
+- הציטוט חייב להיות מדויק מהטקסט שסופק
+- sourceFile חייב להיות בדיוק כפי שהוא מופיע בקלט
+- lineNumber הוא מספר השורה בקובץ (1 = שורה ראשונה)
+- relatedTerms: מונחים שיכולים לעזור בחיפוש עתידי
+- summary: משפט אחד-שניים שמסכם את הממצאים
+- אם לא נמצא כלום רלוונטי, החזר: {"results": [], "relatedTerms": [], "summary": "לא נמצאו תוצאות"}
+חשוב: הפלט חייב להיות JSON תקין בלבד, ללא טקסט נוסף.`;
+
+    try {
+        const fetch = require('node-fetch');
+        const response = await fetch(`${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+            agent: httpsAgent,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('AI Deep Analysis API Error:', response.status, errorText);
+            return null;
+        }
+
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!textResponse) return null;
+
+        const cleaned = cleanAIResponseForJSON(textResponse);
+        const parsed = JSON.parse(cleaned);
+
+        // Validate sourceFile references
+        const validPaths = new Set(filesWithContent.map(f => f.filePath));
+        if (parsed.results && Array.isArray(parsed.results)) {
+            parsed.results = parsed.results.filter(r =>
+                r.sourceFile && validPaths.has(r.sourceFile)
+            );
+        }
+
+        return parsed;
+    } catch (error) {
+        console.error('AI Deep Analysis error:', error);
+        return null;
+    }
+}
+
+// ============================================================
+//  LAYER 2b — AI DIRECT SEMANTIC SEARCH  (1 Gemini call)
+// ============================================================
+
+/**
+ * AI-powered direct scan — sends compact file previews to Gemini and asks it to
+ * semantically find what the user is looking for. Runs even when local keyword
+ * search completely fails (e.g. Hebrew conjugation mismatches).
+ *
+ * Strategy: file name + first 600 chars of each file → one API call → AI identifies
+ * relevant files and extracts quotes. Stays well within free-tier limits
+ * (80 files × 600 chars ≈ 12 000 tokens vs Gemini Flash's 1 M token context).
+ */
+async function aiDirectSearch(allFiles, query, model, apiKey) {
+    if (!allFiles || allFiles.length === 0) return null;
+
+    const MAX_FILES = 80;
+    const PREVIEW_CHARS = 600;
+
+    const filesWithContent = allFiles
+        .filter(f => f.content && f.content.trim().length > 20)
+        .slice(0, MAX_FILES);
+
+    if (filesWithContent.length === 0) return null;
+
+    // Build compact catalog: [index] path \n preview
+    const catalog = filesWithContent.map((f, i) => {
+        const filePath = f.relativePath || f.path || `file_${i}`;
+        const preview = (f.content || '').replace(/[ \t]+/g, ' ').substring(0, PREVIEW_CHARS).trim();
+        return `[${i}] ${filePath}\n${preview}`;
+    }).join('\n\n---\n\n');
+
+    const prompt = `אתה עוזר חיפוש חכם בסביבת לימוד תורנית. המשתמש מחפש: "${query}"
+
+להלן קטלוג קבצים עם תצוגה מקדימה של תוכנם:
+
+${catalog}
+
+משימתך: מצא קבצים ותוכן רלוונטי לשאילתה.
+חשוב:
+- חפש לפי משמעות ורעיון, לא רק מילות מפתח מדויקות
+- עברית — התחשב בצורות דקדוקיות שונות (יחיד/רבים/נסמך/בניינים שונים)
+- שקול גם את שמות הקבצים כרמזים לתוכן
+- אם יש כמה תוצאות טובות, החזר את כולן לפי סדר רלוונטיות יורד
+
+החזר JSON תקין בלבד (ללא טקסט נוסף):
+{
+  "results": [
+    {
+      "fileIndex": 0,
+      "sourceFile": "הנתיב המדויק מהקטלוג",
+      "quote": "ציטוט מדויק מהתוכן המוצג",
+      "explanation": "הסבר קצר מדוע זה רלוונטי",
+      "relevanceScore": 90
+    }
+  ],
+  "relatedTerms": ["מונח קשור 1", "מונח קשור 2"],
+  "summary": "תקציר חד-משפטי של הממצאים"
+}
+
+אם לא נמצא שום דבר רלוונטי: {"results": [], "relatedTerms": [], "summary": "לא נמצאו תוצאות רלוונטיות"}`;
+
+    try {
+        const fetch = require('node-fetch');
+        const response = await fetch(`${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+            agent: httpsAgent,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('AI Direct Search API Error:', response.status, errorText);
+            return null;
+        }
+
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!textResponse) return null;
+
+        const cleaned = cleanAIResponseForJSON(textResponse);
+        const parsed = JSON.parse(cleaned);
+
+        if (!parsed.results || parsed.results.length === 0) return null;
+
+        // Map fileIndex back to actual file paths
+        const validResults = parsed.results
+            .filter(r => typeof r.fileIndex === 'number' && r.fileIndex >= 0 && r.fileIndex < filesWithContent.length)
+            .map(r => {
+                const fileData = filesWithContent[r.fileIndex];
+                const filePath = fileData.relativePath || fileData.path;
+                return {
+                    sourceFile: filePath,
+                    fileName: filePath.split('/').pop(),
+                    quote: r.quote || '',
+                    explanation: r.explanation || '',
+                    relevanceScore: r.relevanceScore || 80,
+                };
+            });
+
+        if (validResults.length === 0) return null;
+
+        return {
+            results: validResults,
+            relatedTerms: parsed.relatedTerms || [],
+            summary: parsed.summary || '',
+        };
+    } catch (error) {
+        console.error('AI Direct Search error:', error);
+        return null;
+    }
+}
+
+// ============================================================
+//  MAIN ORCHESTRATOR
+// ============================================================
+
+/**
+ * Performs a multi-layer smart search.
+ *
+ * Mode "local"  → Layer 1 only (instant, 0 AI calls)
+ * Mode "deep"   → Layer 1 + Layer 2 (1 AI call)
+ * Default mode  → "deep"
+ */
+async function performSmartSearch(workspacePath, userQuery, numFilesToScan, model, apiKey, mode = 'deep', providedFiles = null) {
+    const startTime = Date.now();
+
+    // --- Layer 1: Local keyword search ---
+    let localResults;
+    try {
+        localResults = await localSearch(workspacePath, userQuery, providedFiles);
+    } catch (error) {
+        console.error('Smart Search Layer 1 error:', error);
         return {
             notFound: true,
-            reason: reason,
-            // Optional debug/info:
-            // _debug: {
-            //     filesConsideredCount: allFilesData.length,
-            //     filesSelectedByAI: topNRelativePaths,
-            //     filesAnalyzedForContent: filesWithContent.map(f => f.filePath),
-            //     aiExtractionError: answerResult ? answerResult.error : "Unknown extraction issue"
-            // }
+            reason: `שגיאה בחיפוש מקומי: ${error.message}`,
         };
     }
+
+    // If mode is local-only, return results immediately
+    if (mode === 'local') {
+        if (localResults.results.length === 0) {
+            return {
+                notFound: true,
+                reason: 'לא נמצאו תוצאות מתאימות לחיפוש.',
+                keywords: localResults.keywords,
+                filesScanned: localResults.filesScanned,
+                totalFiles: localResults.totalFiles,
+                mode: 'local',
+            };
+        }
+        return {
+            found: true,
+            mode: 'local',
+            results: stripInternalFields(localResults.results),
+            keywords: localResults.keywords,
+            filesScanned: localResults.filesScanned,
+            totalFiles: localResults.totalFiles,
+            duration: Date.now() - startTime,
+        };
+    }
+
+    // --- Layer 2: AI deep analysis ---
+    // We always run AI in 'deep' mode. Two strategies depending on local results:
+    //   A) Local found keyword matches  → aiDeepAnalysis (focused: top-5 files with full content)
+    //   B) Local found nothing (Hebrew conjugation mismatch, etc.) → aiDirectSearch (semantic catalog scan)
+
+    const filesHaveContentMatches = localResults.results.some(r => r.matchCount > 0);
+
+    // Strategy A: local keyword matches found — AI analyzes those specific files
+    if (filesHaveContentMatches) {
+        try {
+            const aiResult = await aiDeepAnalysis(localResults, userQuery, model, apiKey, workspacePath);
+            if (aiResult && aiResult.results && aiResult.results.length > 0) {
+                return {
+                    found: true,
+                    mode: 'deep',
+                    results: aiResult.results.map(r => ({
+                        ...r,
+                        sourceFile: r.sourceFile,
+                        fileName: path.basename(r.sourceFile),
+                    })),
+                    relatedTerms: aiResult.relatedTerms || [],
+                    summary: aiResult.summary || '',
+                    localResults: stripInternalFields(localResults.results.slice(0, 5)),
+                    keywords: localResults.keywords,
+                    filesScanned: localResults.filesScanned,
+                    totalFiles: localResults.totalFiles,
+                    duration: Date.now() - startTime,
+                };
+            }
+        } catch (error) {
+            console.error('Smart Search Layer 2 (analysis) error:', error);
+            // Fall through to direct semantic search
+        }
+    }
+
+    // Strategy B: No keyword matches (or AI analysis failed) — AI does a full semantic scan
+    // This handles: Hebrew conjugation mismatches, concept-based queries, synonym gaps
+    if (providedFiles && providedFiles.length > 0) {
+        try {
+            const directResult = await aiDirectSearch(providedFiles, userQuery, model, apiKey);
+            if (directResult && directResult.results && directResult.results.length > 0) {
+                return {
+                    found: true,
+                    mode: 'deep',
+                    results: directResult.results,
+                    relatedTerms: directResult.relatedTerms || [],
+                    summary: directResult.summary || '',
+                    keywords: localResults.keywords,
+                    filesScanned: providedFiles.length,
+                    totalFiles: providedFiles.length,
+                    duration: Date.now() - startTime,
+                };
+            }
+        } catch (error) {
+            console.error('Smart Search Layer 2 (direct) error:', error);
+        }
+    }
+
+    // Local-only fallback if we had any path-score matches
+    if (localResults.results.length > 0) {
+        return {
+            found: true,
+            mode: 'local-fallback',
+            results: stripInternalFields(localResults.results),
+            keywords: localResults.keywords,
+            filesScanned: localResults.filesScanned,
+            totalFiles: localResults.totalFiles,
+            duration: Date.now() - startTime,
+        };
+    }
+
+    // Nothing found at all
+    return {
+        notFound: true,
+        reason: 'לא נמצאו תוצאות מתאימות לחיפוש. נסה לצמצם את השאילתה או לוודא שהקבצים נטענו.',
+        keywords: localResults.keywords,
+        filesScanned: localResults.filesScanned,
+        totalFiles: localResults.totalFiles,
+        mode: mode,
+        duration: Date.now() - startTime,
+    };
+}
+
+// ============================================================
+//  SIMPLE TEXT SEARCH (no AI, pure grep-like)
+// ============================================================
+
+/**
+ * Simple text search across all files in workspace.
+ * Supports searching in specific files/folders via optional filterPaths.
+ * Case-insensitive. Returns all matches with context.
+ */
+async function performSimpleSearch(workspacePath, searchText, filterPaths = null, caseSensitive = false, wholeWord = false, providedFiles = null) {
+    if (!searchText || !searchText.trim()) {
+        return { results: [], totalMatches: 0, filesSearched: 0 };
+    }
+
+    let allFiles;
+    if (providedFiles && providedFiles.length > 0) {
+        allFiles = providedFiles.map(f => ({
+            name: f.name || f.path.split('/').pop(),
+            relativePath: f.path,
+            absolutePath: f.path,
+            content: f.content,
+        }));
+    } else {
+        allFiles = await discoverFiles(workspacePath);
+    }
+    
+    // If filterPaths provided, only search within those
+    let filesToSearch = allFiles;
+    if (filterPaths && filterPaths.length > 0) {
+        filesToSearch = allFiles.filter(f => {
+            return filterPaths.some(fp => {
+                const fpNorm = fp.replace(/\\/g, '/');
+                return f.relativePath === fpNorm || f.relativePath.startsWith(fpNorm + '/');
+            });
+        });
+    }
+
+    const results = [];
+    let totalMatches = 0;
+
+    const searchLower = caseSensitive ? searchText : searchText.toLowerCase();
+    
+    // Build regex for whole word matching
+    let searchRegex = null;
+    if (wholeWord) {
+        const escaped = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        searchRegex = new RegExp(`(?:^|[\\s.,;:!?()\\[\\]{}"\\'\\-])${escaped}(?:[\\s.,;:!?()\\[\\]{}"\\'\\-]|$)`, caseSensitive ? 'g' : 'gi');
+    }
+
+    for (const fileData of filesToSearch) {
+        const hasProvidedContent = fileData.content != null;
+        let content = hasProvidedContent ? fileData.content : null;
+        if (!hasProvidedContent) {
+            if (!workspacePath) continue;
+            try {
+                content = await fs.readFile(fileData.absolutePath, 'utf-8');
+            } catch {
+                continue;
+            }
+        }
+        if (!content) continue; // empty file
+
+        const lines = content.split('\n');
+        const fileMatches = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const lineToCheck = caseSensitive ? line : line.toLowerCase();
+            
+            let isMatch = false;
+            if (wholeWord && searchRegex) {
+                searchRegex.lastIndex = 0;
+                isMatch = searchRegex.test(line);
+            } else {
+                isMatch = lineToCheck.includes(searchLower);
+            }
+
+            if (isMatch) {
+                const contextStart = Math.max(0, i - 1);
+                const contextEnd = Math.min(lines.length - 1, i + 1);
+                fileMatches.push({
+                    lineNumber: i + 1,
+                    lineText: line,
+                    context: lines.slice(contextStart, contextEnd + 1).join('\n'),
+                });
+                totalMatches++;
+            }
+        }
+
+        if (fileMatches.length > 0) {
+            results.push({
+                relativePath: fileData.relativePath,
+                fileName: fileData.name,
+                matches: fileMatches,
+                matchCount: fileMatches.length,
+            });
+        }
+    }
+
+    // Sort: most matches first
+    results.sort((a, b) => b.matchCount - a.matchCount);
+
+    return {
+        results,
+        totalMatches,
+        filesSearched: filesToSearch.length,
+        totalFiles: allFiles.length,
+        searchText,
+    };
 }
 
 /**
@@ -354,47 +778,173 @@ async function performSmartSearch(workspacePath, userQuery, numFilesToScan, mode
  * @param {string} apiKey - מפתח API
  * @returns {Promise<string>} - הטקסט המאורגן
  */
-async function organizeText(text, prompt, model = 'gpt-4', apiKey) {
+/**
+ * בונה prompt לקטע בודד — הוראה מחמירה: מבנה בלבד, ללא סיכום
+ */
+function buildChunkPrompt(chunkIndex, totalChunks, chunkText) {
+    return `אתה עורך טקסט עברי. עליך לטפל בקטע ${chunkIndex} מתוך ${totalChunks} של המסמך.
+
+✅ מה לעשות — הוסף מבנה בלבד:
+• הוסף כותרת ## לתחילת כל נושא/רעיון חדש שמתחיל בקטע זה
+• המר סדרות פריטים לרשימות (- פריט)
+• חלק לפסקאות במקום שיש מעבר רעיוני
+• הוסף שורה ריקה בין פסקאות
+
+❌ אסור בהחלט:
+• לסכם, לקצר, להשמיט או לשנות תוכן כלשהו
+• להוסיף מידע חדש שאינו בטקסט
+• לשנות ניסוחים, מילים או סדר משפטים
+• להוסיף הסברים, אזהרות, הערות משלך
+
+החזר את כל הטקסט הבא כולו, עם הוספת מבנה בלבד — שמור כל מילה:
+---
+${chunkText}
+---`;
+}
+
+/**
+ * קריאה ל-AI לקטע בודד (Google)
+ */
+async function callGoogleAIForChunk(chunkText, chunkPrompt, model, apiKey) {
+    const fetch = require('node-fetch');
+    const url = `${GOOGLE_API_BASE_URL}${model}:generateContent?key=${apiKey}`;
+    const tokenEstimate = Math.ceil(chunkText.length / 3);
+    const maxTokens = Math.max(tokenEstimate * 2, 4096);
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: chunkPrompt }] }],
+            generationConfig: {
+                temperature: 0.05,
+                maxOutputTokens: maxTokens,
+                topP: 0.9,
+                topK: 40,
+                candidateCount: 1,
+            },
+            safetySettings: [
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            ]
+        }),
+        agent: httpsAgent,
+        timeout: 120000
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) throw new Error(`Google AI API שגיאה: ${response.status} - ${responseText}`);
+    const data = JSON.parse(responseText);
+    const result = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!result) throw new Error('תגובה ריקה מ-Google AI API');
+    return result.trim();
+}
+
+/**
+ * קריאה ל-AI לקטע בודד (OpenAI)
+ */
+async function callOpenAIForChunk(chunkText, chunkPrompt, model, apiKey) {
+    const tokenEstimate = Math.ceil(chunkText.length / 3);
+    const maxTokens = Math.max(tokenEstimate * 2, 2048);
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: chunkPrompt }],
+            max_tokens: maxTokens,
+            temperature: 0.05,
+            top_p: 0.9,
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI API שגיאה: ${response.status} - ${errorText}`);
+    }
+    const data = await response.json();
+    const result = data.choices?.[0]?.message?.content;
+    if (!result) throw new Error('תגובה ריקה מ-OpenAI API');
+    return result.trim();
+}
+
+/**
+ * ארגון טקסט בגישת קטעים — מעבד כל קטע בנפרד ומחבר בחזרה.
+ * כל קריאה ל-AI מקבלת רק קטע קטן + הוראה קשיחה: מבנה בלבד, ללא סיכום.
+ */
+async function organizeTextWithChunks(text, model, apiKey, onChunkProgress) {
+    const isGoogleModel = model && (model.includes('gemini') || model.includes('palm'));
+    const chunks = await divideTextIntoChunks(text, model, apiKey);
+    const total = chunks.length;
+    console.log(`ארגון בגישת קטעים: ${total} קטעים, מודל: ${model}`);
+
+    const organizedChunks = [];
+    for (let i = 0; i < total; i++) {
+        const chunkPrompt = buildChunkPrompt(i + 1, total, chunks[i]);
+        console.log(`מעבד קטע ${i + 1}/${total} (${chunks[i].split('\n').length} שורות)...`);
+        if (onChunkProgress) onChunkProgress(i, total);
+
+        let organized;
+        if (isGoogleModel) {
+            organized = await callGoogleAIForChunk(chunks[i], chunkPrompt, model, apiKey);
+        } else {
+            organized = await callOpenAIForChunk(chunks[i], chunkPrompt, model, apiKey);
+        }
+
+        // strip any wrapping fences the AI may have added (```...```)
+        organized = organized.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+        organizedChunks.push(organized);
+    }
+
+    return organizedChunks.join('\n\n');
+}
+
+async function organizeText(text, prompt, model = 'gpt-4', apiKey, onChunkProgress) {
     if (!text || !text.trim()) {
         throw new Error('שגיאה: נדרש טקסט לארגון');
     }
 
     const startTime = Date.now();
-    
-    // בדיקה איזה סוג מודל זה (OpenAI או Google)
     const isGoogleModel = model && (model.includes('gemini') || model.includes('palm'));
-    
+
     try {
         const lines = text.split('\n');
         console.log(`התחלת ארגון טקסט - מספר שורות: ${lines.length}, מודל: ${model}`);
-        
-        // גישה חדשה: תמיד נשלח את הטקסט המלא עם הגדרות מותאמות
-        console.log('מארגן טקסט בגישה חדשה - טקסט מלא עם הגדרות מותאמות');
-        
+
         let organizedText;
-        
-        if (isGoogleModel) {
-            organizedText = await callGoogleAIForTextOrganizationOptimized(text, prompt, model, apiKey, lines.length);
+
+        if (lines.length > 100) {
+            // גישת קטעים: מעבד כל קטע בנפרד — לא מסכם, רק מוסיף מבנה
+            organizedText = await organizeTextWithChunks(text, model, apiKey, onChunkProgress);
         } else {
-            organizedText = await callOpenAIForTextOrganizationOptimized(text, prompt, model, apiKey, lines.length);
+            // טקסט קצר — קריאה בודדת עם prompt מחמיר
+            const singlePrompt = buildChunkPrompt(1, 1, text);
+            if (isGoogleModel) {
+                organizedText = await callGoogleAIForChunk(text, singlePrompt, model, apiKey);
+            } else {
+                organizedText = await callOpenAIForChunk(text, singlePrompt, model, apiKey);
+            }
+            organizedText = organizedText.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
         }
-        
+
         const endTime = Date.now();
         console.log(`ארגון טקסט הושלם בתוך ${(endTime - startTime) / 1000} שניות`);
-        
-        // בדיקה סופית לוודא שהטקסט המאורגן שלם
-        const originalLines = text.split('\n').filter(line => line.trim().length > 0);
-        const organizedLines = organizedText.split('\n').filter(line => line.trim().length > 0);
-        
-        console.log(`בדיקה סופית: שורות במקור: ${originalLines.length}, שורות מאורגנות: ${organizedLines.length}`);
-        
-        // אם יש הפרש גדול בשורות, תן אזהרה
-        if (organizedLines.length < originalLines.length * 0.8) {
-            console.warn(`⚠️ אזהרה סופית: מספר השורות המאורגנות (${organizedLines.length}) קטן משמעותית ממספר השורות המקוריות (${originalLines.length})`);
+
+        // בדיקה סופית
+        const originalSig = text.split('\n').filter(l => l.trim()).length;
+        const organizedSig = organizedText.split('\n').filter(l => l.trim()).length;
+        if (organizedSig < originalSig * 0.8) {
+            console.warn(`⚠️ אזהרה סופית: שורות מקור ${originalSig}, שורות מאורגנות ${organizedSig}`);
         }
-        
+
         return organizedText;
-        
+
     } catch (error) {
         const endTime = Date.now();
         console.error(`שגיאה בארגון טקסט אחרי ${(endTime - startTime) / 1000} שניות:`, error);
@@ -984,9 +1534,6 @@ function cleanAndSmooth(text) {
 
 module.exports = {
     performSmartSearch,
+    performSimpleSearch,
     organizeText,
-    // Exporting for potential testing or advanced use, not strictly required by the main flow.
-    // getAllTextFilePathsWithAbsolute,
-    // selectTopNFilesWithAI, // Renamed
-    // extractAnswerFromMultipleContents
 };

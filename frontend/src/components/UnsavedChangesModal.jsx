@@ -24,7 +24,7 @@ const UnsavedChangesModal = ({
     <div className="unsaved-changes-modal-overlay" onKeyDown={handleKeyDown} tabIndex={-1}>
       <div className="unsaved-changes-modal">
         <div className="unsaved-changes-modal-header">
-          <span className="unsaved-changes-modal-icon">⚠️</span>
+          <span className="unsaved-changes-modal-icon">⚠</span>
           <h3 className="unsaved-changes-modal-title">שינויים לא נשמרו</h3>
         </div>
         

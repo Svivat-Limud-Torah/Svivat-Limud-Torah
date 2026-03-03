@@ -1,10 +1,11 @@
 // frontend/src/components/SingleFileConversionModal.jsx
 import React, { useState, useRef } from 'react';
 import './SettingsModal.css'; // Reuse existing modal styles
+import LocalFileSystemService from '../services/LocalFileSystemService';
 
 const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'http://localhost:3001';
 
-const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSuccess }) => {
+const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSuccess, basePath, relativePath }) => {
   const [selectedFormat, setSelectedFormat] = useState('md');
   const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState('');
@@ -16,24 +17,24 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
       value: 'md', 
       label: 'Markdown (.md) - מומלץ', 
       description: 'פורמט טקסט עם יכולות עיצוב ותמיכה מלאה ב-Torah IDE',
-      icon: '📝'
+      icon: ''
     },
     { 
       value: 'txt', 
       label: 'טקסט רגיל (.txt)', 
       description: 'קובץ טקסט פשוט ללא עיצוב',
-      icon: '📄'
+      icon: ''
     },
     { 
       value: 'html', 
       label: 'HTML (.html)', 
       description: 'דף אינטרנט עם עיצוב מלא',
-      icon: '🌐'
+      icon: ''
     }
   ];
 
   const handleConvert = async () => {
-    if (!filePath) {
+    if (!basePath || !relativePath) {
       setError('נתיב קובץ חסר');
       return;
     }
@@ -43,13 +44,26 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
     setConversionResult(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/file-conversion/convert-file-with-format`, {
+      // Read the file content using LocalFileSystemService
+      const fileResult = await LocalFileSystemService.readFile(basePath, relativePath);
+      
+      if (!fileResult.success) {
+        throw new Error(fileResult.error || 'Failed to read file');
+      }
+
+      // Get file extension
+      const fileExtension = fileName.split('.').pop().toLowerCase();
+
+      // Send file content and metadata to backend for conversion
+      const response = await fetch(`${API_BASE_URL}/api/file-conversion/convert-file-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          filePath: filePath,
+          fileName: fileName,
+          fileContent: fileResult.content,
+          sourceFormat: fileExtension,
           targetFormat: selectedFormat
         }),
       });
@@ -60,11 +74,29 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
       }
 
       const result = await response.json();
-      setConversionResult(result);
+      
+      // Write the converted file back using LocalFileSystemService
+      const newFileName = fileName.replace(/\.[^/.]+$/, `.${selectedFormat}`);
+      const newRelativePath = relativePath.replace(/[^/]+$/, newFileName);
+      
+      const writeResult = await LocalFileSystemService.writeFile(basePath, newRelativePath, result.convertedContent);
+      
+      if (!writeResult.success) {
+        throw new Error('Failed to save converted file');
+      }
+
+      setConversionResult({
+        ...result,
+        newFilePath: `${basePath}::${newRelativePath}`,
+        newFileName: newFileName
+      });
 
       // Call onSuccess callback if provided
       if (onSuccess) {
-        onSuccess(result);
+        onSuccess({
+          newFilePath: `${basePath}::${newRelativePath}`,
+          newFileName: newFileName
+        });
       }
 
     } catch (error) {
@@ -90,7 +122,7 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
     <div className="settings-modal-overlay">
       <div className="settings-modal" style={{ maxWidth: '600px' }}>
         <div className="settings-modal-header">
-          <h2>🔄 המרת קובץ - {fileName}</h2>
+          <h2>המרת קובץ - {fileName}</h2>
           <button 
             className="settings-modal-close" 
             onClick={handleClose}
@@ -186,9 +218,9 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
                 <div style={{
                   padding: '12px',
                   backgroundColor: 'rgba(248, 81, 73, 0.1)',
-                  border: '1px solid #f85149',
+                  border: '1px solid var(--theme-error-color)',
                   borderRadius: '6px',
-                  color: '#f85149',
+                  color: 'var(--theme-error-color)',
                   marginBottom: '20px'
                 }}>
                   <strong>שגיאה:</strong> {error}
@@ -219,13 +251,13 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
               <div style={{
                 padding: '15px',
                 backgroundColor: 'rgba(63, 185, 80, 0.1)',
-                border: '1px solid #3fb950',
+                border: '1px solid var(--theme-success-color)',
                 borderRadius: '8px',
                 marginBottom: '20px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                   <span style={{ fontSize: '24px', marginLeft: '8px' }}>✅</span>
-                  <strong style={{ color: '#3fb950' }}>ההמרה הושלמה בהצלחה!</strong>
+                  <strong style={{ color: 'var(--theme-success-color)' }}>ההמרה הושלמה בהצלחה!</strong>
                 </div>
                 <div style={{ color: 'var(--theme-text-secondary)', fontSize: '14px' }}>
                   <div><strong>קובץ מקור:</strong> {conversionResult.originalFile}</div>

@@ -1,15 +1,17 @@
 /* frontend/src/components/ContextMenu.css */
 .context-menu {
   position: fixed;
-  background-color: var(--theme-bg-secondary); /* Use theme secondary background */
-  border: 1px solid var(--theme-border-color); /* Use theme border color */
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Keep shadow as is for now */
+  background-color: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   padding: 5px 0;
-  min-width: 180px; /* Increased min-width for better readability */
-  color: var(--theme-text-primary); /* Use theme primary text color */
-  direction: rtl; /* Ensure context menu aligns with app direction */
+  min-width: 180px;
+  color: var(--theme-text-primary);
+  direction: rtl;
+  opacity: 0;
+  transition: opacity 0.06s ease;
 }
 
 .context-menu ul {

@@ -71,9 +71,9 @@ export const useTextOrganizationWithProgress = () => {
         processingSpeed: null
       });
 
-      // Get API key
-      const { key: apiKey } = getApiKeyDetails();
-      if (!apiKey) {
+      // Get API key status (key itself is stored server-side)
+      const { hasKey } = getApiKeyDetails();
+      if (!hasKey) {
         throw new Error('מפתח API לא מוגדר. אנא הגדר מפתח API תחילה.');
       }
 
@@ -83,17 +83,17 @@ export const useTextOrganizationWithProgress = () => {
       // Get user settings
       const disableItalicFormatting = localStorage.getItem(DISABLE_ITALIC_FORMATTING_KEY) === 'true';
 
-      // Start the organization process
+      // Start the organization process (apiKey is in server session)
       const response = await fetch('http://localhost:3001/api/text-organization/organize-with-progress', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           text,
           prompt: customPrompt,
           model: selectedAiModel,
-          apiKey,
           disableItalicFormatting
         }),
         signal: abortControllerRef.current.signal

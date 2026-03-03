@@ -34,7 +34,7 @@
   width: 100%;
   padding: 15px;
   margin-bottom: 15px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--theme-border-color);
   background-color: var(--theme-bg-secondary);
   color: var(--theme-text-primary);

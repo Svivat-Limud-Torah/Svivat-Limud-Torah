@@ -169,15 +169,15 @@ const TextOrganizationProgressModal = ({
                 <h4>תובנות ביצועים:</h4>
                 <div className="insights-grid">
                   <div className="insight-item">
-                    <span className="insight-icon">🧠</span>
+                    <span className="insight-icon"></span>
                     <span>המודל מנתח את מבנה הטקסט</span>
                   </div>
                   <div className="insight-item">
-                    <span className="insight-icon">📝</span>
+                    <span className="insight-icon"></span>
                     <span>יוצר היררכיה של כותרות</span>
                   </div>
                   <div className="insight-item">
-                    <span className="insight-icon">🎯</span>
+                    <span className="insight-icon"></span>
                     <span>משפר את הזרימה והקריאות</span>
                   </div>
                   <div className="insight-item">

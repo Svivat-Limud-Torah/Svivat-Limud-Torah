@@ -17,7 +17,7 @@
 .api-key-modal-content {
   background-color: var(--theme-bg-primary); /* Use theme background */
   padding: 25px;
-  border-radius: 8px;
+  border-radius: 2px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   width: 90%;
   max-width: 500px; /* Limit maximum width */
@@ -94,7 +94,7 @@
 .instructions-content {
   background-color: var(--theme-bg-secondary, #f8f9fa);
   border: 1px solid var(--theme-border-color);
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 20px;
   margin-top: 10px;
 }

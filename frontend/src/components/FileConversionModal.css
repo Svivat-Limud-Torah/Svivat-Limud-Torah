@@ -1,4 +1,4 @@
-/* FileConversionModal.css */
+﻿/* FileConversionModal.css */
 .file-conversion-modal-overlay {
     position: fixed;
     top: 0;
@@ -15,7 +15,7 @@
 
 .file-conversion-modal {
     background: var(--theme-bg-primary);
-    border-radius: 8px;
+    border-radius: 2px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     width: 90%;
     max-width: 650px;
@@ -79,7 +79,7 @@
 
 .welcome-intro {
     font-size: 1.1rem;
-    color: #2c5282;
+    color: var(--theme-accent-primary);
     font-weight: 600;
     margin-bottom: 16px;
 }
@@ -93,13 +93,13 @@
 .benefits-list {
     background-color: var(--theme-bg-secondary);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 2px;
     margin: 20px 0;
     text-align: right;
 }
 
 .benefits-list h4 {
-    color: #2c5282;
+    color: var(--theme-accent-primary);
     margin: 0 0 12px 0;
     font-weight: 600;
 }
@@ -117,16 +117,16 @@
 }
 
 .safety-notice {
-    background-color: #e6fffa;
-    border: 2px solid #38a169;
-    border-radius: 8px;
+    background-color: var(--theme-success-bg);
+    border: 2px solid var(--theme-success-color);
+    border-radius: 2px;
     padding: 16px;
     margin: 20px 0;
 }
 
 .safety-notice p {
     margin: 0 0 8px 0;
-    color: #22543d;
+    color: var(--theme-success-text);
 }
 
 .safety-notice p:last-child {
@@ -142,16 +142,16 @@
 }
 
 .welcome-convert-button {
-    background-color: #38a169 !important;
+    background-color: var(--theme-success-color) !important;
     color: white !important;
     padding: 12px 24px !important;
     font-size: 16px !important;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 2px;
 }
 
 .welcome-convert-button:hover:not(:disabled) {
-    background-color: #2f855a !important;
+    background-color: var(--theme-success-color-hover) !important;
 }
 
 .welcome-skip-button {
@@ -160,7 +160,7 @@
     border: 1px solid var(--theme-border-color);
     padding: 12px 24px;
     font-size: 16px;
-    border-radius: 6px;
+    border-radius: 2px;
 }
 
 .welcome-skip-button:hover:not(:disabled) {
@@ -201,9 +201,9 @@
 .file-conversion-explanation {
     background-color: var(--theme-bg-secondary);
     padding: 16px;
-    border-radius: 6px;
+    border-radius: 2px;
     margin-bottom: 20px;
-    border-right: 4px solid #3182ce;
+    border-right: 4px solid var(--theme-accent-primary);
 }
 
 .file-conversion-explanation p {
@@ -248,7 +248,7 @@
 
 .folder-path-input:focus {
     outline: none;
-    border-color: #3182ce;
+    border-color: var(--theme-accent-primary);
     box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1);
 }
 
@@ -260,7 +260,7 @@
 
 .folder-browse-button {
     padding: 8px 16px;
-    background-color: #3182ce;
+    background-color: var(--theme-accent-primary);
     color: white;
     border: none;
     border-radius: 4px;
@@ -271,21 +271,21 @@
 }
 
 .folder-browse-button:hover:not(:disabled) {
-    background-color: #2c5282;
+    background-color: var(--theme-accent-hover);
 }
 
 .folder-browse-button:disabled {
-    background-color: #a0aec0;
+    background-color: var(--theme-text-secondary);
     cursor: not-allowed;
 }
 
 .file-conversion-error {
-    background-color: #fed7d7;
-    color: #c53030;
+    background-color: var(--theme-error-bg);
+    color: var(--theme-error-text);
     padding: 12px;
     border-radius: 4px;
     margin-bottom: 16px;
-    border: 1px solid #feb2b2;
+    border: 1px solid var(--theme-error-border);
 }
 
 .file-conversion-progress {
@@ -307,18 +307,13 @@
 
 .progress-bar-fill {
     height: 100%;
-    background-color: #3182ce;
+    background-color: var(--theme-accent-primary);
     transition: width 0.3s ease;
 }
 
 .progress-bar-fill.indeterminate {
     width: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        #3182ce,
-        transparent
-    );
+    background: var(--theme-accent-primary, #007acc);
     animation: indeterminate 1.5s infinite;
 }
 
@@ -349,16 +344,16 @@
 }
 
 .convert-button {
-    background-color: #38a169 !important;
+    background-color: var(--theme-success-color) !important;
     color: white !important;
 }
 
 .convert-button:hover:not(:disabled) {
-    background-color: #2f855a !important;
+    background-color: var(--theme-success-color-hover) !important;
 }
 
 .convert-button:disabled {
-    background-color: #a0aec0 !important;
+    background-color: var(--theme-text-secondary) !important;
     cursor: not-allowed;
 }
 
@@ -377,7 +372,7 @@
 }
 
 .file-conversion-results h3 {
-    color: #38a169;
+    color: var(--theme-success-color);
     margin-bottom: 20px;
     font-size: 1.3rem;
     font-weight: 600;
@@ -386,10 +381,10 @@
 .conversion-summary {
     background-color: var(--theme-bg-secondary);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 2px;
     margin-bottom: 20px;
     text-align: right;
-    border: 2px solid #38a169;
+    border: 2px solid var(--theme-success-color);
 }
 
 .conversion-summary p {
@@ -403,23 +398,23 @@
 }
 
 .conversion-failures {
-    background-color: #fed7d7;
+    background-color: var(--theme-error-bg);
     padding: 16px;
-    border-radius: 6px;
+    border-radius: 2px;
     margin-bottom: 16px;
     text-align: right;
-    border: 1px solid #feb2b2;
+    border: 1px solid var(--theme-error-border);
 }
 
 .conversion-failures h4 {
-    color: #c53030;
+    color: var(--theme-error-text);
     margin: 0 0 12px 0;
 }
 
 .conversion-failures ul {
     margin: 0;
     padding-right: 20px;
-    color: #c53030;
+    color: var(--theme-error-text);
     text-align: right;
 }
 
@@ -429,11 +424,11 @@
 }
 
 .conversion-success-message {
-    background-color: #c6f6d5;
+    background-color: var(--theme-success-bg);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 2px;
     margin-bottom: 25px;
-    border: 2px solid #38a169;
+    border: 2px solid var(--theme-success-color);
 }
 
 .conversion-success-message p {
@@ -446,62 +441,5 @@
     margin-bottom: 0;
 }
 
-/* Dark theme support */
-@media (prefers-color-scheme: dark) {
-    .file-conversion-explanation {
-        border-right-color: #484f58;
-    }
-    
-    .benefits-list h4 {
-        color: #484f58;
-    }
-    
-    .welcome-intro {
-        color: #484f58;
-    }
-    
-    .safety-notice {
-        background-color: #1a202c;
-        border-color: #38a169;
-    }
-    
-    .safety-notice p {
-        color: #68d391;
-    }
-    
-    .file-conversion-error {
-        background-color: #742a2a;
-        color: #feb2b2;
-        border-color: #742a2a;
-    }
-    
-    .conversion-failures {
-        background-color: #742a2a;
-        border-color: #742a2a;
-    }
-    
-    .conversion-failures h4 {
-        color: #feb2b2;
-    }
-    
-    .conversion-failures ul {
-        color: #feb2b2;
-    }
-    
-    .conversion-success-message {
-        background-color: #1a202c;
-        border-color: #38a169;
-    }
-    
-    .conversion-success-message p {
-        color: #68d391;
-    }
-    
-    .conversion-summary {
-        border-color: #38a169;
-    }
-    
-    .file-conversion-results h3 {
-        color: #68d391;
-    }
-}
+/* Dark theme override no longer needed — CSS variables adapt automatically
+   via themeEngine.js (isLightColor detection).                             */

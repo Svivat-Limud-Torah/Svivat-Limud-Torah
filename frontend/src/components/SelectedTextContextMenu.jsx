@@ -1,7 +1,8 @@
 // frontend/src/components/SelectedTextContextMenu.jsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './SelectedTextContextMenu.css';
 import { HEBREW_TEXT } from '../utils/constants';
+import { ANNOTATION_COLORS } from '../hooks/useAnnotations';
 
 const SelectedTextContextMenu = ({ 
   isVisible, 
@@ -12,9 +13,39 @@ const SelectedTextContextMenu = ({
   onFindSources,
   onFlashcards,
   onSummary,
-  isAnyAiFeatureLoading
+  isAnyAiFeatureLoading,
+  isAnnotationMode,
+  onAddAnnotation,
+  onAddBookmark,
 }) => {
   const menuRef = useRef(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [pos, setPos] = useState({ top: position?.y ?? 0, left: position?.x ?? 0, opacity: 0 });
+
+  // After render, measure and clamp to keep fully on-screen
+  useLayoutEffect(() => {
+    if (!isVisible || !menuRef.current) return;
+    const { offsetWidth: w, offsetHeight: h } = menuRef.current;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 6;
+
+    let left = position.x;
+    let top = position.y;
+
+    if (left + w + MARGIN > vw) left = Math.max(MARGIN, position.x - w);
+    if (left < MARGIN) left = MARGIN;
+    if (top + h + MARGIN > vh) top = Math.max(MARGIN, position.y - h);
+    if (top < MARGIN) top = MARGIN;
+
+    setPos({ top, left, opacity: 1 });
+  }, [isVisible, position]);
+
+  // Reset opacity when menu is hidden so next open starts invisible
+  useEffect(() => {
+    if (!isVisible) setPos(p => ({ ...p, opacity: 0 }));
+    else setShowColorPicker(false);
+  }, [isVisible]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,24 +75,6 @@ const SelectedTextContextMenu = ({
     return null;
   }
 
-  // Calculate menu position to ensure it stays within viewport
-  const adjustedPosition = { ...position };
-  if (menuRef.current) {
-    const menuRect = menuRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Adjust horizontal position
-    if (position.x + 220 > viewportWidth) {
-      adjustedPosition.x = viewportWidth - 230;
-    }
-
-    // Adjust vertical position  
-    if (position.y + 300 > viewportHeight) {
-      adjustedPosition.y = Math.max(10, position.y - 300);
-    }
-  }
-
   const truncatedText = selectedText.length > 50 
     ? selectedText.substring(0, 50) + '...' 
     : selectedText;
@@ -69,25 +82,25 @@ const SelectedTextContextMenu = ({
   const menuItems = [
     {
       label: HEBREW_TEXT.generatePilpultaButton || 'פלפולתא',
-      icon: '🤔',
+      icon: '',
       action: onPilpulta,
       tooltip: 'צור קושיות מהטקסט הנבחר'
     },
     {
       label: HEBREW_TEXT.findSources || 'מצא מקורות',
-      icon: '📖',
+      icon: '',
       action: onFindSources,
       tooltip: 'מצא מקורות יהודיים לטקסט הנבחר'
     },
     {
       label: HEBREW_TEXT.generateFlashcards || 'כרטיסיות שו"ת',
-      icon: '📚',
+      icon: '',
       action: onFlashcards,
       tooltip: 'צור כרטיסיות לימוד מהטקסט הנבחר'
     },
     {
       label: HEBREW_TEXT.generateSummary || 'סכם טקסט',
-      icon: '📝',
+      icon: '',
       action: onSummary,
       tooltip: 'צור סיכום מהטקסט הנבחר'
     }
@@ -98,8 +111,9 @@ const SelectedTextContextMenu = ({
       className="selected-text-context-menu"
       ref={menuRef}
       style={{
-        left: adjustedPosition.x,
-        top: adjustedPosition.y,
+        left: pos.left,
+        top: pos.top,
+        opacity: pos.opacity,
       }}
     >
       <div className="selected-text-info">
@@ -124,6 +138,66 @@ const SelectedTextContextMenu = ({
           {item.label}
         </button>
       ))}
+
+      {/* Bookmark section */}
+      {onAddBookmark && (
+        <>
+          <div style={{ height: '1px', background: 'var(--theme-border-color)', margin: '4px 0' }} />
+          <button
+            className="selected-text-context-menu-item"
+            onClick={() => {
+              onAddBookmark();
+              onClose();
+            }}
+            title="שמור את הטקסט הנבחר כסימניה"
+          >
+            <span className="icon"></span>
+            שמור כסימניה
+          </button>
+        </>
+      )}
+
+      {/* Annotation section */}
+      {isAnnotationMode && onAddAnnotation && (
+        <>
+          <div style={{ height: '1px', background: 'var(--theme-border-color)', margin: '4px 0' }} />
+          {!showColorPicker ? (
+            <button
+              className="selected-text-context-menu-item"
+              onClick={() => setShowColorPicker(true)}
+              title="הוסף הערת שוליים לטקסט הנבחר"
+            >
+              <span className="icon"></span>
+              הוסף הערה
+            </button>
+          ) : (
+            <div style={{ padding: '6px 10px' }}>
+              <div style={{ fontSize: '0.8em', color: 'var(--theme-text-secondary)', marginBottom: '5px' }}>בחר צבע:</div>
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                {ANNOTATION_COLORS.map(c => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      onAddAnnotation(c.id);
+                      setShowColorPicker(false);
+                      onClose();
+                    }}
+                    title={c.label}
+                    style={{
+                      width: '22px', height: '22px', borderRadius: '50%',
+                      backgroundColor: c.border, cursor: 'pointer',
+                      border: '2px solid transparent',
+                      transition: 'transform 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

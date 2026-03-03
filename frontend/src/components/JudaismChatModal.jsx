@@ -1,119 +1,175 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { HEBREW_TEXT } from '../utils/constants';
-import './JudaismChatModal.css'; // We'll create this next
+import './JudaismChatModal.css';
+
+const SUGGESTED_QUESTIONS = [
+  'מה ההבדל בין שבת לחג?',
+  'מה הם שלוש עשרה עיקרי האמונה?',
+  'מה פירוש "קדיש"?',
+  'מה הם ארבעת המינים?',
+  'מה ההלכה לגבי כשרות?',
+  'תסביר מה זה ספר התורה',
+];
+
+// Render AI message text — handles **bold**, newlines, and bullet lists
+function ChatText({ text }) {
+  const lines = text.split('\n');
+  return (
+    <div className="jc-message-text">
+      {lines.map((line, i) => {
+        const isBullet = /^[\-•*]\s/.test(line.trim());
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        const rendered = parts.map((part, j) =>
+          part.startsWith('**') && part.endsWith('**')
+            ? <strong key={j}>{part.slice(2, -2)}</strong>
+            : part
+        );
+        return (
+          <React.Fragment key={i}>
+            {i > 0 && !isBullet && <br />}
+            {isBullet
+              ? <div className="jc-bullet">{rendered}</div>
+              : rendered}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
 
 const JudaismChatModal = ({ isOpen, onClose, useJudaismChatHook }) => {
   const {
     chatHistory,
     isJudaismChatLoading,
-    judaismChatError,
     sendMessageToJudaismChat,
     clearJudaismChat,
     chatInputRef,
-    chatBodyRef, // Use ref from hook
-    rememberHistory, // Get state from hook
-    toggleRememberHistory, // Get function from hook
+    chatBodyRef,
   } = useJudaismChatHook;
 
   const [userInput, setUserInput] = useState('');
-  // Removed enableGoogleSearch state - no longer needed
-  // Removed local chatBodyRef, using the one from the hook
 
   useEffect(() => {
     if (isOpen) {
-      // Only clear history if 'remember history' is OFF
-      if (!rememberHistory) {
-        clearJudaismChat();
-      }
-      // Focus input after a short delay
-      setTimeout(() => {
-        if (chatInputRef.current) {
-           chatInputRef.current.focus();
-        }
-      }, 100); // Delay focus slightly to ensure modal is rendered
+      clearJudaismChat(); // Always start fresh each time the modal opens
+      setTimeout(() => chatInputRef.current?.focus(), 120);
     }
-    // Dependency array includes rememberHistory now
-  }, [isOpen, clearJudaismChat, chatInputRef, rememberHistory]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Removed local useEffect for scrolling, handled in the hook now
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (userInput.trim() && !isJudaismChatLoading) {
-      sendMessageToJudaismChat(userInput, false); // Always pass false since we removed Google search
+  const handleSend = useCallback(() => {
+    const trimmed = userInput.trim();
+    if (trimmed && !isJudaismChatLoading) {
+      sendMessageToJudaismChat(trimmed, false);
       setUserInput('');
+    }
+  }, [userInput, isJudaismChatLoading, sendMessageToJudaismChat]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
+  const handleSuggestion = (q) => {
+    if (!isJudaismChatLoading) {
+      sendMessageToJudaismChat(q, false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const isEmpty = chatHistory.length === 0 && !isJudaismChatLoading;
 
   return (
-    <div className="judaism-chat-modal-overlay" onClick={onClose}>
-      <div className="judaism-chat-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="judaism-chat-modal-header">
-          <h2>{HEBREW_TEXT.judaismChat.modalTitle}</h2>
-          <button onClick={onClose} className="judaism-chat-modal-close-btn">
-            &times;
-          </button>
+    <div className="jc-overlay" onClick={onClose}>
+      <div className="jc-modal" onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Header ── */}
+        <div className="jc-header">
+          <div className="jc-header-title">
+            <span className="jc-header-icon"></span>
+            <span>{HEBREW_TEXT.judaismChat.modalTitle}</span>
+          </div>
+          <div className="jc-header-actions">
+            {chatHistory.length > 0 && (
+              <button className="jc-icon-btn" onClick={clearJudaismChat} title="נקה שיחה">
+                🗑
+              </button>
+            )}
+            <button className="jc-close-btn" onClick={onClose} title="סגור">✕</button>
+          </div>
         </div>
-        
-        {/* Google AI Studio Recommendation */}
-        <div className="judaism-chat-recommendation">
-          <p>{HEBREW_TEXT.judaismChat.googleAiStudioRecommendation}</p>
-          <a 
-            href={HEBREW_TEXT.judaismChat.googleAiStudioLink} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="google-ai-studio-link"
-          >
-            {HEBREW_TEXT.judaismChat.openGoogleAiStudio}
-          </a>
-        </div>
-        <div className="judaism-chat-modal-body" ref={chatBodyRef}>
+
+        {/* ── Body ── */}
+        <div className="jc-body" ref={chatBodyRef}>
+
+          {isEmpty && (
+            <div className="jc-welcome">
+              <div className="jc-welcome-icon"></div>
+              <h3>שלום! אני כאן לענות על שאלות בנושאי יהדות</h3>
+              <p>תורה, תלמוד, הלכה, מנהגים, היסטוריה יהודית ועוד.</p>
+              <div className="jc-suggestions">
+                {SUGGESTED_QUESTIONS.map((q, i) => (
+                  <button key={i} className="jc-suggestion-chip" onClick={() => handleSuggestion(q)}>
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {chatHistory.map((msg, index) => (
-            <div key={index} className={`judaism-chat-message judaism-chat-${msg.sender} ${msg.isError ? 'judaism-chat-error-message' : ''}`}>
-              <p>{msg.text}</p>
+            <div
+              key={index}
+              className={`jc-message jc-message--${msg.sender}${msg.isError ? ' jc-message--error' : ''}`}
+            >
+              {msg.sender === 'ai' && <div className="jc-message-avatar"></div>}
+              <div className="jc-message-bubble">
+                {msg.sender === 'ai' && !msg.isError
+                  ? <ChatText text={msg.text} />
+                  : <div className="jc-message-text">{msg.text}</div>
+                }
+              </div>
             </div>
           ))}
+
           {isJudaismChatLoading && (
-            <div className="judaism-chat-message judaism-chat-ai">
-              <p>{HEBREW_TEXT.judaismChat.typing || 'חושב...'}</p>
+            <div className="jc-message jc-message--ai">
+              <div className="jc-message-avatar"></div>
+              <div className="jc-message-bubble">
+                <div className="jc-typing">
+                  <span /><span /><span />
+                </div>
+              </div>
             </div>
           )}
-          {judaismChatError && !isJudaismChatLoading && (
-             <div className="judaism-chat-message judaism-chat-ai judaism-chat-error-message">
-               <p>{HEBREW_TEXT.judaismChat.errorPrefix}: {judaismChatError}</p>
-             </div>
-          )}
         </div>
-        <form onSubmit={handleSubmit} className="judaism-chat-modal-footer">
-          <div className="judaism-chat-options">
-            {/* Add Remember History Checkbox */}
-            <label style={{ marginRight: '15px' }}> {/* Add some spacing */}
-              <input
-                type="checkbox"
-                checked={rememberHistory}
-                onChange={toggleRememberHistory} // Use the function from the hook
-                disabled={isJudaismChatLoading} // Disable while loading like the other controls
-              />
-              {HEBREW_TEXT.judaismChat.rememberHistory || 'זכור היסטוריה'}
-            </label>
-          </div>
-          <input
-             type="text"
+
+        {/* ── Footer ── */}
+        <div className="jc-footer">
+          <textarea
             ref={chatInputRef}
+            className="jc-input"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={HEBREW_TEXT.judaismChat.inputPlaceholder}
             disabled={isJudaismChatLoading}
+            rows={1}
           />
-          <button type="submit" disabled={isJudaismChatLoading}>
-            {isJudaismChatLoading ? HEBREW_TEXT.judaismChat.sending : HEBREW_TEXT.judaismChat.sendButton}
+          <button
+            className={`jc-send-btn${isJudaismChatLoading ? ' jc-send-btn--loading' : ''}`}
+            onClick={handleSend}
+            disabled={isJudaismChatLoading || !userInput.trim()}
+            title="שלח (Enter)"
+          >
+            {isJudaismChatLoading ? '⏳' : '➤'}
           </button>
-        </form>
+        </div>
+        <div className="jc-footer-hint">Enter לשליחה &nbsp;·&nbsp; Shift+Enter לשורה חדשה</div>
+
       </div>
     </div>
   );
@@ -122,17 +178,7 @@ const JudaismChatModal = ({ isOpen, onClose, useJudaismChatHook }) => {
 JudaismChatModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  useJudaismChatHook: PropTypes.shape({
-    chatHistory: PropTypes.array.isRequired,
-    isJudaismChatLoading: PropTypes.bool.isRequired,
-    judaismChatError: PropTypes.string,
-    sendMessageToJudaismChat: PropTypes.func.isRequired,
-    clearJudaismChat: PropTypes.func.isRequired,
-    chatInputRef: PropTypes.object.isRequired,
-    chatBodyRef: PropTypes.object.isRequired, // Add chatBodyRef prop type
-    rememberHistory: PropTypes.bool.isRequired, // Add rememberHistory prop type
-    toggleRememberHistory: PropTypes.func.isRequired, // Add toggleRememberHistory prop type
-  }).isRequired,
+  useJudaismChatHook: PropTypes.object.isRequired,
 };
 
 export default JudaismChatModal;

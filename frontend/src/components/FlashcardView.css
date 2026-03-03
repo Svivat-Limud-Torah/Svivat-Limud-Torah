@@ -1,121 +1,265 @@
 /* frontend/src/components/FlashcardView.css */
-.flashcard-view-container {
-  padding: 20px;
-  background-color: var(--theme-bg-primary); /* Use theme primary background */
-  color: var(--theme-text-primary); /* Use theme primary text color */
-  height: 100%;
-  overflow-y: auto;
+
+/* ── Container ── */
+.fc-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  overflow: hidden;
 }
 
-.flashcard-view-header {
+/* ── Status (loading / error / empty) ── */
+.fc-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 100%;
+  padding: 30px;
+  text-align: center;
+  color: var(--theme-text-secondary);
+}
+.fc-status__actions { display: flex; gap: 10px; }
+
+/* ── Header ── */
+.fc-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--theme-border-color); /* Use theme border color */
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--theme-border-color);
+  flex-shrink: 0;
+}
+.fc-header h2 { margin: 0; font-size: 1.35em; color: var(--theme-text-primary); }
+.fc-header__actions { display: flex; align-items: center; gap: 6px; }
+.fc-header__sep {
+  width: 1px; height: 22px;
+  background: var(--theme-border-color);
+  margin: 0 6px;
 }
 
-.flashcard-view-header h2 {
-  margin: 0;
-  font-size: 1.6em;
-  color: var(--theme-text-secondary); /* Use theme secondary text for header */
+/* ── Progress bar ── */
+.fc-progress {
+  position: relative;
+  height: 22px;
+  background: var(--theme-bg-secondary);
+  flex-shrink: 0;
+}
+.fc-progress__bar {
+  height: 100%;
+  background: var(--theme-accent-primary);
+  transition: width 0.35s ease;
+  border-radius: 0 2px 2px 0;
+}
+.fc-progress__text {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  color: var(--theme-text-primary);
+  pointer-events: none;
 }
 
-/* Consider refactoring to use .btn .btn-primary from index.css */
-.flashcard-button {
-  background-color: var(--theme-accent-primary); /* Use theme primary accent */
-  color: var(--theme-button-text-color); /* Use theme button text color */
-  border: none;
-  padding: 8px 16px;
-  border-radius: 5px;
+/* ── Stage (card area) ── */
+.fc-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  perspective: 1200px;
+}
+
+/* ── Single card ── */
+.fc-card {
+  width: 100%;
+  max-width: 560px;
+  min-height: 280px;
   cursor: pointer;
-  font-size: 0.95em;
-  transition: background-color 0.2s ease;
+  transform-style: preserve-3d;
+}
+.fc-card__inner {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.fc-card--revealed .fc-card__inner {
+  transform: rotateX(180deg);
+}
+.fc-card__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  border-radius: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.fc-card__front {
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+}
+.fc-card__back {
+  background: linear-gradient(135deg, var(--theme-bg-secondary), var(--theme-bg-primary));
+  border: 1px solid var(--theme-accent-primary);
+  transform: rotateX(180deg);
+}
+.fc-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--theme-text-tertiary);
+  margin-bottom: 10px;
+}
+.fc-card__text {
+  margin: 0;
+  font-size: 1.2em;
+  line-height: 1.7;
+  text-align: center;
+  white-space: pre-wrap;
+}
+.fc-card__hint {
+  margin-top: 16px;
+  font-size: 0.78em;
+  color: var(--theme-text-tertiary);
+  opacity: 0.7;
 }
 
-.flashcard-button:hover {
-  background-color: var(--theme-accent-secondary); /* Use theme secondary accent for hover */
+/* ── Controls ── */
+.fc-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--theme-border-color);
+  flex-shrink: 0;
+}
+.fc-controls__rating {
+  display: flex;
+  gap: 16px;
 }
 
-/* Consider refactoring to use .btn .btn-subtle or .btn-secondary from index.css */
-.flashcard-close-button {
-  background-color: var(--theme-bg-secondary); /* Use theme secondary background */
+/* ── Buttons ── */
+.fc-btn {
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.fc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.fc-btn--primary {
+  background: var(--theme-accent-primary);
+  color: var(--theme-button-text-color);
+}
+.fc-btn--primary:hover:not(:disabled) { filter: brightness(1.15); }
+
+.fc-btn--secondary {
+  background: var(--theme-bg-secondary);
   color: var(--theme-text-primary);
   border: 1px solid var(--theme-border-color);
 }
-.flashcard-close-button:hover {
-  background-color: var(--theme-accent-secondary); /* Use theme secondary accent for hover */
-  color: var(--theme-button-text-color);
+.fc-btn--secondary:hover:not(:disabled) { background: var(--theme-bg-tertiary, var(--theme-bg-secondary)); }
+
+.fc-btn--ghost {
+  background: transparent;
+  color: var(--theme-text-secondary);
 }
+.fc-btn--ghost:hover:not(:disabled) { color: var(--theme-text-primary); background: var(--theme-bg-secondary); }
 
-
-.flashcards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  perspective: 1000px; /* For 3D flip effect */
+.fc-btn--accent {
+  background: #7C3AED;
+  color: #fff;
 }
+.fc-btn--accent:hover:not(:disabled) { filter: brightness(1.15); }
 
-.flashcard {
-  background-color: transparent; /* Needed for perspective */
-  min-height: 180px;
+.fc-btn--nav {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  min-width: 100px;
+}
+.fc-btn--nav:hover:not(:disabled) { border-color: var(--theme-accent-primary); }
+
+.fc-btn--lg { padding: 12px 36px; font-size: 1.05em; }
+
+.fc-btn--knew {
+  background: #22C55E;
+  color: #fff;
+  padding: 12px 32px;
+  font-size: 1.05em;
   border-radius: 8px;
-  cursor: pointer;
-  transition: transform 0.6s;
-  transform-style: preserve-3d;
-  position: relative; /* For absolute positioning of front/back */
-  border: 1px solid var(--theme-border-color); /* Use theme border color */
+}
+.fc-btn--knew:hover { filter: brightness(1.1); }
+
+.fc-btn--missed {
+  background: #EF4444;
+  color: #fff;
+  padding: 12px 32px;
+  font-size: 1.05em;
+  border-radius: 8px;
+}
+.fc-btn--missed:hover { filter: brightness(1.1); }
+
+/* Tab buttons */
+.fc-btn--tab {
+  background: transparent;
+  color: var(--theme-text-secondary);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 6px 14px;
+}
+.fc-btn--tab:hover { color: var(--theme-text-primary); }
+.fc-btn--tab-active {
+  color: var(--theme-accent-primary);
+  border-bottom-color: var(--theme-accent-primary);
+  font-weight: 600;
 }
 
-.flashcard-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
+/* ── Test summary ── */
+.fc-summary {
   text-align: center;
-  transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1); /* Smoother flip */
-  transform-style: preserve-3d;
-  border-radius: 8px; /* ensure inner also has radius if needed */
-}
-
-.flashcard.flipped .flashcard-inner {
-  transform: rotateY(180deg);
-}
-
-.flashcard-front,
-.flashcard-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  -webkit-backface-visibility: hidden; /* Safari */
-  backface-visibility: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 15px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  font-size: 1.1em;
+  gap: 16px;
+  padding: 40px 20px;
 }
-
-.flashcard-front {
-  background-color: var(--theme-bg-secondary); /* Use theme secondary background for front */
-  color: var(--theme-text-primary); /* Use theme primary text color */
+.fc-summary h2 { margin: 0; font-size: 1.5em; }
+.fc-summary__score {
+  font-size: 3.5em;
+  font-weight: 800;
+  color: var(--theme-accent-primary);
+  line-height: 1;
 }
-
-.flashcard-back {
-  background-color: var(--theme-bg-primary); /* Use theme primary background for back (darker) */
-  color: var(--theme-text-primary); /* Use theme primary text color */
-  transform: rotateY(180deg);
+.fc-summary__details {
+  display: flex;
+  gap: 24px;
+  font-size: 1.05em;
 }
-
-.flashcard-front p,
-.flashcard-back p {
-  margin: 0;
-  line-height: 1.5;
+.fc-summary__knew { color: #22C55E; }
+.fc-summary__missed { color: #EF4444; }
+.fc-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .flashcard-view-loading,

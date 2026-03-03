@@ -1,4 +1,4 @@
-/* frontend/src/components/AiModelModal.css */
+﻿/* frontend/src/components/AiModelModal.css */
 
 .ai-model-modal-overlay {
   position: fixed;
@@ -10,21 +10,23 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1500; /* Ensure it's above other content but potentially below global loading */
-  direction: rtl; /* Right-to-left for Hebrew */
+  z-index: 1500;
+  direction: rtl;
 }
 
 .ai-model-modal-content {
   background-color: var(--theme-bg-primary, #fff);
   padding: 25px;
-  border-radius: 8px;
+  border-radius: 2px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  min-width: 300px;
-  max-width: 500px;
-  max-height: 80vh; /* Limit height */
+  min-width: 340px;
+  max-width: 540px;
+  width: 90vw;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--theme-border-color, #ccc);
+  overflow-y: auto;
 }
 
 .ai-model-modal-content h2 {
@@ -32,28 +34,64 @@
   margin-bottom: 20px;
   color: var(--theme-text-primary, #333);
   text-align: center;
-  font-size: 1.4em; /* Slightly larger title */
+  font-size: 1.4em;
+}
+
+/* Sections */
+.ai-model-section {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--theme-border-color, #cccccc);
+}
+
+.ai-model-section:last-of-type {
+  border-bottom: none;
+}
+
+.ai-model-section-title {
+  margin: 0 0 4px 0;
+  font-size: 1.1em;
+  color: var(--theme-text-primary, #333);
+}
+
+.ai-model-section-title.free-title {
+  color: var(--theme-success-color);
+}
+
+.ai-model-section-title.paid-title {
+  color: var(--theme-warning-color);
+}
+
+.ai-model-section-title.custom-title {
+  color: var(--theme-custom-color);
+}
+
+.ai-model-section-desc {
+  margin: 0 0 10px 0;
+  font-size: 0.85em;
+  color: var(--theme-text-secondary, #6b7280);
 }
 
 .ai-model-list {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* Space between model buttons */
-  overflow-y: auto; /* Allow scrolling if many models */
-  margin-bottom: 20px;
-  padding-right: 10px; /* Add some padding for scrollbar */
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
+/* Model buttons */
 .ai-model-option {
-  padding: 10px 15px;
+  padding: 10px 14px;
   border: 1px solid var(--theme-border-color, #ccc);
   background-color: var(--theme-bg-secondary, #f9f9f9);
   color: var(--theme-text-primary, #333);
-  border-radius: 4px;
+  border-radius: 2px;
   cursor: pointer;
-  text-align: right; /* Align text to the right */
+  text-align: right;
   transition: background-color 0.2s ease, border-color 0.2s ease;
-  font-size: 1em; /* Standard font size */
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .ai-model-option:hover {
@@ -62,15 +100,135 @@
 }
 
 .ai-model-option.selected {
-  background-color: var(--theme-primary-active, #0056b3); /* Use theme active color */
-  color: var(--theme-text-on-primary, #fff); /* Text color on primary background */
+  background-color: var(--theme-primary-active, #0056b3);
+  color: var(--theme-text-on-primary, #fff);
   border-color: var(--theme-primary-active, #0056b3);
-  font-weight: bold;
 }
 
+.ai-model-option.selected .model-desc {
+  color: var(--theme-text-on-primary, rgba(255, 255, 255, 0.8));
+}
+
+.ai-model-option.paid-model {
+  border-color: var(--theme-warning-border);
+}
+
+.ai-model-option.paid-model:hover {
+  border-color: var(--theme-warning-color);
+}
+
+.ai-model-option.locked {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.ai-model-option.locked:hover {
+  opacity: 0.8;
+  border-color: var(--theme-warning-color);
+}
+
+.model-name {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.model-desc {
+  font-size: 0.8em;
+  color: var(--theme-text-secondary, #6b7280);
+  font-weight: normal;
+}
+
+/* Paid key toggle */
+.paid-key-toggle {
+  margin: 10px 0;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--theme-text-primary, #333);
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--theme-warning-color);
+  cursor: pointer;
+}
+
+/* Paid info toggle */
+.paid-info-toggle-btn {
+  background: none;
+  border: 1px dashed var(--theme-border-color, #ccc);
+  color: var(--theme-text-secondary, #6b7280);
+  padding: 8px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.85em;
+  width: 100%;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.paid-info-toggle-btn:hover {
+  background-color: var(--theme-bg-hover, #f3f4f6);
+  border-color: var(--theme-warning-color);
+  color: var(--theme-text-primary, #333);
+}
+
+/* Paid instructions content */
+.paid-info-content {
+  margin-top: 12px;
+  padding: 14px;
+  background-color: var(--theme-bg-secondary, #f8fafc);
+  border: 1px solid var(--theme-border-color, #cccccc);
+  border-radius: 2px;
+  font-size: 0.88em;
+}
+
+.paid-info-content h4 {
+  margin: 0 0 10px 0;
+  color: var(--theme-text-primary, #333);
+}
+
+.paid-instructions-list {
+  margin: 0 0 12px 0;
+  padding-right: 20px;
+  line-height: 1.8;
+  color: var(--theme-text-primary, #333);
+}
+
+.paid-instructions-list li {
+  margin-bottom: 4px;
+}
+
+.paid-link {
+  color: var(--theme-accent-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.paid-link:hover {
+  color: var(--theme-accent-primary);
+}
+
+.paid-info-note {
+  background-color: var(--theme-bg-primary, #fff);
+  padding: 10px 12px;
+  border-radius: 4px;
+  border-right: 3px solid var(--theme-warning-color);
+  line-height: 1.7;
+  color: var(--theme-text-primary, #333);
+  font-size: 0.92em;
+}
+
+/* Custom model input */
 .custom-model-input {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   gap: 10px;
 }
 
@@ -80,6 +238,8 @@
   border: 1px solid var(--theme-border-color, #ccc);
   border-radius: 4px;
   direction: rtl;
+  background-color: var(--theme-bg-secondary, #f9f9f9);
+  color: var(--theme-text-primary, #333);
 }
 
 .custom-model-input button {
@@ -101,7 +261,7 @@
 }
 
 .ai-model-close-btn {
-  margin-top: auto; /* Push the close button to the bottom */
-  align-self: flex-start; /* Align to the start (left in RTL) */
+  margin-top: auto;
+  align-self: flex-start;
   padding: 8px 16px;
 }

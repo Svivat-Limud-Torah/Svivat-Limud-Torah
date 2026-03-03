@@ -294,7 +294,7 @@ const TreeItem = ({
     <div>
       <div
         className={`tree-item ${item.isFolder ? 'tree-folder' : 'tree-file'} ${isDragOver ? 'drag-over-folder' : ''}`}
-        style={{ paddingLeft: `${paddingLeft}px` }}
+        style={{ paddingInlineStart: `${paddingLeft}px` }}
         onClick={!isRenaming ? handleItemClick : undefined} // Prevent click if renaming
         onContextMenu={!isRenaming ? handleContextMenu : undefined}
         draggable={!isRenaming} 
@@ -305,7 +305,7 @@ const TreeItem = ({
         onDragLeave={handleDragLeave}
       >
         {item.isFolder && (
-          <span className="tree-item-toggle-icon" onClick={toggleOpen} style={{ paddingLeft: level === 0 && (!item.children || item.children.length === 0) ? '10px' : '0' }}>
+          <span className="tree-item-toggle-icon" onClick={toggleOpen} style={{ paddingInlineStart: level === 0 && (!item.children || item.children.length === 0) ? '10px' : '0' }}>
             {item.children && item.children.length > 0 ? (isOpen ? <FaChevronDown /> : <FaChevronRight />) : <span style={{display: 'inline-block', width: '1em'}}></span>}
           </span>
         )}

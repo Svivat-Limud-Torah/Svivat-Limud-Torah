@@ -20,7 +20,7 @@ const QuotaLimitModal = ({ isOpen, onClose }) => {
     <div className="quota-limit-modal-backdrop" onClick={handleBackdropClick}>
       <div className="quota-limit-modal">
         <div className="quota-limit-header">
-          <h2 className="quota-limit-title">⚠️ {HEBREW_TEXT.quotaLimitReachedTitle}</h2>
+          <h2 className="quota-limit-title">⚠ {HEBREW_TEXT.quotaLimitReachedTitle}</h2>
           <button 
             className="quota-limit-close-btn" 
             onClick={handleClose}

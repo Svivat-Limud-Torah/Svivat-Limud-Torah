@@ -1,0 +1,459 @@
+﻿/*
+ * ProfessionalBlackTheme.css
+ *
+ * Structural override layer that enforces the flat, VS Code–like aesthetic.
+ * This file does NOT define CSS variables (that's handled by themeEngine.js
+ * at runtime, with index.css as a pre-JS fallback).
+ *
+ * What this file DOES:
+ *   - Kills glass / blur / gradient pseudo-elements
+ *   - Forces sharp corners (border-radius: 0 | 2px)
+ *   - Removes box-shadows
+ *   - Sets panel backgrounds via CSS variables
+ *   - Styles CodeMirror to match the theme
+ *   - Provides flat button / input / modal / scrollbar overrides
+ */
+
+:root {
+  color-scheme: dark;
+  --app-font-family: "Assistant", "Heebo", "Rubik", sans-serif;
+  --editor-font-family: "Segoe UI", "JetBrains Mono", "Fira Code", monospace;
+}
+
+body {
+  background: var(--theme-page-bg) !important;
+  color: var(--theme-text-primary);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+a {
+  color: var(--theme-accent-primary) !important;
+}
+
+a:hover {
+  color: var(--theme-accent-hover) !important;
+}
+
+/* === Kill all glass/blur pseudo-elements === */
+.app-container::before,
+.app-container::after,
+.app-topbar::before,
+.app-topbar::after,
+.sidebar::before,
+.sidebar::after,
+.main-content-area::before,
+.main-content-area::after,
+.global-loading-banner::before,
+.global-loading-banner::after,
+.editor-toolbar::before,
+.editor-toolbar::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* === Flat panels — no blur, no gradients, no shadows === */
+.app-topbar,
+.sidebar,
+.main-content-area,
+.editor-toolbar,
+.editor-tabs-bar,
+.global-loading-banner {
+  background: var(--theme-bg-secondary) !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+
+/* Borders between panels (VS Code style: single-pixel separators) */
+.app-topbar {
+  border-bottom: 1px solid var(--theme-border-color) !important;
+}
+
+.sidebar {
+  border-inline-start: 1px solid var(--theme-border-color) !important;
+}
+
+.main-content-area {
+  background: var(--theme-editor-bg) !important;
+}
+
+.global-loading-banner {
+  border-radius: 0 !important;
+  background: var(--theme-bg-tertiary) !important;
+  border-bottom: 1px solid var(--theme-border-color) !important;
+}
+
+/* === Editor shell === */
+.main-view-shell,
+.main-view-shell.is-secondary,
+.editor-workspace,
+.main-content-area.is-zen-mode .main-view-shell,
+.main-content-area.is-zen-mode .editor-workspace,
+.main-content-area.is-zen-mode,
+.app-container.is-zen-mode {
+  background: var(--theme-editor-bg) !important;
+}
+
+/* === Toolbar & Tabs bar === */
+.editor-toolbar {
+  background: var(--theme-bg-secondary) !important;
+  border-bottom: 1px solid var(--theme-border-color) !important;
+  border-radius: 0 !important;
+}
+
+.editor-tabs-bar {
+  background: var(--theme-bg-primary) !important;
+  border-bottom: 1px solid var(--theme-border-color) !important;
+  border-radius: 0 !important;
+}
+
+/* === Tabs (VS Code flat style) === */
+.editor-tab {
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-secondary) !important;
+  border-inline-end: 1px solid var(--theme-border-color) !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+}
+
+.editor-tab:hover {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.editor-tab.is-active {
+  background: var(--theme-editor-bg) !important;
+  color: #ffffff !important;
+  border-bottom-color: var(--theme-accent-primary) !important;
+  box-shadow: none !important;
+}
+
+/* === Close/icon buttons === */
+
+/* === CodeMirror editor (replaces oneDark) === */
+.cm-editor {
+  background-color: var(--theme-editor-bg) !important;
+}
+.cm-editor .cm-scroller {
+  background-color: var(--theme-editor-bg) !important;
+}
+.cm-editor .cm-content {
+  background-color: var(--theme-editor-bg) !important;
+}
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+  border-left-color: #ffffff !important;
+}
+.cm-editor .cm-content {
+  caret-color: #ffffff !important;
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor ::selection {
+  background: rgba(0, 122, 204, 0.35) !important;
+}
+.cm-editor .cm-activeLine {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.cm-editor .cm-gutters {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-tertiary) !important;
+  border-right: 1px solid var(--theme-border-color) !important;
+}
+.cm-editor .cm-activeLineGutter {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.cm-editor .cm-searchMatch {
+  background-color: rgba(255, 207, 0, 0.25) !important;
+  border: 1px solid rgba(255, 207, 0, 0.5) !important;
+}
+.cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background-color: rgba(255, 207, 0, 0.45) !important;
+}
+.cm-editor .cm-matchingBracket {
+  background-color: rgba(0, 122, 204, 0.3) !important;
+  color: #ffffff !important;
+}
+.cm-editor .cm-selectionMatch {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+/* CodeMirror panels (search bar) */
+.cm-editor .cm-panels {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+  border-bottom: 1px solid var(--theme-border-color) !important;
+}
+.cm-editor .cm-panels input,
+.cm-editor .cm-panels button {
+  color: var(--theme-text-primary) !important;
+}
+/* Hide the native CodeMirror search panel — we use our custom FindReplaceBar */
+.cm-panel.cm-search {
+  display: none !important;
+}
+/* === END CodeMirror === */
+
+.tab-close-btn,
+.new-tab-btn,
+.quota-limit-close-btn,
+.model-overloaded-close-btn,
+.settings-modal-close,
+.auth-modal-close,
+.ai-warning-close {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 2px !important;
+}
+
+.tab-close-btn:hover,
+.new-tab-btn:hover,
+.quota-limit-close-btn:hover,
+.model-overloaded-close-btn:hover,
+.settings-modal-close:hover,
+.auth-modal-close:hover,
+.ai-warning-close:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* === Buttons (flat, sharp) === */
+button,
+.btn,
+.modal-btn,
+.quota-limit-btn,
+.model-overloaded-btn {
+  background: var(--theme-button-bg) !important;
+  border: 1px solid var(--theme-border-color) !important;
+  color: var(--theme-button-text-color) !important;
+  box-shadow: none !important;
+  border-radius: 2px !important;
+  transition: background-color 0.12s ease;
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.modal-btn:hover:not(:disabled),
+.quota-limit-btn:hover:not(:disabled),
+.model-overloaded-btn:hover:not(:disabled) {
+  background: var(--theme-button-hover-bg) !important;
+  border-color: var(--theme-border-strong) !important;
+  box-shadow: none !important;
+}
+
+button:focus-visible,
+.btn:focus-visible,
+.modal-btn:focus-visible {
+  box-shadow: var(--focus-ring) !important;
+}
+
+/* === Inputs (flat, sharp) === */
+input[type="text"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+  background: var(--theme-input-bg) !important;
+  border: 1px solid var(--theme-border-color) !important;
+  color: var(--theme-text-primary) !important;
+  box-shadow: none !important;
+  border-radius: 2px !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--theme-text-tertiary) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--theme-accent-primary) !important;
+  box-shadow: none !important;
+}
+
+/* === Sidebar === */
+.sidebar-workspace-root {
+  background: var(--theme-bg-tertiary) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.sidebar .tree-item-name,
+.sidebar .tree-item-icon,
+.sidebar .tree-item-toggle-icon {
+  color: var(--theme-sidebar-text) !important;
+  text-shadow: none !important;
+}
+
+.tree-item {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.tree-item:hover,
+.sidebar-actions .sidebar-action-btn.is-active,
+.tree-item-search-button:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.tree-item.drag-over-folder {
+  background: rgba(0, 122, 204, 0.15) !important;
+  outline-color: var(--theme-accent-primary) !important;
+}
+
+.editor-search-highlight {
+  background: rgba(255, 207, 0, 0.22) !important;
+}
+
+/* === Modal backdrops (simple dark overlay, no blur) === */
+.modal-backdrop,
+.modal-overlay,
+.settings-modal-overlay,
+.settings-modal-backdrop,
+.auth-modal-overlay,
+.new-file-modal-overlay,
+.file-conversion-modal-overlay,
+.help-modal-overlay,
+.judaism-chat-modal-overlay,
+.ai-model-modal-overlay,
+.api-key-modal-overlay,
+.questionnaire-modal-overlay,
+.learning-graph-modal-overlay,
+.quota-limit-modal-backdrop,
+.model-overloaded-modal-backdrop,
+.repetition-modal-backdrop,
+.smart-search-modal-overlay,
+.unsaved-changes-modal-overlay,
+.text-organization-progress-overlay {
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* === Modal content (flat, sharp corners) === */
+.modal-content,
+.settings-modal,
+.settings-modal-content,
+.auth-modal,
+.auth-modal-content,
+.new-file-modal,
+.file-conversion-modal,
+.file-conversion-modal-content,
+.help-modal-content,
+.judaism-chat-modal-content,
+.ai-model-modal-content,
+.api-key-modal-content,
+.questionnaire-modal-content,
+.learning-graph-modal-content,
+.quota-limit-modal,
+.model-overloaded-modal,
+.repetition-modal-content,
+.unsaved-changes-modal,
+.smart-search-modal-content,
+.text-organization-progress-modal,
+.font-selection-modal,
+.font-size-modal,
+.transcription-modal,
+.confirm-delete-modal,
+.create-folder-modal {
+  background: var(--theme-bg-primary) !important;
+  border: 1px solid var(--theme-border-color) !important;
+  color: var(--theme-text-primary) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 0 !important;
+}
+
+/* === Modal header/footer === */
+.modal-header,
+.modal-footer,
+.auth-modal-header,
+.new-file-modal-header,
+.help-modal-header,
+.help-modal-footer,
+.judaism-chat-modal-header,
+.judaism-chat-modal-footer,
+.settings-modal-header,
+.settings-modal-footer,
+.file-conversion-modal-header,
+.quota-limit-header,
+.model-overloaded-header {
+  background: var(--theme-bg-primary) !important;
+  border-color: var(--theme-border-color) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.quota-limit-title,
+.model-overloaded-title,
+.quota-limit-close-btn,
+.model-overloaded-close-btn,
+.quota-limit-message,
+.model-overloaded-message {
+  color: var(--theme-text-primary) !important;
+}
+
+.quota-limit-message,
+.model-overloaded-message {
+  background: var(--theme-bg-primary) !important;
+  border-right: 2px solid var(--theme-accent-primary) !important;
+}
+
+.ai-warning-banner {
+  background: var(--theme-bg-primary) !important;
+  border-bottom: 1px solid var(--theme-border-color) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.ai-warning-content,
+.ai-warning-close {
+  color: var(--theme-text-primary) !important;
+  font-family: inherit !important;
+}
+
+.ai-warning-close:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* === Scrollbar (thin VS Code style) === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb);
+  border-radius: 0;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+::selection {
+  background: rgba(0, 122, 204, 0.35);
+  color: var(--theme-text-primary);
+}
+
+/* No responsive border-radius changes — everything stays sharp */
+@media (max-width: 760px) {
+  .app-topbar,
+  .sidebar,
+  .main-content-area {
+    border-radius: 0 !important;
+  }
+}

@@ -1,0 +1,64 @@
+.error-boundary-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  min-height: 120px;
+  text-align: center;
+  direction: rtl;
+  color: var(--theme-text-secondary);
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 0;
+  margin: 0;
+}
+
+.error-boundary-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.error-boundary-title {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  color: var(--theme-text-primary);
+}
+
+.error-boundary-message {
+  margin: 0 0 14px 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.error-boundary-retry {
+  padding: 6px 20px;
+  font-size: 0.85rem;
+}
+
+.error-boundary-details {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+  direction: ltr;
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--theme-text-tertiary);
+  margin-bottom: 6px;
+}
+
+.error-boundary-details pre {
+  font-size: 0.75rem;
+  background: var(--theme-bg-primary, #171717);
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #fc8181;
+}

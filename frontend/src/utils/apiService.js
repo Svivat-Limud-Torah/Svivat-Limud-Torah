@@ -245,10 +245,12 @@ const apiService = {
   },
 
   triggerWeeklySummaryGeneration: async (dateForWeek) => { // dateForWeek (optional, YYYY-MM-DD string)
-    const body = dateForWeek ? JSON.stringify({ dateForWeek }) : JSON.stringify({});
+    const model = localStorage.getItem('selectedAiModel') || undefined;
+    const body = JSON.stringify({ ...(dateForWeek ? { dateForWeek } : {}), model });
     const response = await fetch(`${API_BASE_URL}/questionnaires/summary`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: body,
     });
     if (!response.ok) {
@@ -268,7 +270,50 @@ const apiService = {
         err.status = response.status;
         throw err;
     }
-    return response.json(); // Expected: { data: summaryObject | null }
+    return response.json();
+  },
+
+  getAllWeeklySummaries: async () => {
+    const response = await fetch(`${API_BASE_URL}/questionnaires/summaries/all`, { credentials: 'include' });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch all weekly summaries');
+    }
+    return response.json(); // { data: [] }
+  },
+
+  generatePersonalInsights: async () => {
+    const model = localStorage.getItem('selectedAiModel') || undefined;
+    const response = await fetch(`${API_BASE_URL}/questionnaires/insights`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ model }),
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || 'Failed to generate personal insights');
+        err.status = response.status;
+        throw err;
+    }
+    return response.json(); // { success: true, data: insightsObject }
+  },
+
+  chatWithPersonalAI: async (chatHistory) => {
+    const model = localStorage.getItem('selectedAiModel') || undefined;
+    const response = await fetch(`${API_BASE_URL}/questionnaires/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ chatHistory, model }),
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(errorData.error || 'Failed to get chat response');
+        err.status = response.status;
+        throw err;
+    }
+    return response.json(); // { success: true, reply: string }
   },
 
   // --- User Notification Settings API ---
@@ -311,14 +356,13 @@ const apiService = {
   },
 
   // --- Pilpulta API ---
-  // Added apiKey parameter
-  generatePilpultaQuestions: async (text, useWebSearch, model, apiKey) => {
+  generatePilpultaQuestions: async (text, useWebSearch, model) => {
     // Corrected endpoint to include /generate
     const response = await fetch(`${API_BASE_URL}/pilpulta/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Include apiKey in the request body
-      body: JSON.stringify({ text, useWebSearch, model, apiKey }),
+      credentials: 'include',
+      body: JSON.stringify({ text, useWebSearch, model }),
     });
     if (!response.ok) {
       const errorData = await response.json();
@@ -328,26 +372,43 @@ const apiService = {
   },
 
   // --- Smart Search API ---
-  executeSmartSearch: async (query, model, apiKey, workspacePath, numFilesToScan, onProgressUpdate) => {
-    // onProgressUpdate is a callback to update loading messages, e.g., onProgressUpdate(HEBREW_TEXT.smartSearchLoadingAnalyzingNames)
-    // This is a frontend-driven progress update for now. Backend might support streaming later.
-    
-    // Simulate progress updates based on the plan's stages for now
-    if (onProgressUpdate) onProgressUpdate(HEBREW_TEXT.smartSearchLoadingFileList); // Initial stage
+  executeSmartSearch: async (query, model, workspacePath, numFilesToScan, onProgressUpdate, mode = 'deep', files = null) => {
+    if (onProgressUpdate) onProgressUpdate(HEBREW_TEXT.smartSearchLoadingLocal);
+
+    const body = { query, model, workspacePath, numFilesToScan, mode };
+    if (files && files.length > 0) {
+      body.files = files;
+    }
 
     const response = await fetch(`${API_BASE_URL}/smart-search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, model, apiKey, workspacePath, numFilesToScan }),
+      credentials: 'include',
+      body: JSON.stringify(body),
     });
 
-    if (onProgressUpdate) onProgressUpdate(HEBREW_TEXT.smartSearchLoadingProcessingResults); // Final stage before getting response
+    if (onProgressUpdate) onProgressUpdate(HEBREW_TEXT.smartSearchLoadingProcessingResults);
 
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Smart search failed');
     }
-    return response.json(); // Expecting { quote, explanation, sourceFile, lineNumber, isApproximate, found, filesSearched }
+    return response.json();
+  },
+
+  // --- Simple Text Search API ---
+  executeSimpleSearch: async (searchText, workspacePath, filterPaths = null, caseSensitive = false, wholeWord = false) => {
+    const response = await fetch(`${API_BASE_URL}/smart-search/simple`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searchText, workspacePath, filterPaths, caseSensitive, wholeWord }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Simple search failed');
+    }
+    return response.json();
   },
 
   // --- User Data Operations ---

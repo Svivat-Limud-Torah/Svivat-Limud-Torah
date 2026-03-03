@@ -2,6 +2,8 @@
 const express = require('express');
 const cron = require('node-cron'); // For scheduling
 const cors = require('cors');
+const session = require('express-session');
+const crypto = require('crypto');
 const fs = require('fs').promises;
 const fsSync = require('fs'); // For sync operations like existsSync
 const path = require('path');
@@ -19,8 +21,88 @@ const fileConversionService = require('./services/FileConversionService'); // Im
 const app = express();
 const port = 3001;
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Ensure body parsing middleware is before routes
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'],
+    credentials: true
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(session({
+    secret: crypto.randomBytes(32).toString('hex'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000
+    }
+}));
+
+// --- API Key Session Endpoints ---
+app.post('/api/auth/api-key', (req, res) => {
+    const { apiKey, isPaid } = req.body;
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+        return res.status(400).json({ error: 'API key is required' });
+    }
+    req.session.apiKey = apiKey.trim();
+    req.session.isPaid = isPaid === true;
+    res.json({ success: true });
+});
+
+app.get('/api/auth/api-key/status', (req, res) => {
+    res.json({
+        hasKey: !!req.session.apiKey,
+        isPaid: req.session.isPaid === true
+    });
+});
+
+app.delete('/api/auth/api-key', (req, res) => {
+    delete req.session.apiKey;
+    delete req.session.isPaid;
+    res.json({ success: true });
+});
+
+// --- AI Proxy Endpoint ---
+const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+
+app.post('/api/ai/generate', async (req, res) => {
+    const apiKey = req.session.apiKey;
+    if (!apiKey) {
+        return res.status(401).json({ error: 'מפתח API לא מוגדר. אנא הגדר מפתח API תחילה.' });
+    }
+    const { model, body: requestBody } = req.body;
+    if (!model || !requestBody) {
+        return res.status(400).json({ error: 'model and body are required' });
+    }
+    // Validate model name format to prevent injection
+    if (!/^[a-zA-Z0-9._-]+$/.test(model)) {
+        return res.status(400).json({ error: 'Invalid model name format' });
+    }
+    try {
+        const googleResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            }
+        );
+        const data = await googleResponse.json();
+        if (!googleResponse.ok) {
+            const msg = data.error?.message || '';
+            if (msg.includes('referer') || msg.includes('Origin') || msg.includes('blocked')) {
+                return res.status(403).json({
+                    error: 'מפתח ה-API מוגבל להפעלה מכתובות מסוימות. כדי לפתור: עבור ל-Google Cloud Console → APIs & Services → Credentials, מצא את המפתח, לחץ "Edit" → תחת "Application restrictions" בחר "None".',
+                    originalError: msg,
+                });
+            }
+        }
+        res.status(googleResponse.status).json(data);
+    } catch (err) {
+        console.error('AI Proxy error:', err);
+        res.status(500).json({ error: 'שגיאה בחיבור ל-Google AI: ' + err.message });
+    }
+});
 
 const SUPPORTED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'];
 const ALLOWED_EXTENSIONS_FOR_SEARCH = ['.txt', '.md', '.json', '.js', '.jsx', '.html', '.css'];
@@ -47,7 +129,7 @@ app.post('/api/open-folder', async (req, res) => {
     try {
         await fs.access(folderPath);
         const stats = await fs.stat(folderPath);
-        if (!stats.isDirectory()) return res.status(400).json({ error: `הנתיב '${folderPath}' אינו תיקייה.`});
+        if (!stats.isDirectory()) return res.status(400).json({ error: `הנתיב '${folderPath}' אינו תיקייה.` });
         const directoryStructure = await readDirectoryRecursive(folderPath, folderPath);
         res.json(directoryStructure);
     } catch (error) {
@@ -100,7 +182,7 @@ app.post('/api/file-content', async (req, res) => {
         if (!absoluteFilePath.startsWith(resolvedBase)) return res.status(403).json({ error: 'גישה לקובץ נדחתה (מחוץ לתיקיית הבסיס).' });
         await fs.access(absoluteFilePath);
         const stats = await fs.stat(absoluteFilePath);
-        if (stats.isDirectory()) return res.status(400).json({ error: `'${relativeFilePath}' הוא תיקייה, לא קובץ.`});
+        if (stats.isDirectory()) return res.status(400).json({ error: `'${relativeFilePath}' הוא תיקייה, לא קובץ.` });
 
         const ext = path.extname(fileName).toLowerCase();
         if (SUPPORTED_IMAGE_EXTENSIONS.includes(ext)) {
@@ -117,7 +199,7 @@ app.post('/api/file-content', async (req, res) => {
             if (parsedStylesContainer && Array.isArray(parsedStylesContainer.styles)) {
                 styles = parsedStylesContainer.styles;
             } else if (Array.isArray(parsedStylesContainer)) {
-                 styles = parsedStylesContainer;
+                styles = parsedStylesContainer;
             }
         } catch (styleError) {
             if (styleError.code !== 'ENOENT') {
@@ -211,7 +293,7 @@ app.post('/api/create-file', async (req, res) => {
     try {
         await fs.access(parentDir);
     } catch (parentAccessError) {
-         return res.status(400).json({ error: `תיקיית האב '${path.dirname(newFilePath)}' אינה קיימת ליצירת הקובץ.` });
+        return res.status(400).json({ error: `תיקיית האב '${path.dirname(newFilePath)}' אינה קיימת ליצירת הקובץ.` });
     }
 
     try {
@@ -354,7 +436,7 @@ app.post('/api/rename-item', async (req, res) => {
         return res.status(403).json({ error: 'שינוי שם נדחה (מחוץ לתיקיית הבסיס).' });
     }
     if (absoluteOldPath === absoluteNewPath) {
-         return res.status(200).json({ message: "השם החדש זהה לישן. לא בוצע שינוי.", directoryStructure: await getUpdatedDirectoryStructure(baseFolderPath), renamedItem: { oldRelativePath, newRelativePath, newName, isFolder: (await fs.stat(absoluteOldPath)).isDirectory() } });
+        return res.status(200).json({ message: "השם החדש זהה לישן. לא בוצע שינוי.", directoryStructure: await getUpdatedDirectoryStructure(baseFolderPath), renamedItem: { oldRelativePath, newRelativePath, newName, isFolder: (await fs.stat(absoluteOldPath)).isDirectory() } });
     }
 
     try {
@@ -375,7 +457,7 @@ app.post('/api/rename-item', async (req, res) => {
                 await fs.rename(oldStylesPath, newStylesPath);
             } catch (styleError) {
                 if (styleError.code !== 'ENOENT') {
-                     console.warn(`אזהרה: לא ניתן לשנות שם לקובץ סגנונות מ-${oldStylesPath} ל-${newStylesPath}: ${styleError.message}`);
+                    console.warn(`אזהרה: לא ניתן לשנות שם לקובץ סגנונות מ-${oldStylesPath} ל-${newStylesPath}: ${styleError.message}`);
                 }
             }
         }
@@ -385,11 +467,11 @@ app.post('/api/rename-item', async (req, res) => {
 
         if (stats.isDirectory()) {
             await dbOperations.updateDescendantPaths(baseFolderPath, oldRelativePath, baseFolderPath, newRelativePath, (dbErr, changes) => {
-                 if (dbErr) console.error(`DB error during updateDescendantPaths for rename ${oldRelativePath} -> ${newRelativePath}: ${dbErr.message}`);
-                 else console.log(`DB: ${changes} descendant paths updated for rename.`);
+                if (dbErr) console.error(`DB error during updateDescendantPaths for rename ${oldRelativePath} -> ${newRelativePath}: ${dbErr.message}`);
+                else console.log(`DB: ${changes} descendant paths updated for rename.`);
             });
         } else {
-             await dbOperations.updateFileUsagePath(oldAbsoluteFilePathForDB, newAbsoluteFilePathForDB, baseFolderPath, newRelativePath, newName, (dbErr, changes) => {
+            await dbOperations.updateFileUsagePath(oldAbsoluteFilePathForDB, newAbsoluteFilePathForDB, baseFolderPath, newRelativePath, newName, (dbErr, changes) => {
                 if (dbErr) console.error(`DB error during updateFileUsagePath for rename ${oldRelativePath} -> ${newRelativePath}: ${dbErr.message}`);
                 else console.log(`DB: ${changes} file usage path updated for rename.`);
             });
@@ -404,7 +486,7 @@ app.post('/api/rename-item', async (req, res) => {
 
     } catch (error) {
         console.error(`שגיאה בשינוי שם של '${oldRelativePath}' ל-'${newName}':`, error);
-        if (error.code === 'ENOENT') return res.status(404).json({ error: `הפריט '${oldRelativePath}' לא נמצא.`});
+        if (error.code === 'ENOENT') return res.status(404).json({ error: `הפריט '${oldRelativePath}' לא נמצא.` });
         if (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'EBUSY') return res.status(403).json({ error: `אין הרשאה לשינוי שם או שהקובץ בשימוש.` });
         res.status(500).json({ error: error.message || 'שגיאה בשינוי שם הפריט.' });
     }
@@ -433,7 +515,7 @@ app.post('/api/move-item', async (req, res) => {
         return res.status(403).json({ error: 'העברת פריט נדחתה (מחוץ לתיקיית הבסיס המותרת).' });
     }
     if (absoluteSourcePath === absoluteTargetPath) {
-         return res.status(400).json({ error: 'מקור ויעד ההעברה זהים.' });
+        return res.status(400).json({ error: 'מקור ויעד ההעברה זהים.' });
     }
 
     try {
@@ -454,10 +536,10 @@ app.post('/api/move-item', async (req, res) => {
             await fs.access(absoluteTargetParentDir);
             const targetParentStats = await fs.stat(absoluteTargetParentDir);
             if (!targetParentStats.isDirectory()) {
-                 return res.status(400).json({ error: `נתיב היעד '${targetParentRelativePath}' אינו תיקייה.` });
+                return res.status(400).json({ error: `נתיב היעד '${targetParentRelativePath}' אינו תיקייה.` });
             }
         } catch (parentAccessError) {
-             return res.status(400).json({ error: `תיקיית היעד '${targetParentRelativePath}' לא נמצאה.` });
+            return res.status(400).json({ error: `תיקיית היעד '${targetParentRelativePath}' לא נמצאה.` });
         }
 
         await fs.rename(absoluteSourcePath, absoluteTargetPath);
@@ -481,7 +563,7 @@ app.post('/api/move-item', async (req, res) => {
                 else console.log(`DB: ${changes} descendant paths updated for move.`);
             });
         } else {
-             await dbOperations.updateFileUsagePath(oldAbsoluteFilePathForDB, path.join(targetBaseFolderPath, newRelativePathInTargetBase), targetBaseFolderPath, newRelativePathInTargetBase, itemName, (dbErr, changes) => {
+            await dbOperations.updateFileUsagePath(oldAbsoluteFilePathForDB, path.join(targetBaseFolderPath, newRelativePathInTargetBase), targetBaseFolderPath, newRelativePathInTargetBase, itemName, (dbErr, changes) => {
                 if (dbErr) console.error(`DB error during updateFileUsagePath for move: ${dbErr.message}`);
                 else console.log(`DB: ${changes} file usage path updated for move.`);
             });
@@ -489,7 +571,7 @@ app.post('/api/move-item', async (req, res) => {
 
         let updatedSourceStructure = null;
         if (sourceBaseFolderPath !== targetBaseFolderPath && fsSync.existsSync(sourceBaseFolderPath)) {
-             updatedSourceStructure = await getUpdatedDirectoryStructure(sourceBaseFolderPath);
+            updatedSourceStructure = await getUpdatedDirectoryStructure(sourceBaseFolderPath);
         } else if (sourceBaseFolderPath === targetBaseFolderPath) {
         }
 
@@ -511,8 +593,8 @@ app.post('/api/move-item', async (req, res) => {
 
     } catch (error) {
         console.error(`שגיאה בהעברת '${sourceRelativePath}' אל '${targetBaseFolderPath}/${targetParentRelativePath}':`, error);
-        if (error.code === 'ENOENT' && error.path === absoluteSourcePath) return res.status(404).json({ error: `פריט המקור '${sourceRelativePath}' לא נמצא.`});
-        if (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'EBUSY') return res.status(403).json({ error: `אין הרשאה להעברת הפריט או שהקובץ בשימוש.`});
+        if (error.code === 'ENOENT' && error.path === absoluteSourcePath) return res.status(404).json({ error: `פריט המקור '${sourceRelativePath}' לא נמצא.` });
+        if (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'EBUSY') return res.status(403).json({ error: `אין הרשאה להעברת הפריט או שהקובץ בשימוש.` });
         res.status(500).json({ error: error.message || 'שגיאה בהעברת הפריט.' });
     }
 });
@@ -574,7 +656,7 @@ app.post('/api/search', async (req, res) => {
     try {
         await fs.access(resolvedBaseForSearch);
         const baseFolderStats = await fs.stat(resolvedBaseForSearch);
-        if (!baseFolderStats.isDirectory()) return res.status(400).json({ error: `הנתיב '${baseFolderPath}' אינו תיקייה.`});
+        if (!baseFolderStats.isDirectory()) return res.status(400).json({ error: `הנתיב '${baseFolderPath}' אינו תיקייה.` });
 
         let searchStartPath = resolvedBaseForSearch;
         if (scopePath) {
@@ -594,7 +676,7 @@ app.post('/api/search', async (req, res) => {
                 searchStartPath = absoluteScopePath;
                 await findFilesRecursive(searchStartPath, resolvedBaseForSearch, searchTerm, results);
             } else {
-                 return res.status(400).json({ error: 'נתיב היקף חיפוש לא תקין.' });
+                return res.status(400).json({ error: 'נתיב היקף חיפוש לא תקין.' });
             }
         } else {
             await findFilesRecursive(searchStartPath, resolvedBaseForSearch, searchTerm, results);
@@ -614,10 +696,15 @@ app.post('/api/v2/search', async (req, res) => {
         options,
         includePatterns,
         excludePatterns,
+        files,
     } = req.body;
 
-    if (!basePath || typeof basePath !== 'string') {
-        return res.status(400).json({ error: 'Invalid or missing "basePath" parameter.' });
+    const hasProvidedFiles = Array.isArray(files) && files.length > 0;
+
+    if (!hasProvidedFiles) {
+        if (!basePath || typeof basePath !== 'string') {
+            return res.status(400).json({ error: 'Invalid or missing "basePath" parameter.' });
+        }
     }
     if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.trim().length === 0) {
         return res.status(400).json({ error: 'Invalid or missing "searchTerm" parameter.' });
@@ -642,16 +729,18 @@ app.post('/api/v2/search', async (req, res) => {
     };
 
     try {
-        try {
-            const stats = await fs.stat(basePath);
-            if (!stats.isDirectory()) {
-                return res.status(400).json({ error: `"basePath" (${basePath}) is not a directory.` });
+        if (!hasProvidedFiles) {
+            try {
+                const stats = await fs.stat(basePath);
+                if (!stats.isDirectory()) {
+                    return res.status(400).json({ error: `"basePath" (${basePath}) is not a directory.` });
+                }
+            } catch (err) {
+                if (err.code === 'ENOENT') {
+                    return res.status(404).json({ error: `"basePath" (${basePath}) not found.` });
+                }
+                throw err;
             }
-        } catch (err) {
-            if (err.code === 'ENOENT') {
-                return res.status(404).json({ error: `"basePath" (${basePath}) not found.` });
-            }
-            throw err;
         }
 
         const results = await performSearchV2(
@@ -659,13 +748,14 @@ app.post('/api/v2/search', async (req, res) => {
             searchTerm,
             searchOptions,
             includePatterns,
-            excludePatterns
+            excludePatterns,
+            hasProvidedFiles ? files : null
         );
         res.json(results);
     } catch (error) {
         console.error('Error in /api/v2/search endpoint:', error);
         if (error.message.includes("Invalid regular expression")) {
-             return res.status(400).json({ error: `Invalid regular expression: ${error.message}` });
+            return res.status(400).json({ error: `Invalid regular expression: ${error.message}` });
         }
         res.status(500).json({ error: 'An unexpected error occurred during the search.' });
     }
@@ -681,7 +771,7 @@ app.get('/api/files/recent', (req, res) => {
             console.error('שגיאה בשליפת קבצים אחרונים:', err);
             return res.status(500).json({ error: 'שגיאה בשליפת קבצים אחרונים.' });
         }
-        const processedRows = rows.map(row => ({...row, rootName: path.basename(row.base_folder_path) }));
+        const processedRows = rows.map(row => ({ ...row, rootName: path.basename(row.base_folder_path) }));
         res.json(processedRows);
     });
 });
@@ -695,11 +785,94 @@ app.get('/api/files/frequent', (req, res) => {
             console.error('שגיאה בשליפת קבצים נפוצים:', err);
             return res.status(500).json({ error: 'שגיאה בשליפת קבצים נפוצים.' });
         }
-        const processedRows = rows.map(row => ({...row, rootName: path.basename(row.base_folder_path) }));
+        const processedRows = rows.map(row => ({ ...row, rootName: path.basename(row.base_folder_path) }));
         res.json(processedRows);
     });
 });
 
+
+// --- User Snapshot API Endpoint ---
+app.get('/api/user-snapshot', async (req, res) => {
+    try {
+        const promisify = (fn, ...args) => new Promise((resolve, reject) => {
+            fn(...args, (err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+
+        const [
+            totalStats,
+            fileTypeDistribution,
+            activityByHour,
+            dailyActivity,
+            avgRating,
+            topFiles,
+            latestSummary
+        ] = await Promise.all([
+            promisify(dbOperations.getTotalFileStats),
+            promisify(dbOperations.getFileTypeDistribution),
+            promisify(dbOperations.getActivityByHour),
+            promisify(dbOperations.getDailyFileActivity, 30),
+            promisify(dbOperations.getAverageQuestionnaireRating),
+            promisify(dbOperations.getAllFilesForSnapshot),
+            promisify(dbOperations.getLatestWeeklySummary),
+        ]);
+
+        // Process top files to add rootName
+        const processedTopFiles = (topFiles || []).map(row => ({
+            ...row,
+            rootName: path.basename(row.base_folder_path || '')
+        }));
+
+        res.json({
+            totalStats: {
+                ...(totalStats || { unique_files: 0, total_opens: 0, last_activity_timestamp: null }),
+                total_time_seconds: totalStats?.total_time_seconds || 0,
+            },
+            fileTypeDistribution: fileTypeDistribution || [],
+            activityByHour: activityByHour || [],
+            dailyActivity: dailyActivity || [],
+            questionnaireInsights: {
+                averageRating: avgRating?.average_rating || null,
+                totalEntries: avgRating?.total_entries || 0,
+                firstEntryDate: avgRating?.first_entry_date || null,
+                lastEntryDate: avgRating?.last_entry_date || null,
+            },
+            topFiles: processedTopFiles,
+            weeklySummary: latestSummary || null,
+        });
+    } catch (error) {
+        console.error('שגיאה בשליפת תמונת מצב:', error);
+        res.status(500).json({ error: 'שגיאה בשליפת תמונת מצב.' });
+    }
+});
+
+// Record file open from web app (File System Access API — no real OS path available)
+app.post('/api/record-file-use', (req, res) => {
+    const { folderName, relativePath, fileName } = req.body;
+    if (!folderName || !relativePath || !fileName) {
+        return res.status(400).json({ error: 'נתונים חסרים.' });
+    }
+    dbOperations.recordFileUsageWeb(folderName, relativePath, fileName);
+    res.json({ ok: true });
+});
+
+// Record time spent on a file
+app.post('/api/file-time', (req, res) => {
+    const { baseFolderPath, relativeFilePath, seconds } = req.body;
+    if (!baseFolderPath || !relativeFilePath || !seconds || seconds <= 0) {
+        return res.status(400).json({ error: 'נתונים חסרים או לא תקינים.' });
+    }
+    // Web app uses folder name (not OS path) — build the same key as recordFileUsageWeb
+    const fileKey = path.isAbsolute(baseFolderPath)
+        ? path.join(baseFolderPath, relativeFilePath)
+        : baseFolderPath + '::' + relativeFilePath;
+    dbOperations.addTimeSpent(fileKey, Math.min(Math.round(seconds), 7200), (err) => {
+        if (err) return res.status(500).json({ error: 'שגיאה בעדכון זמן.' });
+        res.json({ ok: true });
+    });
+});
 
 app.get('/api/settings/last-opened-folders', (req, res) => {
     dbOperations.getSetting('lastOpenedFolderPaths', (err, value) => {
@@ -742,10 +915,10 @@ app.post('/api/repetitions', (req, res) => {
     const int4 = reminder_interval_4 !== undefined && reminder_interval_4 !== null ? parseInt(reminder_interval_4, 10) : null;
 
     if (isNaN(int1) || (int2 !== null && isNaN(int2)) || (int3 !== null && isNaN(int3)) || (int4 !== null && isNaN(int4))) {
-        return res.status(400).json({ error: "ערכי המרווחים חייבים להיות מספרים."});
+        return res.status(400).json({ error: "ערכי המרווחים חייבים להיות מספרים." });
     }
-    if (int1 <= 0 && (int2 === null || int2 <= 0) && (int3 === null || int3 <= 0) && (int4 === null || int4 <= 0) ){
-        return res.status(400).json({ error: "לפחות מרווח חיובי אחד נדרש."});
+    if (int1 <= 0 && (int2 === null || int2 <= 0) && (int3 === null || int3 <= 0) && (int4 === null || int4 <= 0)) {
+        return res.status(400).json({ error: "לפחות מרווח חיובי אחד נדרש." });
     }
 
     const repetitionData = {
@@ -819,7 +992,7 @@ app.put('/api/repetitions/:id/mute', (req, res) => {
             return res.status(500).json({ error: "שגיאה פנימית בשרת." });
         }
         if (!updatedRepetition) {
-             return res.status(404).json({ error: `חזרה עם מזהה ${id} לא נמצאה לעדכון.` });
+            return res.status(404).json({ error: `חזרה עם מזהה ${id} לא נמצאה לעדכון.` });
         }
         res.json(updatedRepetition);
     });
@@ -855,8 +1028,8 @@ app.put('/api/repetitions/:id', (req, res) => {
     }
     for (let i = 1; i <= 4; i++) {
         const key = `reminder_interval_${i}`;
-        if (req.body[key] !== undefined && (isNaN(parseInt(req.body[key],10)) || parseInt(req.body[key],10) < 0) && req.body[key] !== null) {
-             return res.status(400).json({ error: `ערך מרווח ${i} אינו תקין.` });
+        if (req.body[key] !== undefined && (isNaN(parseInt(req.body[key], 10)) || parseInt(req.body[key], 10) < 0) && req.body[key] !== null) {
+            return res.status(400).json({ error: `ערך מרווח ${i} אינו תקין.` });
         }
     }
 
@@ -866,7 +1039,7 @@ app.put('/api/repetitions/:id', (req, res) => {
             return res.status(500).json({ error: "שגיאה פנימית בשרת." });
         }
         if (!updatedRepetition) {
-             return res.status(404).json({ error: `חזרה עם מזהה ${id} לא נמצאה לעדכון.` });
+            return res.status(404).json({ error: `חזרה עם מזהה ${id} לא נמצאה לעדכון.` });
         }
         res.json(updatedRepetition);
     });
@@ -954,16 +1127,17 @@ app.get('/api/questionnaires/week', (req, res) => {
 
 // POST /api/questionnaires/summary - Trigger AI generation of the weekly summary
 app.post('/api/questionnaires/summary', async (req, res) => {
-    // Optional: allow specifying a date to generate summary for that week
-    const { dateForWeek } = req.body; // Expects YYYY-MM-DD or undefined
+    const { dateForWeek, model } = req.body;
     let targetDate = dateForWeek ? new Date(dateForWeek) : new Date();
 
     if (dateForWeek && !/^\d{4}-\d{2}-\d{2}$/.test(dateForWeek)) {
-         return res.status(400).json({ error: "Invalid date format for dateForWeek. Please use YYYY-MM-DD." });
+        return res.status(400).json({ error: "Invalid date format for dateForWeek. Please use YYYY-MM-DD." });
     }
 
+    const apiKey = req.session?.apiKey;
+
     try {
-        const result = await questionnaireService.generateAndSaveWeeklySummary(targetDate);
+        const result = await questionnaireService.generateAndSaveWeeklySummary(targetDate, apiKey, model);
         res.json({ success: true, message: result.message, summaryId: result.summaryId, summaryData: result.summaryData });
     } catch (error) {
         console.error("Error in POST /api/questionnaires/summary:", error);
@@ -980,6 +1154,52 @@ app.get('/api/questionnaires/summary/latest', (req, res) => {
         }
         res.json({ data }); // data can be null if no summary exists
     });
+});
+
+// GET /api/questionnaires/summaries/all - Fetch all weekly summaries
+app.get('/api/questionnaires/summaries/all', (req, res) => {
+    dbOperations.getAllWeeklySummaries((err, data) => {
+        if (err) {
+            console.error("Error in GET /api/questionnaires/summaries/all:", err);
+            return res.status(500).json({ error: "Failed to fetch all weekly summaries." });
+        }
+        res.json({ data: data || [] });
+    });
+});
+
+// POST /api/questionnaires/insights - Generate personal AI insights from full history
+app.post('/api/questionnaires/insights', async (req, res) => {
+    const apiKey = req.session?.apiKey;
+    if (!apiKey) {
+        return res.status(401).json({ error: 'מפתח API לא נמצא. הכנס מפתח API תחילה.' });
+    }
+    const { model } = req.body;
+    try {
+        const insights = await questionnaireService.generatePersonalInsights(apiKey, model);
+        res.json({ success: true, data: insights });
+    } catch (error) {
+        console.error("Error in POST /api/questionnaires/insights:", error);
+        res.status(500).json({ error: error.message || "Failed to generate personal insights." });
+    }
+});
+
+// POST /api/questionnaires/chat - Chat with personal AI assistant
+app.post('/api/questionnaires/chat', async (req, res) => {
+    const { chatHistory, model } = req.body; // array of { role, content }
+    const apiKey = req.session?.apiKey;
+    if (!apiKey) {
+        return res.status(401).json({ error: 'מפתח API לא נמצא. הכנס מפתח API תחילה.' });
+    }
+    if (!Array.isArray(chatHistory) || chatHistory.length === 0) {
+        return res.status(400).json({ error: 'chatHistory is required and must be a non-empty array.' });
+    }
+    try {
+        const reply = await questionnaireService.chatWithPersonalAI(chatHistory, apiKey, model);
+        res.json({ success: true, reply });
+    } catch (error) {
+        console.error("Error in POST /api/questionnaires/chat:", error);
+        res.status(500).json({ error: error.message || "Failed to get chat response." });
+    }
 });
 
 // GET /api/users/me/settings/notifications - Get notification settings
@@ -1042,7 +1262,7 @@ app.use('/api/text-organization', textOrganizationRoutes);
 // --- File Conversion API Endpoints ---
 app.post('/api/file-conversion/scan-directory', async (req, res) => {
     const { directoryPath } = req.body;
-    
+
     if (!directoryPath) {
         return res.status(400).json({ error: 'נתיב תיקייה נדרש' });
     }
@@ -1051,13 +1271,13 @@ app.post('/api/file-conversion/scan-directory', async (req, res) => {
         // Check if directory exists
         await fs.access(directoryPath);
         const stats = await fs.stat(directoryPath);
-        
+
         if (!stats.isDirectory()) {
             return res.status(400).json({ error: 'הנתיב שסופק אינו תיקייה' });
         }
 
         const files = await fileConversionService.scanDirectoryForConvertibleFiles(directoryPath);
-        res.json({ 
+        res.json({
             files,
             totalFiles: files.length,
             supportedExtensions: fileConversionService.supportedExtensions
@@ -1076,7 +1296,7 @@ app.post('/api/file-conversion/scan-directory', async (req, res) => {
 
 app.post('/api/file-conversion/convert-directory', async (req, res) => {
     const { sourceDirectory, targetDirectoryName } = req.body;
-    
+
     if (!sourceDirectory || !targetDirectoryName) {
         return res.status(400).json({ error: 'נתיב תיקיית מקור ושם תיקיית יעד נדרשים' });
     }
@@ -1085,7 +1305,7 @@ app.post('/api/file-conversion/convert-directory', async (req, res) => {
         // Check if source directory exists
         await fs.access(sourceDirectory);
         const stats = await fs.stat(sourceDirectory);
-        
+
         if (!stats.isDirectory()) {
             return res.status(400).json({ error: 'תיקיית המקור אינה תיקייה תקינה' });
         }
@@ -1126,7 +1346,7 @@ app.post('/api/file-conversion/convert-directory', async (req, res) => {
 
 app.post('/api/file-conversion/convert-single-file', async (req, res) => {
     const { filePath } = req.body;
-    
+
     if (!filePath) {
         return res.status(400).json({ error: 'נתיב קובץ נדרש' });
     }
@@ -1135,7 +1355,7 @@ app.post('/api/file-conversion/convert-single-file', async (req, res) => {
         // Check if file exists
         await fs.access(filePath);
         const stats = await fs.stat(filePath);
-        
+
         if (!stats.isFile()) {
             return res.status(400).json({ error: 'הנתיב שסופק אינו קובץ' });
         }
@@ -1145,7 +1365,7 @@ app.post('/api/file-conversion/convert-single-file', async (req, res) => {
         }
 
         const markdownContent = await fileConversionService.convertFileToMarkdown(filePath);
-        res.json({ 
+        res.json({
             content: markdownContent,
             originalFile: filePath,
             message: 'הקובץ הומר בהצלחה'
@@ -1165,7 +1385,7 @@ app.post('/api/file-conversion/convert-single-file', async (req, res) => {
 // New endpoint for file conversion with format selection
 app.post('/api/file-conversion/convert-file-with-format', async (req, res) => {
     const { filePath, targetFormat = 'md' } = req.body;
-    
+
     if (!filePath) {
         return res.status(400).json({ error: 'נתיב קובץ נדרש' });
     }
@@ -1178,7 +1398,7 @@ app.post('/api/file-conversion/convert-file-with-format', async (req, res) => {
         // Check if file exists
         await fs.access(filePath);
         const stats = await fs.stat(filePath);
-        
+
         if (!stats.isFile()) {
             return res.status(400).json({ error: 'הנתיב שסופק אינו קובץ' });
         }
@@ -1189,16 +1409,16 @@ app.post('/api/file-conversion/convert-file-with-format', async (req, res) => {
 
         // Convert the file content
         const convertedContent = await fileConversionService.convertFileToFormat(filePath, targetFormat);
-        
+
         // Generate output file path (same directory as source file)
         const sourceDir = path.dirname(filePath);
         const sourceBaseName = path.basename(filePath, path.extname(filePath));
         const outputFilePath = path.join(sourceDir, `${sourceBaseName}.${targetFormat}`);
-        
+
         // Write the converted content to the new file
         await fs.writeFile(outputFilePath, convertedContent, 'utf-8');
-        
-        res.json({ 
+
+        res.json({
             originalFile: filePath,
             convertedFile: outputFilePath,
             targetFormat: targetFormat,
@@ -1213,6 +1433,60 @@ app.post('/api/file-conversion/convert-file-with-format', async (req, res) => {
         if (error.code === 'EPERM' || error.code === 'EACCES') {
             return res.status(403).json({ error: 'אין הרשאת גישה לקובץ' });
         }
+        res.status(500).json({ error: error.message || 'שגיאה בהמרת הקובץ' });
+    }
+});
+
+// Web-compatible endpoint: Convert file content (not file path)
+app.post('/api/file-conversion/convert-file-content', async (req, res) => {
+    const { fileName, fileContent, sourceFormat, targetFormat = 'md', encoding } = req.body;
+
+    if (!fileName || !fileContent) {
+        return res.status(400).json({ error: 'שם קובץ ותוכן נדרשים' });
+    }
+
+    if (!targetFormat) {
+        return res.status(400).json({ error: 'פורמט היעד נדרש' });
+    }
+
+    try {
+        // Check if source format is supported
+        const supportedFormats = ['txt', 'md', 'html', 'docx', 'pdf', 'rtf', 'odt', 'doc', 'pptx', 'xlsx'];
+        if (!supportedFormats.includes(sourceFormat.toLowerCase())) {
+            return res.status(400).json({ error: 'סוג קובץ לא נתמך להמרה' });
+        }
+
+        // Create a temporary file to process
+        const os = require('os');
+        const tempDir = os.tmpdir();
+        const tempFilePath = path.join(tempDir, `temp_${Date.now()}_${fileName}`);
+
+        // Write content to temp file — support binary (base64) or UTF-8 text
+        if (encoding === 'base64') {
+            await fs.writeFile(tempFilePath, Buffer.from(fileContent, 'base64'));
+        } else {
+            await fs.writeFile(tempFilePath, fileContent, 'utf-8');
+        }
+
+        try {
+            // Convert the file content
+            const convertedContent = await fileConversionService.convertFileToFormat(tempFilePath, targetFormat);
+
+            res.json({
+                convertedContent: convertedContent,
+                targetFormat: targetFormat,
+                message: `הקובץ הומר בהצלחה ל-${targetFormat.toUpperCase()}`
+            });
+        } finally {
+            // Clean up temp file
+            try {
+                await fs.unlink(tempFilePath);
+            } catch (cleanupError) {
+                console.error('Error cleaning up temp file:', cleanupError);
+            }
+        }
+    } catch (error) {
+        console.error('Error converting file content:', error);
         res.status(500).json({ error: error.message || 'שגיאה בהמרת הקובץ' });
     }
 });
@@ -1302,6 +1576,8 @@ cron.schedule('0 22 * * *', () => { // '0 22 * * *' is 10:00 PM every day
 
 
 
-app.listen(port, () => {
+const httpServer = app.listen(port, () => {
     console.log(`שרת Backend מאזין בכתובת http://localhost:${port}`);
 });
+
+module.exports = { app, httpServer };

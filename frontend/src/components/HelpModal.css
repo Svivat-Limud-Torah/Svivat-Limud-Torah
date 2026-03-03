@@ -1,4 +1,4 @@
-/* HelpModal.css */
+﻿/* HelpModal.css */
 .help-modal-overlay {
   position: fixed;
   top: 0;
@@ -14,40 +14,39 @@
 }
 
 .help-modal-content {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  background: #1e1e1e;
+  border-radius: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   width: 90%;
   max-width: 700px;
   max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid #475569;
+  border: 1px solid var(--theme-border-color);
 }
 
 .help-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 25px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-bottom: 2px solid #475569;
+  padding: 16px 20px;
+  background: #1e1e1e;
+  border-bottom: 1px solid var(--theme-border-color);
 }
 
 .help-modal-header h2 {
   margin: 0;
-  color: #f1f5f9;
-  font-size: 1.5rem;
+  color: var(--theme-text-primary);
+  font-size: 1.3rem;
   font-weight: 600;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .close-button {
   background: none;
   border: none;
-  font-size: 1.8rem;
-  color: #94a3b8;
+  font-size: 1.5rem;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   padding: 0;
   width: 30px;
@@ -55,30 +54,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
+  border-radius: 2px;
+  transition: background-color 0.12s ease;
 }
 
 .close-button:hover {
-  background-color: #475569;
-  color: #f1f5f9;
-  transform: scale(1.1);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--theme-text-primary);
+  transform: none;
 }
 
 .help-modal-body {
   padding: 25px;
   overflow-y: auto;
   flex: 1;
-  color: #e2e8f0;
+  color: #cccccc;
   line-height: 1.6;
 }
 
 .help-section {
-  margin-bottom: 30px;
-  padding: 20px;
-  background: rgba(30, 41, 59, 0.5);
-  border-radius: 8px;
-  border: 1px solid #334155;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0;
+  border: 1px solid var(--theme-border-color);
 }
 
 .help-section:last-child {
@@ -86,11 +85,11 @@
 }
 
 .help-section h3 {
-  margin: 0 0 15px 0;
-  color: #7dd3fc;
-  font-size: 1.25rem;
+  margin: 0 0 12px 0;
+  color: var(--theme-accent-primary);
+  font-size: 1.1rem;
   font-weight: 600;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--theme-border-color);
   padding-bottom: 8px;
 }
 
@@ -104,38 +103,49 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
-  font-size: 0.95rem;
+  border-radius: 2px;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.12s ease;
   text-decoration: none;
   color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .youtube-button {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  background: #dc2626;
   border: 1px solid #dc2626;
 }
 
 .youtube-button:hover {
-  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3);
+  background: #b91c1c;
+  transform: none;
+  box-shadow: none;
+}
+
+.tour-button {
+  background: var(--theme-accent-primary, #007acc);
+  border: 1px solid var(--theme-accent-primary, #007acc);
+}
+
+.tour-button:hover {
+  background: var(--theme-accent-hover, #1a8ad4);
+  transform: none;
+  box-shadow: none;
 }
 
 .website-button {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  background: #059669;
   border: 1px solid #059669;
 }
 
 .website-button:hover {
-  background: linear-gradient(135deg, #047857 0%, #059669 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
+  background: #047857;
+  transform: none;
+  box-shadow: none;
 }
 
 .features-section {
@@ -172,30 +182,30 @@
 }
 
 .help-modal-footer {
-  padding: 20px 25px;
-  background: rgba(15, 23, 42, 0.8);
-  border-top: 1px solid #334155;
+  padding: 16px 20px;
+  background: #1e1e1e;
+  border-top: 1px solid var(--theme-border-color);
   display: flex;
   justify-content: center;
 }
 
 .close-footer-button {
-  background: linear-gradient(135deg, #475569 0%, #64748b 100%);
-  color: white;
-  border: 1px solid #475569;
-  padding: 10px 30px;
-  border-radius: 6px;
+  background: var(--theme-button-bg);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-color);
+  padding: 8px 24px;
+  border-radius: 2px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.12s ease;
+  box-shadow: none;
 }
 
 .close-footer-button:hover {
-  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: var(--theme-button-hover-bg);
+  transform: none;
+  box-shadow: none;
 }
 
 /* עבור מסכים קטנים */

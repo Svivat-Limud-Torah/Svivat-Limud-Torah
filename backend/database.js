@@ -68,7 +68,7 @@ function initializeDatabase() {
         `, (creationErr) => {
             if (creationErr) {
                 console.error("שגיאה ביצירת טבלת files_usage:", creationErr.message);
-                return; 
+                return;
             }
             console.log("טבלת files_usage נוצרה או כבר קיימת.");
 
@@ -110,6 +110,15 @@ function initializeDatabase() {
                 }
             }); // Closes PRAGMA db.all callback
         }); // Closes CREATE files_usage db.run callback
+
+        // Migrate: add time_spent_seconds column if not present
+        db.run("ALTER TABLE files_usage ADD COLUMN time_spent_seconds INTEGER DEFAULT 0", (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                console.error('שגיאה בהוספת עמודת time_spent_seconds:', err.message);
+            } else if (!err) {
+                console.log('עמודת time_spent_seconds נוספה לטבלת files_usage.');
+            }
+        });
 
         db.run(`
             CREATE TABLE IF NOT EXISTS settings (
@@ -193,13 +202,13 @@ function initializeDatabase() {
                     if (idxErr) handleError(idxErr, 'idx_questionnaires_user_date');
                     else console.log("אינדקס idx_questionnaires_user_date נוצר/קיים.");
                 });
-                 db.run("CREATE INDEX IF NOT EXISTS idx_questionnaires_rating_date ON Questionnaires (user_id, date, rating_today);", (idxErr) => {
+                db.run("CREATE INDEX IF NOT EXISTS idx_questionnaires_rating_date ON Questionnaires (user_id, date, rating_today);", (idxErr) => {
                     if (idxErr) handleError(idxErr, 'idx_questionnaires_rating_date');
                     else console.log("אינדקס idx_questionnaires_rating_date (לגרף) נוצר/קיים.");
                 });
             }
         });
-        
+
         // Add new columns to Questionnaires if they don't exist (migration for older schemas)
         db.all("PRAGMA table_info(Questionnaires);", (pragmaErr, columns) => {
             if (pragmaErr) {
@@ -296,12 +305,12 @@ function handleError(err, context = '') {
 // These remain unchanged for now.
 
 function recordFileUsage(baseFolderPath, relativeFilePath, fileName) {
-    const absoluteFilePath = path.resolve(baseFolderPath, relativeFilePath); 
-    const currentTime = Math.floor(Date.now() / 1000); 
+    const absoluteFilePath = path.resolve(baseFolderPath, relativeFilePath);
+    const currentTime = Math.floor(Date.now() / 1000);
 
     db.get("SELECT access_count, last_accessed_timestamp FROM files_usage WHERE absolute_file_path = ?", [absoluteFilePath], (err, row) => {
         if (err) return handleError(err, `בשליפת נתונים עבור ${absoluteFilePath}`);
-        
+
         let currentAccessCount = row ? (row.access_count || 0) : 0;
         let newAccessCount = currentAccessCount;
         const thirtyMinutesInSeconds = 30 * 60;
@@ -311,14 +320,14 @@ function recordFileUsage(baseFolderPath, relativeFilePath, fileName) {
             if ((currentTime - lastAccess) > thirtyMinutesInSeconds) {
                 newAccessCount = currentAccessCount + 1;
             }
-            db.run(`UPDATE files_usage SET last_opened_or_edited = ?, access_count = ?, last_accessed_timestamp = ? WHERE absolute_file_path = ?`, 
-                   [currentTime, newAccessCount, currentTime, absoluteFilePath], 
-                   (updateErr) => handleError(updateErr, `בעדכון רשומה עבור ${absoluteFilePath}`));
+            db.run(`UPDATE files_usage SET last_opened_or_edited = ?, access_count = ?, last_accessed_timestamp = ? WHERE absolute_file_path = ?`,
+                [currentTime, newAccessCount, currentTime, absoluteFilePath],
+                (updateErr) => handleError(updateErr, `בעדכון רשומה עבור ${absoluteFilePath}`));
         } else {
-            newAccessCount = 1; 
-            db.run(`INSERT INTO files_usage (absolute_file_path, base_folder_path, relative_file_path, file_name, last_opened_or_edited, access_count, last_accessed_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`, 
-                   [absoluteFilePath, path.resolve(baseFolderPath), relativeFilePath, fileName, currentTime, newAccessCount, currentTime], 
-                   (insertErr) => handleError(insertErr, `בהוספת רשומה עבור ${absoluteFilePath}`));
+            newAccessCount = 1;
+            db.run(`INSERT INTO files_usage (absolute_file_path, base_folder_path, relative_file_path, file_name, last_opened_or_edited, access_count, last_accessed_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [absoluteFilePath, path.resolve(baseFolderPath), relativeFilePath, fileName, currentTime, newAccessCount, currentTime],
+                (insertErr) => handleError(insertErr, `בהוספת רשומה עבור ${absoluteFilePath}`));
         }
     });
 }
@@ -349,9 +358,9 @@ function getFrequentFiles(baseFolderPath, limit, callback) {
 
 function saveSetting(key, value, callback) {
     const sql = `INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`;
-    db.run(sql, [key, value], function(err) { 
+    db.run(sql, [key, value], function (err) {
         handleError(err, `בשמירת הגדרה ${key}`);
-        if (callback) callback(err); 
+        if (callback) callback(err);
     });
 }
 
@@ -376,8 +385,8 @@ function updateFileUsagePath(oldAbsoluteFilePath, newAbsoluteFilePath, newBaseFo
         UPDATE files_usage 
         SET absolute_file_path = ?, base_folder_path = ?, relative_file_path = ?, file_name = ?, last_accessed_timestamp = ?
         WHERE absolute_file_path = ?`;
-    
-    db.run(sql, [resolvedNewAbsoluteFilePath, resolvedNewBaseFolderPath, newRelativeFilePath, newFileName, currentTime, resolvedOldAbsoluteFilePath], function(err) {
+
+    db.run(sql, [resolvedNewAbsoluteFilePath, resolvedNewBaseFolderPath, newRelativeFilePath, newFileName, currentTime, resolvedOldAbsoluteFilePath], function (err) {
         if (err) handleError(err, `בעדכון נתיב מ-${resolvedOldAbsoluteFilePath} ל-${resolvedNewAbsoluteFilePath}`);
         if (callback) callback(err, this.changes);
     });
@@ -408,12 +417,12 @@ function updateDescendantPaths(oldBaseFolderPath, oldFolderRelativePath, newBase
                 const pathSuffix = row.absolute_file_path.substring(oldFolderAbsolutePrefix.length);
                 const updatedAbsoluteFilePath = path.join(newFolderAbsolutePrefix, pathSuffix);
                 const updatedRelativeFilePath = path.relative(resolvedNewBase, updatedAbsoluteFilePath).replace(/\\/g, '/');
-                const updatedFileName = path.basename(updatedAbsoluteFilePath); 
+                const updatedFileName = path.basename(updatedAbsoluteFilePath);
                 const sqlUpdate = `
                     UPDATE files_usage 
                     SET absolute_file_path = ?, base_folder_path = ?, relative_file_path = ?, file_name = ?, last_accessed_timestamp = ?
                     WHERE id = ?`;
-                db.run(sqlUpdate, [updatedAbsoluteFilePath, resolvedNewBase, updatedRelativeFilePath, updatedFileName, currentTime, row.id], function(updateErr) {
+                db.run(sqlUpdate, [updatedAbsoluteFilePath, resolvedNewBase, updatedRelativeFilePath, updatedFileName, currentTime, row.id], function (updateErr) {
                     if (updateErr) handleError(updateErr, `בעדכון צאצא ${row.absolute_file_path} ל ${updatedAbsoluteFilePath}`);
                     else totalChanges += this.changes;
                     completed++;
@@ -440,7 +449,7 @@ function deleteFileUsage(baseFolderPath, relativePathToDelete, isFolder, callbac
         sql = `DELETE FROM files_usage WHERE absolute_file_path = ?`;
         params = [absolutePathToDelete];
     }
-    db.run(sql, params, function(err) {
+    db.run(sql, params, function (err) {
         if (err) handleError(err, `במחיקת רשומות שימוש עבור ${absolutePathToDelete} (isFolder: ${isFolder})`);
         if (callback) callback(err, this.changes);
     });
@@ -452,18 +461,18 @@ function calculateNextReminderDate(baseDate, intervalDays) {
     if (!intervalDays || intervalDays <= 0) return null;
     const date = new Date(baseDate);
     date.setDate(date.getDate() + intervalDays);
-    return date.toISOString(); 
+    return date.toISOString();
 }
 
 function addRepetition(repetitionData, callback) {
     const { name, content, reminder_interval_1, reminder_interval_2, reminder_interval_3, reminder_interval_4 } = repetitionData;
     const createdAt = new Date().toISOString();
     const nextReminderDate = calculateNextReminderDate(createdAt, reminder_interval_1);
-    
+
     const sql = `INSERT INTO repetitions 
                  (name, content, created_at, reminder_interval_1, reminder_interval_2, reminder_interval_3, reminder_interval_4, next_reminder_date, current_interval_index) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`; 
-    db.run(sql, [name, content, createdAt, reminder_interval_1, reminder_interval_2, reminder_interval_3, reminder_interval_4, nextReminderDate], function(err) {
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`;
+    db.run(sql, [name, content, createdAt, reminder_interval_1, reminder_interval_2, reminder_interval_3, reminder_interval_4, nextReminderDate], function (err) {
         if (err) {
             handleError(err, 'בהוספת חזרה חדשה');
             return callback(err);
@@ -484,7 +493,7 @@ function getRepetitionById(id, callback) {
 
 function deleteRepetition(id, callback) {
     const sql = `DELETE FROM repetitions WHERE id = ?`;
-    db.run(sql, [id], function(err) {
+    db.run(sql, [id], function (err) {
         if (err) handleError(err, `במחיקת חזרה עם ID ${id}`);
         callback(err, this.changes);
     });
@@ -492,10 +501,10 @@ function deleteRepetition(id, callback) {
 
 function updateRepetitionMuteStatus(id, is_muted, callback) {
     const sql = `UPDATE repetitions SET is_muted = ? WHERE id = ?`;
-    db.run(sql, [is_muted ? 1 : 0, id], function(err) {
+    db.run(sql, [is_muted ? 1 : 0, id], function (err) {
         if (err) handleError(err, `בעדכון סטטוס השתקה עבור חזרה ID ${id}`);
         if (err) return callback(err);
-        getRepetitionById(id, callback); 
+        getRepetitionById(id, callback);
     });
 }
 
@@ -512,16 +521,16 @@ function markRepetitionAsCompleted(id, callback) {
         if (nextIntervalIndex < intervals.length && intervals[nextIntervalIndex] > 0) {
             nextReminderDate = calculateNextReminderDate(lastCompletedAt, intervals[nextIntervalIndex]);
         } else {
-            nextIntervalIndex = -1; 
+            nextIntervalIndex = -1;
         }
-        
+
         const sql = `UPDATE repetitions SET last_completed_at = ?, next_reminder_date = ?, current_interval_index = ? WHERE id = ?`;
-        db.run(sql, [lastCompletedAt, nextReminderDate, nextIntervalIndex, id], function(updateErr) {
+        db.run(sql, [lastCompletedAt, nextReminderDate, nextIntervalIndex, id], function (updateErr) {
             if (updateErr) {
                 handleError(updateErr, `בעדכון חזרה ID ${id} כהושלמה`);
                 return callback(updateErr);
             }
-            getRepetitionById(id, callback); 
+            getRepetitionById(id, callback);
         });
     });
 }
@@ -537,12 +546,12 @@ function updateRepetition(id, data, callback) {
     });
 
     if (fields.length === 0) {
-        return getRepetitionById(id, callback); 
+        return getRepetitionById(id, callback);
     }
     const sql = `UPDATE repetitions SET ${fields.join(', ')} WHERE id = ?`;
     values.push(id);
 
-    db.run(sql, values, function(err) {
+    db.run(sql, values, function (err) {
         if (err) {
             handleError(err, `בעדכון חזרה ID ${id}`);
             return callback(err);
@@ -570,7 +579,7 @@ function getUserNotificationSettings(callback) {
 function updateUserNotificationSettings(settings, callback) {
     const { enable_daily_questionnaire_reminder } = settings; // reminder_time is fixed
     const sql = `UPDATE UserSettings SET enable_daily_questionnaire_reminder = ? WHERE user_id = ?`;
-    db.run(sql, [enable_daily_questionnaire_reminder ? 1 : 0, DEFAULT_USER_ID], function(err) {
+    db.run(sql, [enable_daily_questionnaire_reminder ? 1 : 0, DEFAULT_USER_ID], function (err) {
         if (err) {
             handleError(err, `בעדכון הגדרות התראה למשתמש ${DEFAULT_USER_ID}`);
             return callback(err);
@@ -600,7 +609,7 @@ function submitQuestionnaire(questionnaireData, callback) {
     const sql = `INSERT OR REPLACE INTO Questionnaires 
                  (user_id, date, rating_today, details_today, ai_q1_text, ai_q1_answer, ai_q2_text, ai_q2_answer, submitted_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
-    db.run(sql, [DEFAULT_USER_ID, date, rating_today, details_today, ai_q1_text, ai_q1_answer, ai_q2_text, ai_q2_answer], function(err) {
+    db.run(sql, [DEFAULT_USER_ID, date, rating_today, details_today, ai_q1_text, ai_q1_answer, ai_q2_text, ai_q2_answer], function (err) {
         if (err) {
             handleError(err, `בשמירת/עדכון שאלון לתאריך ${date}`);
             return callback(err);
@@ -626,7 +635,7 @@ function saveWeeklySummary(summaryData, callback) {
     const { week_start_date, summary_content, strengths, areas_for_improvement } = summaryData;
     const sql = `INSERT OR REPLACE INTO WeeklySummaries (user_id, week_start_date, summary_content, strengths, areas_for_improvement, generated_at)
                  VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
-    db.run(sql, [DEFAULT_USER_ID, week_start_date, summary_content, strengths, areas_for_improvement], function(err) {
+    db.run(sql, [DEFAULT_USER_ID, week_start_date, summary_content, strengths, areas_for_improvement], function (err) {
         if (err) {
             handleError(err, `בשמירת סיכום שבועי ל-${week_start_date}`);
             return callback(err);
@@ -645,7 +654,34 @@ function getLatestWeeklySummary(callback) {
             handleError(err, `בשליפת הסיכום השבועי האחרון`);
             return callback(err);
         }
-        callback(null, row); 
+        callback(null, row);
+    });
+}
+
+function getAllWeeklySummaries(callback) {
+    const sql = `SELECT * FROM WeeklySummaries 
+                 WHERE user_id = ? 
+                 ORDER BY week_start_date ASC`;
+    db.all(sql, [DEFAULT_USER_ID], (err, rows) => {
+        if (err) {
+            handleError(err, `בשליפת כל הסיכומים השבועיים`);
+            return callback(err);
+        }
+        callback(null, rows);
+    });
+}
+
+function getAllQuestionnaireHistory(callback) {
+    const sql = `SELECT date, rating_today, details_today, ai_q1_text, ai_q1_answer, ai_q2_text, ai_q2_answer 
+                 FROM Questionnaires 
+                 WHERE user_id = ? 
+                 ORDER BY date ASC`;
+    db.all(sql, [DEFAULT_USER_ID], (err, rows) => {
+        if (err) {
+            handleError(err, `בשליפת היסטוריית השאלונים`);
+            return callback(err);
+        }
+        callback(null, rows);
     });
 }
 
@@ -673,15 +709,131 @@ function getDailyRatingsForGraph(timeRangeParams, callback) {
 }
 
 
-module.exports = { 
-    db, 
-    recordFileUsage, 
-    getRecentFiles, 
-    getFrequentFiles, 
-    saveSetting, 
+// --- User Snapshot Aggregation Functions ---
+
+function getFileTypeDistribution(callback) {
+    // Extract file extension and count how many files of each type exist
+    const sql = `
+        SELECT 
+            LOWER(SUBSTR(file_name, INSTR(file_name, '.') )) AS extension,
+            COUNT(*) AS count,
+            SUM(access_count) AS total_opens
+        FROM files_usage
+        WHERE INSTR(file_name, '.') > 0
+        GROUP BY extension
+        ORDER BY total_opens DESC`;
+    db.all(sql, [], callback);
+}
+
+function getActivityByHour(callback) {
+    // Group file opens by hour of day (from last_opened_or_edited unix timestamp)
+    const sql = `
+        SELECT 
+            CAST(strftime('%H', last_opened_or_edited, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+            COUNT(*) AS count
+        FROM files_usage
+        WHERE last_opened_or_edited IS NOT NULL
+        GROUP BY hour
+        ORDER BY hour ASC`;
+    db.all(sql, [], callback);
+}
+
+function getDailyFileActivity(days, callback) {
+    // File opens per day for the last N days
+    const cutoffTimestamp = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+    const sql = `
+        SELECT 
+            date(last_opened_or_edited, 'unixepoch', 'localtime') AS day,
+            COUNT(*) AS count
+        FROM files_usage
+        WHERE last_opened_or_edited >= ?
+        GROUP BY day
+        ORDER BY day ASC`;
+    db.all(sql, [cutoffTimestamp], callback);
+}
+
+function getTotalFileStats(callback) {
+    const sql = `
+        SELECT 
+            COUNT(DISTINCT absolute_file_path) AS unique_files,
+            COALESCE(SUM(access_count), 0) AS total_opens,
+            COALESCE(SUM(time_spent_seconds), 0) AS total_time_seconds,
+            MAX(last_opened_or_edited) AS last_activity_timestamp
+        FROM files_usage`;
+    db.get(sql, [], callback);
+}
+
+function getAverageQuestionnaireRating(callback) {
+    const sql = `
+        SELECT 
+            ROUND(AVG(rating_today), 1) AS average_rating,
+            COUNT(*) AS total_entries,
+            MIN(date) AS first_entry_date,
+            MAX(date) AS last_entry_date
+        FROM Questionnaires
+        WHERE user_id = ? AND rating_today IS NOT NULL`;
+    db.get(sql, [DEFAULT_USER_ID], callback);
+}
+
+function getAllFilesForSnapshot(callback) {
+    const sql = `
+        SELECT file_name, relative_file_path AS path, base_folder_path, 
+               last_opened_or_edited, access_count, absolute_file_path,
+               COALESCE(time_spent_seconds, 0) AS time_spent_seconds,
+               CASE WHEN access_count > 0 THEN COALESCE(time_spent_seconds, 0) / access_count ELSE 0 END AS avg_seconds_per_session
+        FROM files_usage
+        ORDER BY time_spent_seconds DESC, last_opened_or_edited DESC
+        LIMIT 50`;
+    db.all(sql, [], callback);
+}
+
+function addTimeSpent(absoluteFilePath, seconds, callback) {
+    if (!absoluteFilePath || !seconds || seconds <= 0) {
+        if (callback) callback(null);
+        return;
+    }
+    // Web app keys use 'folderName::relativePath' format — don't resolve them
+    const resolvedPath = path.isAbsolute(absoluteFilePath) ? path.resolve(absoluteFilePath) : absoluteFilePath;
+    db.run(
+        `UPDATE files_usage SET time_spent_seconds = COALESCE(time_spent_seconds, 0) + ? WHERE absolute_file_path = ?`,
+        [Math.round(seconds), resolvedPath],
+        (err) => {
+            if (err) handleError(err, `בעדכון time_spent_seconds עבור ${resolvedPath}`);
+            if (callback) callback(err);
+        }
+    );
+}
+
+function recordFileUsageWeb(folderName, relativePath, fileName) {
+    const webKey = folderName + '::' + relativePath;
+    const currentTime = Math.floor(Date.now() / 1000);
+    db.get("SELECT access_count, last_accessed_timestamp FROM files_usage WHERE absolute_file_path = ?", [webKey], (err, row) => {
+        if (err) return handleError(err, `בשליפת נתונים עבור ${webKey}`);
+        const thirtyMinutesInSeconds = 30 * 60;
+        if (row) {
+            const lastAccess = row.last_accessed_timestamp || 0;
+            const newAccessCount = (currentTime - lastAccess) > thirtyMinutesInSeconds ? (row.access_count || 0) + 1 : (row.access_count || 0);
+            db.run(`UPDATE files_usage SET last_opened_or_edited = ?, access_count = ?, last_accessed_timestamp = ? WHERE absolute_file_path = ?`,
+                [currentTime, newAccessCount, currentTime, webKey],
+                (updateErr) => handleError(updateErr, `בעדכון רשומה עבור ${webKey}`));
+        } else {
+            db.run(`INSERT INTO files_usage (absolute_file_path, base_folder_path, relative_file_path, file_name, last_opened_or_edited, access_count, last_accessed_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [webKey, folderName, relativePath, fileName, currentTime, 1, currentTime],
+                (insertErr) => handleError(insertErr, `בהוספת רשומה עבור ${webKey}`));
+        }
+    });
+}
+
+module.exports = {
+    db,
+    recordFileUsage,
+    recordFileUsageWeb,
+    getRecentFiles,
+    getFrequentFiles,
+    saveSetting,
     getSetting,
-    updateFileUsagePath, 
-    updateDescendantPaths, 
+    updateFileUsagePath,
+    updateDescendantPaths,
     deleteFileUsage,
     // Repetition exports
     addRepetition,
@@ -699,9 +851,19 @@ module.exports = {
     getWeeklyQuestionnaireAnswers,
     saveWeeklySummary,
     getLatestWeeklySummary,
+    getAllWeeklySummaries,
+    getAllQuestionnaireHistory,
     // Learning Graph exports
     getDailyRatingsForGraph,
     resetAllUserData, // Added for the new functionality
+    // User Snapshot exports
+    getFileTypeDistribution,
+    getActivityByHour,
+    getDailyFileActivity,
+    getTotalFileStats,
+    getAverageQuestionnaireRating,
+    getAllFilesForSnapshot,
+    addTimeSpent,
 };
 
 // --- Function to Reset All User Data ---
@@ -748,7 +910,7 @@ function resetAllUserData(callback) {
                 console.log("רשומת ברירת מחדל הוספה מחדש ל-UserSettings.");
             }
         });
-        
+
         // Vacuum the database to reclaim space after deletions
         db.run("VACUUM;", (vacuumErr) => {
             if (vacuumErr) {

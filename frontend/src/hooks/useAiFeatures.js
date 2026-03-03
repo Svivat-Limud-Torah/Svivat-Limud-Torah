@@ -4,6 +4,8 @@ import { API_BASE_URL, HEBREW_TEXT, DISABLE_ITALIC_FORMATTING_KEY } from '../uti
 import path from '../utils/pathUtils'; // For path.basename, path.dirname, path.join for saving summary
 import { getApiKeyDetails } from '../components/ApiKeyModal'; // Import the updated helper
 import apiService from '../utils/apiService'; // Import apiService
+import { callAiGenerate } from '../utils/aiProxy'; // Import AI proxy
+import LocalFileSystemService from '../services/LocalFileSystemService';
 import { storeSelectedTextBackup } from '../utils/aiOrganizeBackup';
 
 /**
@@ -202,17 +204,13 @@ ${activeTabObject.content}
 ---
 `;
     try {
-      const { key: apiKey } = getApiKeyDetails(); // Only need the key here
-      if (!apiKey) {
+      const { hasKey } = getApiKeyDetails();
+      if (!hasKey) {
         // Use alert for immediate user feedback, but keep the error for console/state
         alert(HEBREW_TEXT.apiKeyNotSetAlert); // Use constant
         throw new Error(HEBREW_TEXT.apiKeyNotSetError); // Use constant
       }
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
+      const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
       if (!response.ok) {
         const errorText = await response.text();
         let errorDetails = '';
@@ -276,16 +274,12 @@ ${activeTabObject.content}
 ---
 `;
     try {
-      const { key: apiKey } = getApiKeyDetails(); // Only need the key here
-      if (!apiKey) {
+      const { hasKey } = getApiKeyDetails();
+      if (!hasKey) {
         alert(HEBREW_TEXT.apiKeyNotSetAlert);
         throw new Error(HEBREW_TEXT.apiKeyNotSetError);
       }
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
+      const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
       if (!response.ok) {
         const errorText = await response.text();
         let errorDetails = '';
@@ -400,9 +394,9 @@ ${activeTabObject.content}
 ---
 `;
     try {
-      const { key: apiKey, isPaid: isPaidKey } = getApiKeyDetails(); // Get key and paid status
+      const { hasKey, isPaid: isPaidKey } = getApiKeyDetails();
 
-      if (!apiKey) {
+      if (!hasKey) {
         alert(HEBREW_TEXT.apiKeyNotSetAlert);
         throw new Error(HEBREW_TEXT.apiKeyNotSetError);
       }
@@ -420,11 +414,7 @@ ${activeTabObject.content}
       // Note: Ensure the selectedAiModel supports grounding if this feature is critical.
       // The prompt requests grounding, so the model needs to support it.
       // We now only enable grounding if the key is marked as paid.
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      }); // Correctly placed closing parenthesis for fetch
+      const response = await callAiGenerate(selectedAiModel, requestBody);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -556,16 +546,12 @@ ${inputText}
     }
 
     try {
-      const { key: apiKey } = getApiKeyDetails(); // Only need the key here
-      if (!apiKey) {
+      const { hasKey } = getApiKeyDetails();
+      if (!hasKey) {
         alert(HEBREW_TEXT.apiKeyNotSetAlert);
         throw new Error(HEBREW_TEXT.apiKeyNotSetError);
       }
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-      });
+      const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: promptText }] }], generationConfig: { maxOutputTokens: 8192 } });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -651,19 +637,18 @@ ${inputText}
     setGlobalLoadingMessage(HEBREW_TEXT.generatingPilpulta); // Add this constant
 
     try {
-        // Retrieve the full API key details from the UI configuration
-        const { key: apiKey, isPaid: isPaidKey } = getApiKeyDetails();
-        if (!apiKey) {
+        // Retrieve the API key status (actual key is on the server)
+        const { hasKey, isPaid: isPaidKey } = getApiKeyDetails();
+        if (!hasKey) {
             alert(HEBREW_TEXT.apiKeyNotSetAlert);
             throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        // Pass the actual API key along with other parameters to the backend service
+        // Pass parameters to the backend service (apiKey is in server session)
         const results = await apiService.generatePilpultaQuestions(
             activeTabObject.content,
             isPaidKey, // Tell backend whether to use web search
-            selectedAiModel, // Pass selected model to backend
-            apiKey // Pass the API key configured in the UI
+            selectedAiModel // Pass selected model to backend
         );
 
         if (!results || !Array.isArray(results)) {
@@ -750,18 +735,16 @@ ${inputText}
       setSmartSearchResults(null);
       setSmartSearchError(null);
     }, []),
-    performSmartSearch: useCallback(async (query, numFilesToScan) => { // Added numFilesToScan
+    performSmartSearch: useCallback(async (query, numFilesToScan, mode = 'deep') => {
       setIsLoadingSmartSearch(true);
-      setSmartSearchQuery(query); // Query is already set by modal, this is more for internal state if needed
+      setSmartSearchQuery(query);
       setSmartSearchResults(null);
       setSmartSearchError(null);
-      // Initial loading message, can be updated by backend through progress updates if implemented
-      // For now, using a sequence of messages based on the plan.
-      setGlobalLoadingMessage(HEBREW_TEXT.smartSearchLoadingFileList);
+      setGlobalLoadingMessage(mode === 'deep' ? HEBREW_TEXT.smartSearchLoadingAI : HEBREW_TEXT.smartSearchLoadingLocal);
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (mode === 'deep' && !hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
@@ -770,20 +753,24 @@ ${inputText}
         if (!currentWorkspacePath) {
           throw new Error("לא נבחרה תיקיית עבודה. אנא פתח תיקייה כדי להשתמש בחיפוש חכם.");
         }
-        
-        // The plan mentions updating loading messages. This is a simplified approach.
-        // A more robust solution might involve progress updates from the backend.
-        // For now, we'll rely on the backend to take some time and the spinner in the modal.
-        // We can update the global message at key stages if desired, but the modal itself
-        // will show a spinner. The backend will do multiple steps.
+
+        // Read files from browser File System Access API so the backend
+        // doesn't need filesystem paths (which aren't available in web mode).
+        setGlobalLoadingMessage("קורא קבצים מהתיקייה...");
+        // readAllTextFiles will try to restore permission from IndexedDB if needed
+        const files = await LocalFileSystemService.readAllTextFiles(currentWorkspacePath, 200);
+        if (!files || files.length === 0) {
+          throw new Error('לא נמצאו קבצים בתיקייה. ודא שהתיקייה נפתחה ויש בה קבצי טקסט.');
+        }
 
         const results = await apiService.executeSmartSearch(
           query,
           selectedAiModel,
-          apiKey,
           currentWorkspacePath,
-          numFilesToScan, // Pass numFilesToScan
-          (stageMessage) => setGlobalLoadingMessage(stageMessage) // Pass callback for progress
+          numFilesToScan,
+          (stageMessage) => setGlobalLoadingMessage(stageMessage),
+          mode,
+          files
         );
         setSmartSearchResults(results);
       } catch (error) {
@@ -828,17 +815,13 @@ ${selectedText}
 ---`;
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (!hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -906,17 +889,13 @@ ${selectedText}
 ---`;
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (!hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -981,17 +960,13 @@ ${selectedText}
 ---`;
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (!hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -1059,17 +1034,13 @@ ${selectedText}
 ---`;
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (!hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const response = await callAiGenerate(selectedAiModel, { contents: [{ parts: [{ text: prompt }] }] });
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -1111,125 +1082,123 @@ ${selectedText}
         alert('אנא בחר טקסט תחילה');
         return;
       }
-      
-      // Large text detection and user notification
+
       const textLines = selectedText.split('\n');
       const isLargeText = textLines.length > 80;
-      const isVeryLargeText = textLines.length >= 200;
-      
-      if (isVeryLargeText) {
-        const userConfirmed = confirm(HEBREW_TEXT.largeFileWarning(textLines.length));
-        if (!userConfirmed) {
-          return;
-        }
-      } else if (isLargeText) {
-        const estimatedTime = textLines.length > 300 ? '2-3 דקות' : '1-2 דקות';
-        const userConfirmed = confirm(`הטקסט מכיל ${textLines.length} שורות. זהו טקסט גדול שיעובד בגישה מותאמת.\n\nזמן עיבוד משוער: ${estimatedTime}\n\nהאם להמשיך?`);
-        if (!userConfirmed) {
-          return;
-        }
+
+      if (isLargeText) {
+        const userConfirmed = confirm(
+          `הטקסט הנבחר מכיל ${textLines.length} שורות.\n` +
+          `העיבוד יתבצע בגישת קטעים — כל קטע יישלח בנפרד ל-AI, ולא ייסוכם.\n\n` +
+          `האם להמשיך?`
+        );
+        if (!userConfirmed) return;
       }
-      
-      // Store original selected text in localStorage as backup for undo functionality
-      // This ensures that even if user switches to preview mode and back, Ctrl+Z will still work
+
       if (activeTabObject && activeTabObject.id) {
         storeSelectedTextBackup(activeTabObject.id, selectedText);
       }
-      
+
       setIsProcessingText(true);
       setProcessingError(null);
       setProcessedText('');
       setProcessingMode('organize');
-      setGlobalLoadingMessage(isLargeText ? 
-        `מעבד טקסט נבחר גדול (${textLines.length} שורות) באמצעות בינה מלאכותית...` : 
-        'מארגן טקסט נבחר באמצעות בינה מלאכותית...'
+      setGlobalLoadingMessage(
+        isLargeText
+          ? `מארגן טקסט נבחר (${textLines.length} שורות) — מעבד קטע-קטע...`
+          : 'מארגן טקסט נבחר...'
       );
 
-      // Check user preference for italic formatting
-      const disableItalicFormatting = localStorage.getItem(DISABLE_ITALIC_FORMATTING_KEY) === 'true';
-      const formattingInstructions = disableItalicFormatting 
-        ? `4. הדגש מילות מפתח חשובות (**מילה**) - אל תשתמש בעיצוב נטייה (*מילה*)`
-        : `4. הדגש מילות מפתח חשובות (**מילה**, *מילה*)`;
+      // ─── helper: send one chunk to AI ──────────────────────────────────────
+      const organizeChunk = async (chunkText, chunkIdx, totalChunks) => {
+        const chunkPrompt =
+          `אתה עורך טקסט עברי. עליך לטפל בקטע ${chunkIdx} מתוך ${totalChunks} של הטקסט הנבחר.\n\n` +
+          `✅ מה לעשות — הוסף מבנה בלבד:\n` +
+          `• הוסף כותרת ## לתחילת כל נושא/רעיון חדש שמתחיל בקטע זה\n` +
+          `• המר סדרות פריטים לרשימות (- פריט)\n` +
+          `• חלק לפסקאות במקום שיש מעבר רעיוני\n` +
+          `• הוסף שורה ריקה בין פסקאות\n\n` +
+          `❌ אסור בהחלט:\n` +
+          `• לסכם, לקצר, להשמיט או לשנות תוכן כלשהו\n` +
+          `• להוסיף מידע חדש שאינו בטקסט\n` +
+          `• לשנות ניסוחים, מילים או סדר משפטים\n` +
+          `• להוסיף הסברים, אזהרות, הערות משלך\n\n` +
+          `החזר את כל הטקסט הבא כולו, עם הוספת מבנה בלבד — שמור כל מילה:\n` +
+          `---\n${chunkText}\n---`;
 
-      const prompt = `אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט הבא לפורמט Markdown מושלם.
+        const tokenEstimate = Math.ceil(chunkText.length / 3);
+        // Cap to 8192 — free-tier Gemini output limit
+        const maxTokens = Math.min(Math.max(tokenEstimate * 2, 2048), 8192);
 
-🔥 חוקים קריטיים - אל תעבור על אלה:
-• שמור על כל התוכן המקורי - אל תמחק או תחסיר מידע
-• אל תחזור על תוכן - כל חלק צריך להופיע פעם אחת בלבד  
-• וודא שהטקסט המאורגן כולל את כל התוכן המקורי
-• אל תוסיף מידע שלא היה בטקסט המקורי
+        const response = await callAiGenerate(selectedAiModel, {
+          contents: [{ parts: [{ text: chunkPrompt }] }],
+          generationConfig: { temperature: 0.05, maxOutputTokens: maxTokens, topP: 0.9, topK: 40 }
+        });
 
-📋 משימות הארגון:
-1. צור היררכיה ברורה עם כותרות H1, H2, H3 לפי הקשר הלוגי
-2. חלק לפסקאות מובנות ונושאיות
-3. ארגן רשימות בפורמט Markdown נכון (-, *, 1., 2., וכו')
-${formattingInstructions}
-5. צור מבנה לוגי וזורם שקל לקריאה
-6. שפר פיסוק ומבנה משפטים ללא שינוי המשמעות
-7. הסר שורות ריקות מיותרות (לא יותר מ-2 שורות ריקות ברצף)
+        const data = await safeJsonParse(response);
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!raw) throw new Error('תגובה ריקה מ-AI לקטע ' + chunkIdx);
+        return raw.trim().replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+      };
 
-📖 כללי פורמט:
-• השתמש בעברית תקינה וברורה
-• שמור על המינוח המקורי של מושגים יהודיים/תורניים
-• ארגן ציטוטים ומקורות בפורמט אחיד
-• צור מבנה חזותי נעים ומאורגן
-
-הטקסט לארגון:
-${selectedText}
-
-החזר אך ורק את הטקסט המאורגן ללא הסברים או הערות נוספות.`;
+      // ─── split text by paragraph boundaries ────────────────────────────────
+      const splitIntoChunks = (text, maxLines = 40) => {
+        const paragraphs = text.split(/\n\n+/);
+        const chunks = [];
+        let current = [];
+        let lineCount = 0;
+        for (const para of paragraphs) {
+          const pLines = para.split('\n').length;
+          if (lineCount + pLines > maxLines && current.length > 0) {
+            chunks.push(current.join('\n\n'));
+            current = [para];
+            lineCount = pLines;
+          } else {
+            current.push(para);
+            lineCount += pLines;
+          }
+        }
+        if (current.length > 0) chunks.push(current.join('\n\n'));
+        return chunks;
+      };
 
       try {
-        const { key: apiKey } = getApiKeyDetails();
-        if (!apiKey) {
+        const { hasKey } = getApiKeyDetails();
+        if (!hasKey) {
           alert(HEBREW_TEXT.apiKeyNotSetAlert);
           throw new Error(HEBREW_TEXT.apiKeyNotSetError);
         }
 
-        // Dynamic token configuration based on text size
-        const maxTokens = textLines.length > 200 ? 16000 : textLines.length > 100 ? 8000 : 4000;
+        let organizedText;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedAiModel}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.1,        // Low for consistency
-              maxOutputTokens: maxTokens,
-              topP: 0.9,
-              topK: 40
-            }
-          })
-        });
-        
-        const data = await safeJsonParse(response);
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!textResponse) throw new Error('תגובה לא תקינה מ-Google AI API');
-
-        // Apply post-processing cleanup
-        const cleanedText = cleanAndSmoothText(textResponse.trim());
-        setProcessedText(cleanedText);
-        
-        console.log(`ארגון טקסט נבחר הושלם בהצלחה (${textLines.length} שורות)`);
-        
-        // Show tip about undo
-        if (isLargeText) {
-          console.log('💡 טיפ: לחזרה לטקסט המקורי, לחץ Ctrl+Z');
+        if (textLines.length > 80) {
+          const chunks = splitIntoChunks(selectedText, 40);
+          const total = chunks.length;
+          const results = [];
+          for (let i = 0; i < total; i++) {
+            setGlobalLoadingMessage(`מארגן קטע ${i + 1} מתוך ${total}...`);
+            results.push(await organizeChunk(chunks[i], i + 1, total));
+            // Small delay between chunks to avoid free-tier rate limits
+            if (i < total - 1) await new Promise(r => setTimeout(r, 1500));
+          }
+          organizedText = results.join('\n\n');
+        } else {
+          organizedText = await organizeChunk(selectedText, 1, 1);
         }
-        
+
+        const cleanedText = cleanAndSmoothText(organizedText.replace(/\n{3,}/g, '\n\n'));
+        setProcessedText(cleanedText);
+        console.log(`ארגון טקסט נבחר הושלם (${textLines.length} שורות)`);
+
       } catch (error) {
-        const errorResult = handleApiError(error, "ארגון טקסט נבחר");
-        
+        const errorResult = handleApiError(error, 'ארגון טקסט נבחר');
         if (!errorResult.isQuotaError && !errorResult.isModelOverloadedError) {
-          // Only show alert and set error state for non-quota and non-overload errors
           setProcessingError(errorResult.message);
           alert(`שגיאה בארגון הטקסט: ${errorResult.message}`);
         }
       } finally {
         setIsProcessingText(false);
-        setGlobalLoadingMessage("");
+        setGlobalLoadingMessage('');
       }
     }, [selectedAiModel, setGlobalLoadingMessage, activeTabObject]),
   };

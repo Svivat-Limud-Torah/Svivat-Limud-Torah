@@ -1,0 +1,263 @@
+/* frontend/src/components/FocusModePanel.css */
+
+/* ── Panel ── */
+.focus-panel {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  background: var(--theme-bg-secondary, #1E1E2E);
+  border: 1px solid var(--theme-border-color, #3F3F46);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  min-width: 180px;
+  user-select: none;
+  font-family: inherit;
+}
+
+/* ── Timer ring ── */
+.focus-panel__timer {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.focus-panel__ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.focus-panel__ring-bg {
+  fill: none;
+  stroke: var(--theme-border-color, #3F3F46);
+  stroke-width: 6;
+}
+
+.focus-panel__ring-progress {
+  fill: none;
+  stroke: #3B82F6;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.focus-panel__ring-progress--break {
+  stroke: #22C55E;
+}
+
+.focus-panel__time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-panel__digits {
+  font-size: 1.6em;
+  font-weight: 700;
+  color: var(--theme-text-primary, #E4E4E7);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.focus-panel__phase-label {
+  font-size: 0.72em;
+  color: var(--theme-text-tertiary, #71717A);
+  margin-top: 2px;
+}
+
+/* ── Controls ── */
+.focus-panel__controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Stats ── */
+.focus-panel__stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  padding: 8px 0;
+  border-top: 1px solid var(--theme-border-color, #3F3F46);
+  border-bottom: 1px solid var(--theme-border-color, #3F3F46);
+}
+
+.focus-panel__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.focus-panel__stat-value {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+}
+
+.focus-panel__stat-label {
+  font-size: 0.68em;
+  color: var(--theme-text-tertiary);
+}
+
+.focus-panel__stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--theme-border-color);
+}
+
+/* ── Settings ── */
+.focus-panel__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.focus-panel__setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82em;
+  color: var(--theme-text-secondary);
+}
+
+.focus-panel__setting input {
+  width: 52px;
+  padding: 3px 6px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  text-align: center;
+  font-size: 0.95em;
+}
+
+.focus-panel__setting input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Settings section title ── */
+.focus-panel__settings-section-title {
+  font-size: 0.72em;
+  font-weight: 600;
+  color: var(--theme-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--theme-border-color);
+  width: 100%;
+}
+
+/* Checkbox inputs in settings */
+.focus-panel__setting input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  accent-color: #3B82F6;
+}
+
+/* ── Buttons ── */
+.focus-btn {
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.focus-btn--start {
+  background: #3B82F6;
+  color: #fff;
+  padding: 8px 24px;
+  font-size: 0.95em;
+}
+
+.focus-btn--start:hover {
+  filter: brightness(1.15);
+}
+
+.focus-btn--stop {
+  background: #EF4444;
+  color: #fff;
+  padding: 8px 24px;
+  font-size: 0.95em;
+}
+
+.focus-btn--stop:hover {
+  filter: brightness(1.1);
+}
+
+.focus-btn--settings {
+  background: transparent;
+  color: var(--theme-text-tertiary);
+  font-size: 0.75em;
+  padding: 4px 8px;
+}
+
+.focus-btn--settings:hover {
+  color: var(--theme-text-primary);
+}
+
+.focus-btn--exit {
+  background: transparent;
+  color: var(--theme-text-tertiary);
+  font-size: 0.78em;
+  padding: 4px 8px;
+  margin-top: 2px;
+}
+
+.focus-btn--exit:hover {
+  color: #EF4444;
+}
+
+/* ── Collapse button ── */
+.focus-btn--collapse {
+  background: transparent;
+  color: var(--theme-text-tertiary);
+  font-size: 0.72em;
+  padding: 2px 6px;
+  margin-bottom: -4px;
+  align-self: flex-end;
+}
+
+.focus-btn--collapse:hover {
+  color: var(--theme-text-primary);
+}
+
+/* ── Collapsed (pill) state ── */
+.focus-panel--collapsed {
+  min-width: unset;
+  padding: 8px 14px;
+  flex-direction: row;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.focus-panel--collapsed:hover {
+  border-color: #3B82F6;
+}
+
+.focus-panel__collapsed-time {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-panel__collapsed-arrow {
+  font-size: 0.7em;
+  color: var(--theme-text-tertiary);
+}

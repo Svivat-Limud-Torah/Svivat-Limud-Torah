@@ -1,0 +1,299 @@
+/* frontend/src/components/UserSnapshotView.css */
+
+.snapshot-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    overflow-y: auto;
+    height: 100%;
+    direction: rtl;
+    color: var(--theme-text-primary);
+}
+
+.snapshot-dashboard h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--theme-text-primary);
+}
+
+.snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.snapshot-header .btn {
+    flex-shrink: 0;
+}
+
+/* Stats Cards Grid */
+.snapshot-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.snapshot-stat-card {
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.snapshot-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: var(--theme-border-color);
+    opacity: 0.8;
+}
+
+.snapshot-stat-card:hover {
+    background: var(--theme-bg-tertiary, rgba(255,255,255,0.03));
+}
+
+.snapshot-stat-card .stat-label {
+    font-size: 0.78rem;
+    color: var(--theme-text-tertiary, #6b7280);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.snapshot-stat-card .stat-value {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--theme-text-primary);
+    line-height: 1.1;
+}
+
+.snapshot-stat-card .stat-value--filename {
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Charts Section */
+.snapshot-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 900px) {
+    .snapshot-charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.snapshot-chart-card {
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.snapshot-chart-card h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.snapshot-chart-card svg {
+    width: 100%;
+    height: auto;
+}
+
+/* Pie Chart Legend */
+.pie-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 8px;
+}
+
+.pie-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--theme-text-secondary);
+}
+
+.pie-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* Top Files Table */
+.snapshot-top-files {
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.snapshot-top-files h3 {
+    margin: 0 0 12px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.snapshot-files-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.snapshot-files-table th,
+.snapshot-files-table td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--theme-border-color);
+    font-size: 0.88rem;
+}
+
+.snapshot-files-table th {
+    color: var(--theme-text-secondary);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.snapshot-files-table tr:hover td {
+    background: var(--theme-bg-tertiary, rgba(255,255,255,0.03));
+}
+
+.snapshot-files-table .file-name-cell {
+    font-weight: 500;
+    color: var(--theme-text-primary);
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.snapshot-files-table .access-count-cell {
+    color: var(--theme-text-primary);
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Questionnaire Insights */
+.snapshot-insights {
+    background: var(--theme-bg-secondary);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.snapshot-insights h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.snapshot-insights-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.snapshot-insight-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.snapshot-insight-label {
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    font-size: 0.88rem;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.snapshot-insight-value {
+    color: var(--theme-text-primary);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.snapshot-summary-text {
+    background: var(--theme-bg-primary);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 8px;
+    padding: 14px;
+    line-height: 1.6;
+    color: var(--theme-text-primary);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+
+/* Bar chart styles */
+.bar-chart-container {
+    position: relative;
+}
+
+.bar-chart-tooltip {
+    position: absolute;
+    background: var(--theme-bg-primary);
+    border: 1px solid var(--theme-border-color);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--theme-text-primary);
+    pointer-events: none;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Loading & empty states */
+.snapshot-loading,
+.snapshot-empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--theme-text-secondary);
+    font-size: 1rem;
+}
+
+.snapshot-loading {
+    animation: pulse-opacity 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-opacity {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}

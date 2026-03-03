@@ -10,14 +10,14 @@ router.get('/', (req, res) => {
 
 // Route for generating pilpulta questions
 router.post('/generate', async (req, res) => {
-    // Get parameters sent from frontend, including the apiKey
-    const { text, useWebSearch, model, apiKey } = req.body;
+    // Get parameters sent from frontend; apiKey now comes from server session
+    const { text, useWebSearch, model } = req.body;
+    const apiKey = req.session?.apiKey;
     if (!text) {
         return res.status(400).json({ error: 'Text is required to generate questions.' });
     }
-    // Add validation for apiKey received from frontend
     if (!apiKey) {
-        return res.status(400).json({ error: 'API Key is required.' });
+        return res.status(401).json({ error: 'API Key is required. Please set your API key first.' });
     }
     try {
         // Call the service method, passing the apiKey from the request body

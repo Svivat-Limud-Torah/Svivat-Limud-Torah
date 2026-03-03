@@ -1,321 +1,244 @@
-// frontend/src/components/EditorToolbar.jsx
+﻿// frontend/src/components/EditorToolbar.jsx
 import React, { useState } from 'react';
-import { HEBREW_TEXT, DEFAULT_FONT_SIZE_PX } from '../utils/constants'; // Ensure HEBREW_TEXT is imported
-import FontSizeModal from './FontSizeModal';
-import FontSelectionModal from './FontSelectionModal';
-import { undo, redo } from '@codemirror/commands'; // Import undo and redo commands
+import { HEBREW_TEXT } from '../utils/constants';
+
+const AI_TOOLS_INFO = [
+  {
+    title: 'סיכום שיעורים מיוטיוב / קבצי שמע',
+    description: [
+      'גמיני של גוגל (מצב Pro) מצוין לסיכום שיעורים מיוטיוב ומקבצי שמע.',
+      'מספיק להדביק קישור לסרטון או להעלות קובץ שמע — הוא יסכם ויסביר.',
+      'גם לפרשנות טקסט וסיכום מקורות כתובים — גמיני Pro עושה עבודה מצוינת.',
+    ],
+    links: [{ label: 'פתח את גמיני', url: 'https://gemini.google.com/' }],
+  },
+  {
+    title: 'שינון חומר באמצעות שירים',
+    description: [
+      'שיטה יצירתית לשינון: בקש מגמיני לכתוב שיר על הסוגיה שאתה לומד, או כתוב בעצמך.',
+      'אחר כך העבר את המלל ל-Suno AI — הוא יהפוך אותו לשיר עם מנגינה.',
+      'שינון דרך מוזיקה קל הרבה יותר משינון טקסט גולמי.',
+    ],
+    links: [
+      { label: 'פתח את גמיני', url: 'https://gemini.google.com/' },
+      { label: 'פתח את Suno AI', url: 'https://suno.com/' },
+    ],
+  },
+  {
+    title: 'חיפוש מקורות',
+    description: [
+      'שתי שיטות מומלצות לחיפוש מקורות תורניים:',
+      '1. בקש מגמיני או מגרוק — שניהם מצוינים לאיתור מקורות.',
+      '2. אם יש לך זמן — הפעל את מצב "Deep Research" באחד המודלים. המודל יחפש לעומק ויחזיר מקורות מפורטים.',
+    ],
+    links: [
+      { label: 'פתח את גמיני', url: 'https://gemini.google.com/' },
+      { label: 'פתח את גרוק', url: 'https://grok.com/' },
+    ],
+  },
+];
+
+const AiToolsModal = ({ onClose }) => (
+  <div className="settings-modal-overlay" onClick={onClose}>
+    <div
+      className="settings-modal"
+      style={{ maxWidth: '620px', direction: 'rtl' }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="settings-modal-header">
+        <h2>כלים מומלצים ללימוד תורה</h2>
+        <button className="settings-modal-close" onClick={onClose}>×</button>
+      </div>
+      <div className="settings-modal-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {AI_TOOLS_INFO.map((section, i) => (
+          <div key={i} style={{
+            padding: '16px',
+            border: '1px solid var(--theme-border-color)',
+            borderRadius: '8px',
+            background: 'var(--theme-bg-secondary)',
+          }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: 'var(--theme-text-primary)' }}>
+              {section.title}
+            </h3>
+            <ul style={{ margin: '0 0 12px 0', paddingRight: '18px', color: 'var(--theme-text-secondary)', fontSize: '14px', lineHeight: '1.7' }}>
+              {section.description.map((line, j) => (
+                <li key={j}>{line}</li>
+              ))}
+            </ul>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {section.links.map((link, k) => (
+                <a
+                  key={k}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-sm"
+                  style={{ textDecoration: 'none' }}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const EditorToolbar = ({
   onFindSources,
   isFindingSources,
   isAiFeaturesActive,
   onOpenTranscriptionModal,
-  onGeneratePilpulta, // New prop for Pilpulta feature
-  onOpenSmartSearchModal, // New prop for Smart Search
-  onGenerateFlashcards, // New prop for Flashcards feature
-  isGeneratingFlashcards, // New prop for Flashcards loading state
-  editorFontSize, // Prop from App.jsx
-  onEditorFontSizeChange, // Prop from App.jsx
-  presentationFontSize, // Prop from App.jsx for presentation font size
-  onPresentationFontSizeChange, // Prop from App.jsx for presentation font size change
-  handleToggleMainView, // New prop for toggling main view
-  mainViewMode, // New prop for current main view mode
-  activeTabObject, // New prop to check file type
-  appFont, // New prop for app font
-  editorFont, // New prop for editor font  
-  onAppFontChange, // New prop for app font change
-  onEditorFontChange, // New prop for editor font change
-  repetitionsHook, // New prop for repetitions notifications
-  editorRef, // New prop for editor reference to enable undo
+  onGeneratePilpulta,
+  onOpenSmartSearchModal,
+  onGenerateFlashcards,
+  isGeneratingFlashcards,
+  activeTabObject,
+  // Summary
+  onGenerateSummary,
+  isLoadingSummary,
+  // Questionnaire
+  onOpenQuestionnaire,
+  questionnaireNotificationActive,
+  isLoadingQuestionnaire,
+  // Aramaic Study
+  onOpenAramaicStudy,
+  // Text Analysis
+  onOpenTextAnalysis,
 }) => {
-  const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
-  const [isFontSelectionModalOpen, setIsFontSelectionModalOpen] = useState(false);
-
-  const openFontSizeModal = () => setIsFontSizeModalOpen(true);
-  const closeFontSizeModal = () => setIsFontSizeModalOpen(false);
-  
-  const openFontSelectionModal = () => setIsFontSelectionModalOpen(true);
-  const closeFontSelectionModal = () => setIsFontSelectionModalOpen(false);
-
-  const handleSaveFontSize = (newSize, fontType) => {
-    if (fontType === 'editor') {
-      if (onEditorFontSizeChange) {
-        onEditorFontSizeChange(newSize);
-      }
-    } else if (fontType === 'presentation') {
-      if (onPresentationFontSizeChange) {
-        onPresentationFontSizeChange(newSize);
-      }
-    }
-    // The local currentEditorFontSize state is removed, App.jsx manages the source of truth.
-    // The modal will get its currentSize directly from the editorFontSize prop.
-  };
-
-  // Undo function using CodeMirror's history
-  const handleUndo = () => {
-    if (!editorRef?.current) return;
-    
-    try {
-      // Get the CodeMirror view from the Editor component
-      const view = editorRef.current.getEditorView?.();
-      if (!view || !view.state) return;
-      
-      // Use CodeMirror's undo command
-      undo(view);
-      view.focus();
-    } catch (error) {
-      console.error('שגיאה בביצוע undo:', error);
-    }
-  };
-
-  // Redo function using CodeMirror's history
-  const handleRedo = () => {
-    if (!editorRef?.current) return;
-    
-    try {
-      // Get the CodeMirror view from the Editor component
-      const view = editorRef.current.getEditorView?.();
-      if (!view || !view.state) return;
-      
-      // Use CodeMirror's redo command
-      redo(view);
-      view.focus();
-    } catch (error) {
-      console.error('שגיאה בביצוע redo:', error);
-    }
-  };
-
-  // const handleFontSizeIncrease = () => { // Removed as A+ button is removed
-  //   onApplyStyle('fontSize', { action: 'increase' });
-  // };
-
-  // const handleFontSizeDecrease = () => { // Removed as A- button is removed
-  //   onApplyStyle('fontSize', { action: 'decrease' });
-  // };
-
-  // const handleBoldClick = () => { // Removed as B button is removed
-  //   onApplyStyle('bold', { active: true });
-  // };
-
-  const disabledStyle = {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  };
-
-  // Check if current file is Markdown
-  const isMarkdownFile = activeTabObject?.id?.toLowerCase().endsWith('.md') || false;
-  // For TXT files or non-MD files, only show basic editing (no advanced features)
-  const shouldShowAdvancedFeatures = isMarkdownFile;
-
+  const disabledStyle = { opacity: 0.5, cursor: 'not-allowed' };
+  const [isAiToolsOpen, setIsAiToolsOpen] = useState(false);
 
   return (
-    <div style={{
-        padding: '6px 10px',
-        borderBottom: '1px solid var(--theme-border-color)',
-        backgroundColor: 'var(--theme-toolbar-bg)',
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        minHeight: '40px'
-    }}>
-      
-      {/* Font Size Button - Always available */}
-      <button
-        title={HEBREW_TEXT.fontSizeModal?.buttonText || "Set Font Size"}
-        onClick={openFontSizeModal}
-        disabled={isAiFeaturesActive} // Consistent with other buttons
-        className="btn btn-sm" // Changed from btn-secondary to default btn for non-gray style
-        style={{
-          marginRight: '8px', // Space before the next button
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
-      >
-        {HEBREW_TEXT.fontSizeModal?.buttonText || "גודל גופן"}
-      </button>
-      
-      {/* Font Selection Button */}
-      <button
-        title="בחירת פונט לתוכנה ולעורך"
-        onClick={openFontSelectionModal}
-        disabled={isAiFeaturesActive}
-        className="btn btn-sm"
-        style={{
-          marginRight: '8px', // Always space before the next button
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
-      >
-        בחירת פונט
-      </button>
+    <div className="editor-toolbar" data-tutorial="editor-toolbar">
 
-      {/* Undo Button */}
-      <button
-        title="חזור לשינוי הקודם (Ctrl+Z)"
-        onClick={handleUndo}
-        disabled={isAiFeaturesActive}
-        className="btn btn-sm"
-        style={{
-          marginRight: '8px',
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
-      >
-        ↶ חזור
-      </button>
-
-      {/* Redo Button */}
-      <button
-        title="חזור לשינוי הבא (Ctrl+Y)"
-        onClick={handleRedo}
-        disabled={isAiFeaturesActive}
-        className="btn btn-sm"
-        style={{
-          marginRight: '8px',
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
-      >
-        ↷ קדימה
-      </button>
-
-      {/* Flashcards Button - moved from App.jsx and placed before Find Sources */}
+      {/* Flashcards */}
       <button
         title={isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
         onClick={onGenerateFlashcards}
         disabled={isGeneratingFlashcards || isAiFeaturesActive}
         className="btn btn-sm"
-        style={{
-          marginLeft: '15px',
-          ...( (isGeneratingFlashcards || isAiFeaturesActive) ? disabledStyle : {}),
-        }}
+        style={(isGeneratingFlashcards || isAiFeaturesActive) ? disabledStyle : {}}
       >
         {isGeneratingFlashcards ? HEBREW_TEXT.generatingFlashcards : HEBREW_TEXT.generateFlashcards}
       </button>
 
+      {/* Find Sources */}
       <button
         title={isFindingSources ? HEBREW_TEXT.findingSources : HEBREW_TEXT.findSources}
         onClick={onFindSources}
         disabled={isFindingSources || isAiFeaturesActive}
-        className="btn btn-sm" // Use default button styling for consistency
-        style={{ // Consistent styling
-          marginLeft: '15px',
-          ...( (isFindingSources || isAiFeaturesActive) ? disabledStyle : {}),
-        }}
+        className="btn btn-sm"
+        style={(isFindingSources || isAiFeaturesActive) ? disabledStyle : {}}
       >
         {isFindingSources ? HEBREW_TEXT.findingSources : HEBREW_TEXT.findSources}
       </button>
 
-      {/* New Transcription Feature Button */}
+      {/* Transcription */}
       <button
         title={HEBREW_TEXT.transcriptionFeatureButton}
         onClick={onOpenTranscriptionModal}
-        disabled={isAiFeaturesActive} // Disable if other AI features are active or during general loading
-        className="btn btn-sm" // Use default button styling for consistency
-        style={{ // Kept specific styles
-          marginLeft: '15px',
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
+        disabled={isAiFeaturesActive}
+        className="btn btn-sm"
+        style={isAiFeaturesActive ? disabledStyle : {}}
       >
         {HEBREW_TEXT.transcriptionFeatureButton}
       </button>
 
-      {/* Repetitions Button */}
+      {/* Pilpulta */}
       <button
-        title={HEBREW_TEXT.repetitions?.title || "חזרות"}
-        onClick={() => handleToggleMainView('repetitions')}
-        disabled={isAiFeaturesActive}
-        className={`btn btn-sm ${mainViewMode === 'repetitions' ? 'btn-primary' : ''}`}
-        style={{
-          marginLeft: '8px',
-          position: 'relative',
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
-      >
-        {HEBREW_TEXT.repetitions?.title || "חזרות"}
-        {/* Red notification dot for overdue repetitions */}
-        {repetitionsHook && repetitionsHook.hasRepetitionsDueToday && repetitionsHook.hasRepetitionsDueToday() && (
-          <span className="repetitions-notification-dot" />
-        )}
-      </button>
-
-      {/* New Pilpulta Feature Button */}
-      <button
-        title={HEBREW_TEXT.generatePilpultaTitle || "צור פלפולתא (קושיות מהטקסט)"} // Add text to constants later
+        title={HEBREW_TEXT.generatePilpultaTitle || "צור פלפולתא"}
         onClick={onGeneratePilpulta}
-        disabled={isAiFeaturesActive} // Disable if other AI features are active
-        className="btn btn-sm" // Use default button styling for consistency
-        style={{
-          marginLeft: '15px', // Add space from previous button
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
+        disabled={isAiFeaturesActive}
+        className="btn btn-sm"
+        style={isAiFeaturesActive ? disabledStyle : {}}
       >
-        {HEBREW_TEXT.generatePilpultaButton || "פלפולתא"} {/* Add text to constants later */}
+        {HEBREW_TEXT.generatePilpultaButton || "פלפולתא"}
       </button>
 
-      {/* New Smart Search Button */}
+      {/* Smart Search */}
       <button
         title={HEBREW_TEXT.smartSearchButtonTooltip}
         onClick={onOpenSmartSearchModal}
         disabled={isAiFeaturesActive}
-        className="btn btn-sm" // Removed btn-secondary to use default .btn styles
-        style={{
-          marginLeft: '8px',
-          ...(isAiFeaturesActive ? disabledStyle : {}),
-        }}
+        className="btn btn-sm"
+        style={isAiFeaturesActive ? disabledStyle : {}}
       >
         {HEBREW_TEXT.smartSearchButtonText}
       </button>
 
-      {/* New Orot HaTorah Link Button */}
+      {/* Text Analysis */}
       <button
         title={HEBREW_TEXT.openOrotHatorahLink}
-        onClick={() => window.open('https://spiffy-bunny-1b6a99.netlify.app', '_blank')}
-        className="btn btn-secondary btn-sm" // Changed to secondary for a more standard look
-        style={{
-          marginLeft: '8px', // Add some space from the previous button
-        }}
+        onClick={onOpenTextAnalysis}
+        className="btn btn-secondary btn-sm"
       >
         {HEBREW_TEXT.openOrotHatorahLink}
       </button>
 
-      {/* Smart Discussion Button */}
+      {/* Smart Discussion */}
       <button
         title={HEBREW_TEXT.smartDiscussionButtonTooltip}
         onClick={() => window.open('https://radiant-heliotrope-e42025.netlify.app', '_blank')}
         className="btn btn-secondary btn-sm"
-        style={{
-          marginLeft: '8px',
-        }}
       >
         {HEBREW_TEXT.smartDiscussionButton}
       </button>
 
-      {/* Aramaic Study Button */}
+      {/* Aramaic Study */}
       <button
         title={HEBREW_TEXT.aramaicStudyButtonTooltip}
-        onClick={() => window.open('https://wondrous-empanada-6aa695.netlify.app', '_blank')}
+        onClick={onOpenAramaicStudy}
         className="btn btn-secondary btn-sm"
-        style={{
-          marginLeft: '8px',
-        }}
       >
         {HEBREW_TEXT.aramaicStudyButton}
       </button>
 
-      <FontSizeModal
-        isOpen={isFontSizeModalOpen}
-        onClose={closeFontSizeModal}
-        currentEditorSize={editorFontSize} // Use prop from App.jsx
-        currentPresentationSize={presentationFontSize} // Use prop from App.jsx
-        onSaveFontSize={handleSaveFontSize}
-      />
-      
-      <FontSelectionModal
-        isOpen={isFontSelectionModalOpen}
-        onClose={closeFontSelectionModal}
-        currentAppFont={appFont}
-        currentEditorFont={editorFont}
-        onSaveAppFont={onAppFontChange}
-        onSaveEditorFont={onEditorFontChange}
-      />
+      {/* Summary - only for text files */}
+      {activeTabObject?.type === 'file' && (
+        <button
+          title={HEBREW_TEXT.generateSummary}
+          onClick={onGenerateSummary}
+          disabled={isAiFeaturesActive || isLoadingSummary}
+          className="btn btn-sm"
+          style={(isAiFeaturesActive || isLoadingSummary) ? disabledStyle : {}}
+        >
+          {isLoadingSummary ? HEBREW_TEXT.generatingSummary : HEBREW_TEXT.generateSummary}
+        </button>
+      )}
+
+      {/* Questionnaire */}
+      <button
+        onClick={onOpenQuestionnaire}
+        disabled={isLoadingQuestionnaire}
+        className="btn btn-sm"
+        style={{ position: 'relative', ...(isLoadingQuestionnaire ? disabledStyle : {}) }}
+        title={HEBREW_TEXT.questionnaire?.buttonTitle || "פתח שאלון יומי"}
+      >
+        {HEBREW_TEXT.questionnaire?.buttonText || "שאלון"}
+        {questionnaireNotificationActive && (
+          <span style={{
+            position: 'absolute', top: '4px', right: '4px',
+            width: '10px', height: '10px',
+            backgroundColor: '#ef4444', borderRadius: '50%',
+            border: '1px solid white', boxSizing: 'border-box',
+          }} />
+        )}
+      </button>
+
+      {/* AI Tools info */}
+      <button
+        title="כלים מומלצים ללימוד תורה"
+        onClick={() => setIsAiToolsOpen(true)}
+        className="btn btn-secondary btn-sm"
+      >
+        כלים
+      </button>
+
+      {isAiToolsOpen && <AiToolsModal onClose={() => setIsAiToolsOpen(false)} />}
+
     </div>
   );
 };

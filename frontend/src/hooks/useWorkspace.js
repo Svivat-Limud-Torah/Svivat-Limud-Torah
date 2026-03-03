@@ -1,7 +1,7 @@
 // frontend/src/hooks/useWorkspace.js
 import { useState, useCallback, useEffect } from 'react';
 import path from '../utils/pathUtils';
-import { API_BASE_URL } from '../utils/constants';
+import LocalFileSystemService from '../services/LocalFileSystemService';
 
 export default function useWorkspace(setGlobalLoadingMessage) {
   const [folderPathInput, setFolderPathInput] = useState('');
@@ -9,6 +9,9 @@ export default function useWorkspace(setGlobalLoadingMessage) {
   const [addFolderError, setAddFolderError] = useState(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
+  // Folders whose IndexedDB handle exists but needs re-permission from a user gesture
+  const [pendingFolders, setPendingFolders] = useState([]); // string[]
+  const [restoringPendingFolder, setRestoringPendingFolder] = useState(null);
 
   const updateWorkspaceFolderStructure = useCallback((basePath, newStructure) => {
     setWorkspaceFolders(prev => prev.map(wf =>
@@ -16,83 +19,67 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     ));
   }, []);
 
-  const addWorkspaceFolder = useCallback(async (folderPathToAdd, isFromInitialLoad = false) => {
-    // ... (existing code for addWorkspaceFolder) ...
-    if (!folderPathToAdd || !folderPathToAdd.trim()) {
-      if (!isFromInitialLoad) setAddFolderError("אנא הזן נתיב תיקייה.");
-      return false; // Indicate failure
-    }
-    if (workspaceFolders.some(wf => wf.path === folderPathToAdd)) {
-      if (!isFromInitialLoad) setAddFolderError("התיקייה כבר קיימת בסביבת העבודה.");
-      return false; // Indicate failure
+  const addWorkspaceFolder = useCallback(async (folderPathToAdd = null, isFromInitialLoad = false) => {
+    // folderPathToAdd parameter is ignored - browser picker is used instead
+    // Check if browser supports File System Access API
+    if (!LocalFileSystemService.isSupported()) {
+      const errorMsg = 'Browser not supported. Please use Chrome or Edge for local file access.';
+      if (!isFromInitialLoad) setAddFolderError(errorMsg);
+      alert(errorMsg);
+      return false;
     }
 
     if (!isFromInitialLoad) setIsAddingFolder(true);
     setAddFolderError(null);
 
-    const folderName = path.basename(folderPathToAdd);
-    const tempFolderId = `loading-${Date.now()}-${Math.random().toString(16).slice(2)}`; // Make temp ID more unique too
-
-    // Optimistically add with temporary ID
-    setWorkspaceFolders(prev => [...prev, { path: folderPathToAdd, name: folderName, structure: null, isLoading: true, error: null, id: tempFolderId }]);
+    const tempFolderId = `loading-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/open-folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPath: folderPathToAdd }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `שגיאה מהשרת: ${response.status}`);
+      // Open folder picker - user selects a folder
+      const result = await LocalFileSystemService.openFolder();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to open folder');
+      }
 
-      const newPermanentId = `wsf-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setWorkspaceFolders(prev => prev.map(wf =>
-        wf.id === tempFolderId // Find by the temporary ID
-          ? { ...wf, path: folderPathToAdd, name: folderName, structure: data, isLoading: false, error: null, id: newPermanentId } // Update with new permanent ID
-          : wf
-      ));
-      // Note: The filter operation after map was removed as it's not strictly necessary if tempFolderId is unique and correctly replaced.
-      // If there's a need to clean up other potential duplicates or ensure tempFolderId doesn't persist, it could be added back carefully.
+      const folderName = result.name;
+      const folderPath = result.path;
 
+      // Check if folder already exists in workspace
+      if (workspaceFolders.some(wf => wf.name === folderName)) {
+        if (!isFromInitialLoad) setAddFolderError("התיקייה כבר קיימת בסביבת העבודה.");
+        return false;
+      }
+
+      // Optimistically add folder
+      setWorkspaceFolders(prev => [...prev, { 
+        path: folderPath, 
+        name: folderName, 
+        structure: result.structure, 
+        isLoading: false, 
+        error: null, 
+        id: `wsf-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      }]);
+
+      // Save to localStorage for persistence
       if (!isFromInitialLoad) {
         setFolderPathInput('');
-        // Get current paths *after* successful addition, not from potentially stale closure
-        const currentPaths = (await (async () => {
-            let paths = [];
-            setWorkspaceFolders(currentWFs => { // Read the latest state
-                paths = currentWFs.map(wf => wf.path).filter(p => p && p !== tempFolderId);
-                return currentWFs;
-            });
-            return paths;
-        })()).filter(p => p !== folderPathToAdd); // ensure the added one is not duplicated if logic changes
-
-        const updatedPaths = Array.from(new Set([...currentPaths, folderPathToAdd])); // Use Set to ensure uniqueness
-
-        fetch(`${API_BASE_URL}/settings/last-opened-folders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderPaths: updatedPaths }),
-        });
+        // Mark that user has added a folder - never show welcome modal again
+        localStorage.setItem('fileConversionNeverShow', 'true');
+        localStorage.removeItem('fileConversionPostponedTime');
+        console.log(`Successfully added folder: ${folderName}`);
       }
-      return true; // Indicate success
+      
+      return true;
     } catch (error) {
-      console.error(`שגיאה בפתיחת תיקייה ${folderPathToAdd}:`, error);
+      console.error(`Error opening folder:`, error);
       if (!isFromInitialLoad) setAddFolderError(error.message);
-      // If an error occurs, remove the optimistically added folder, or mark it with an error and a stable ID.
-      // Current approach: remove the folder that was added with tempFolderId.
       setWorkspaceFolders(prev => prev.filter(wf => wf.id !== tempFolderId));
-      // If we wanted to keep it with an error state, it would need a permanent unique ID here too:
-      // const errorId = `err-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      // setWorkspaceFolders(prev => prev.map(wf =>
-      //   wf.id === tempFolderId
-      //     ? { ...wf, isLoading: false, error: error.message, id: errorId }
-      //     : wf
-      // ));
-      return false; // Indicate failure
+      return false;
     } finally {
       if (!isFromInitialLoad) setIsAddingFolder(false);
     }
-  }, [workspaceFolders, setGlobalLoadingMessage]); // Removed setGlobalLoadingMessage as it's not used inside
+  }, [workspaceFolders, setFolderPathInput]);
 
   const removeWorkspaceFolder = useCallback(async (folderPathToRemove) => {
     setGlobalLoadingMessage(`מסיר את ${path.basename(folderPathToRemove)} מסביבת העבודה...`);
@@ -100,17 +87,16 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     setWorkspaceFolders(updatedWorkspaceFolders);
 
     try {
-      const updatedPaths = updatedWorkspaceFolders.map(wf => wf.path);
-      await fetch(`${API_BASE_URL}/settings/last-opened-folders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPaths: updatedPaths }),
-      });
-      // The App.jsx useEffect will handle closing tabs and clearing search scope
+      // Remove from IndexedDB
+      await LocalFileSystemService.removeDirectoryHandle(folderPathToRemove);
+      
+      // Remove from memory
+      LocalFileSystemService.directoryHandles.delete(folderPathToRemove);
+      
+      console.log(`Removed folder ${folderPathToRemove} from workspace`);
     } catch (error) {
-      console.error(`שגיאה בעדכון תיקיות אחרונות לאחר הסרה של ${folderPathToRemove}:`, error);
-      // Optionally, revert workspaceFolders state or notify user
-      alert(`שגיאה בעדכון הגדרות לאחר הסרת תיקייה: ${error.message}`);
+      console.error(`Error removing folder ${folderPathToRemove}:`, error);
+      alert(`שגיאה בהסרת תיקייה: ${error.message}`);
     } finally {
         setGlobalLoadingMessage('');
     }
@@ -121,35 +107,88 @@ export default function useWorkspace(setGlobalLoadingMessage) {
   useEffect(() => {
     if (initialFoldersLoaded) return; // Don't run again if already loaded
 
-    const fetchLastOpenedFolders = async () => {
-      console.log('Fetching last opened folders from server...');
+    const restoreSavedFolders = async () => {
+      console.log('Restoring saved folders from IndexedDB...');
       try {
-        const response = await fetch(`${API_BASE_URL}/settings/last-opened-folders`);
-        if (!response.ok) {
-          console.warn(`לא ניתן לטעון תיקיות אחרונות: ${response.statusText}`);
-          return;
-        }
-        const data = await response.json();
-        console.log('Last opened folders received:', data);
-        if (data.folderPaths && Array.isArray(data.folderPaths)) {
-          console.log(`Loading ${data.folderPaths.length} workspace folders...`);
-          // Sequentially add folders to maintain order and avoid race conditions with settings update
-          for (const fp of data.folderPaths) {
-            await addWorkspaceFolder(fp, true);
+        // Get saved folder names from IndexedDB
+        const savedFolderNames = await LocalFileSystemService.getSavedFolderNames();
+        
+        if (savedFolderNames && savedFolderNames.length > 0) {
+          console.log('Found saved folders:', savedFolderNames);
+          
+          // If we have saved folders, user has used the app before - never show welcome modal
+          localStorage.setItem('fileConversionNeverShow', 'true');
+          localStorage.removeItem('fileConversionPostponedTime');
+          
+          let restoredCount = 0;
+          let failedFolders = [];
+          
+          // Try to restore each folder
+          for (const folderName of savedFolderNames) {
+            try {
+              const result = await LocalFileSystemService.restoreSavedFolder(folderName);
+              
+              if (result.success) {
+                // Add to workspace
+                setWorkspaceFolders(prev => {
+                  // Check if already exists
+                  if (prev.some(wf => wf.name === folderName)) {
+                    return prev;
+                  }
+                  
+                  return [...prev, {
+                    path: result.path,
+                    name: result.name,
+                    structure: result.structure,
+                    isLoading: false,
+                    error: null,
+                    id: `wsf-${Date.now()}-${Math.random().toString(16).slice(2)}`
+                  }];
+                });
+                restoredCount++;
+                console.log(`✅ Successfully restored folder: ${folderName}`);
+              } else {
+                console.warn(`Failed to restore folder ${folderName}:`, result.error);
+                
+                if (result.needsPermission) {
+                  // Handle is in memory; queue for user-gesture re-grant
+                  setPendingFolders(prev => prev.includes(folderName) ? prev : [...prev, folderName]);
+                  console.log(`⏳ Folder "${folderName}" needs permission re-grant from user.`);
+                } else if (result.permissionDenied) {
+                  // User denied — drop from IndexedDB
+                  await LocalFileSystemService.removeDirectoryHandle(folderName);
+                  console.warn(`❌ Folder "${folderName}" permission denied, removed from storage.`);
+                } else {
+                  failedFolders.push(folderName);
+                }
+              }
+            } catch (error) {
+              console.error(`Error restoring folder ${folderName}:`, error);
+              failedFolders.push(folderName);
+            }
+          }
+          
+          if (restoredCount > 0) {
+            console.log(`✅ Restored ${restoredCount} folder(s) successfully`);
+          }
+          
+          if (failedFolders.length > 0) {
+            console.log(`⚠️ Could not restore ${failedFolders.length} folder(s):`, failedFolders);
+            console.log('⚠️ Please click "בחר תיקייה מהמחשב" to re-add them.');
           }
         } else {
-          console.log('No workspace folders to load');
+          console.log('No saved folders found');
         }
       } catch (error) {
-        console.warn("שגיאה בטעינת תיקיות אחרונות מהשרת:", error);
+        console.error('Error restoring saved folders:', error);
       } finally {
-        console.log('Setting initialFoldersLoaded to true');
-        setInitialFoldersLoaded(true); // Mark as loaded
+        setInitialFoldersLoaded(true);
       }
     };
-    fetchLastOpenedFolders();
+
+    restoreSavedFolders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addWorkspaceFolder, initialFoldersLoaded]); // addWorkspaceFolder is memoized and now a dependency
+  }, [initialFoldersLoaded]);
 
   const startRenameInExplorerUI = useCallback((itemToRename, baseFolder) => {
     // ... (existing code)
@@ -194,6 +233,65 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     }));
   }, []);
 
+  const refreshWorkspaceFolder = useCallback(async (folderPath) => {
+    try {
+      // Get the directory handle
+      const dirHandle = await LocalFileSystemService.getDirectoryHandle(folderPath);
+      
+      if (!dirHandle) {
+        console.error('Directory handle not found for:', folderPath);
+        return;
+      }
+
+      // Rescan the directory (pass empty string to get relative paths from root)
+      const structure = await LocalFileSystemService.scanDirectory(dirHandle, '');
+      
+      // Update the workspace folder structure
+      setWorkspaceFolders(prevWsf => prevWsf.map(wf => {
+        if (wf.path === folderPath) {
+          return { ...wf, structure };
+        }
+        return wf;
+      }));
+      
+      console.log('✅ Workspace folder refreshed:', folderPath);
+    } catch (error) {
+      console.error('Error refreshing workspace folder:', error);
+    }
+  }, []);
+
+  // Called inside a user gesture — asks browser to re-grant permission for a pending folder
+  const restorePendingFolder = useCallback(async (folderName) => {
+    setRestoringPendingFolder(folderName);
+    try {
+      const result = await LocalFileSystemService.restoreFolderWithPermission(folderName);
+      if (result.success) {
+        setWorkspaceFolders(prev => {
+          if (prev.some(wf => wf.name === folderName)) return prev;
+          return [...prev, {
+            path: result.path,
+            name: result.name,
+            structure: result.structure,
+            isLoading: false,
+            error: null,
+            id: `wsf-${Date.now()}-${Math.random().toString(16).slice(2)}`
+          }];
+        });
+        setPendingFolders(prev => prev.filter(n => n !== folderName));
+        console.log(`✅ Permission re-granted for folder: ${folderName}`);
+        return true;
+      } else {
+        console.warn(`Permission re-grant failed for ${folderName}:`, result.error);
+        return false;
+      }
+    } catch (err) {
+      console.error('restorePendingFolder error:', err);
+      return false;
+    } finally {
+      setRestoringPendingFolder(null);
+    }
+  }, []);
+
 
   return {
     folderPathInput,
@@ -203,10 +301,14 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     addFolderError,
     isAddingFolder,
     addWorkspaceFolder,
-    removeWorkspaceFolder, // <-- Export the new function
+    removeWorkspaceFolder,
     updateWorkspaceFolderStructure,
+    refreshWorkspaceFolder,
     startRenameInExplorerUI,
     clearRenameFlagInExplorerUI,
-    initialFoldersLoaded, // <-- Export the initialFoldersLoaded state
+    initialFoldersLoaded,
+    pendingFolders,
+    restoringPendingFolder,
+    restorePendingFolder,
   };
 }

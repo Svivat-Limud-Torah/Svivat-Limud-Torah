@@ -1,0 +1,196 @@
+/* ── Guided Tour Overlay ── */
+
+.guided-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+}
+
+.guided-tour-mask {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+
+/* ── Highlight ring around target element ── */
+
+.guided-tour-highlight-ring {
+  position: fixed;
+  border-radius: 6px;
+  border: 2px solid var(--theme-accent-primary, #007acc);
+  box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.25), 0 0 20px rgba(0, 122, 204, 0.15);
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: guided-tour-pulse 2s ease-in-out infinite;
+}
+
+@keyframes guided-tour-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(0, 122, 204, 0.25), 0 0 20px rgba(0, 122, 204, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 122, 204, 0.35), 0 0 30px rgba(0, 122, 204, 0.25);
+  }
+}
+
+/* ── Tooltip ── */
+
+.guided-tour-tooltip {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: var(--theme-bg-secondary, #252526);
+  border: 1px solid var(--theme-border-color, #3c3c3c);
+  border-radius: 8px;
+  padding: 20px;
+  pointer-events: auto;
+  z-index: 100000;
+  direction: rtl;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  animation: guided-tour-tooltip-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes guided-tour-tooltip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header ── */
+
+.guided-tour-tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.guided-tour-step-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--theme-accent-primary, #007acc);
+  background: rgba(0, 122, 204, 0.12);
+  padding: 2px 10px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+
+.guided-tour-close {
+  background: none;
+  border: none;
+  color: var(--theme-text-tertiary, #8d8d8d);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.guided-tour-close:hover {
+  color: var(--theme-text-primary, #cccccc);
+}
+
+/* ── Title & Content ── */
+
+.guided-tour-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--theme-text-primary, #cccccc);
+  line-height: 1.4;
+}
+
+.guided-tour-content {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  color: var(--theme-text-secondary, #b0b0b0);
+  line-height: 1.65;
+}
+
+/* ── Footer ── */
+
+.guided-tour-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.guided-tour-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.guided-tour-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  font-family: inherit;
+}
+
+.guided-tour-btn-next {
+  background: var(--theme-accent-primary, #007acc);
+  color: #ffffff;
+}
+
+.guided-tour-btn-next:hover {
+  background: var(--theme-accent-hover, #1a8ad4);
+}
+
+.guided-tour-btn-prev {
+  background: var(--theme-bg-quaternary, #303030);
+  color: var(--theme-text-primary, #cccccc);
+}
+
+.guided-tour-btn-prev:hover {
+  background: var(--theme-button-hover-bg, #3a3a3a);
+}
+
+.guided-tour-btn-skip {
+  background: none;
+  color: var(--theme-text-tertiary, #8d8d8d);
+  padding: 7px 8px;
+}
+
+.guided-tour-btn-skip:hover {
+  color: var(--theme-text-secondary, #b0b0b0);
+}
+
+/* ── Progress dots ── */
+
+.guided-tour-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  direction: ltr;
+}
+
+.guided-tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--theme-border-color, #3c3c3c);
+  transition: all 0.25s;
+}
+
+.guided-tour-dot.active {
+  background: var(--theme-accent-primary, #007acc);
+  transform: scale(1.3);
+}
+
+.guided-tour-dot.done {
+  background: var(--theme-accent-secondary, #4da6d9);
+}

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { initializeBackupSystem } from './utils/aiOrganizeBackup';
 import ContextMenu from './components/ContextMenu';
+import { printDocument } from './utils/printDocument';
 import SettingsModal from './components/SettingsModal';
 import './components/ContextMenu.css';
 import './components/TreeItem.css';
@@ -16,20 +17,22 @@ import './components/TranscriptionInputModal.css';
 import './components/TranscriptionResultView.css';
 import './components/QuestionnaireModal.css';
 import './components/LearningGraphView.css'; // Added Learning Graph CSS
-import './components/MarkdownToolbar.css';
 import './components/MarkdownToolbar.css'; // Import Markdown Toolbar CSS
 import './components/ApiKeyModal.css'; // Import API Key Modal CSS
 import './components/AiModelModal.css'; // Import AI Model Modal CSS
-import './components/OnboardingTutorial.css'; // Import Onboarding Tutorial CSS
+// OnboardingTutorial replaced by GuidedTour
 import './components/PilpultaDisplay.css'; // Import Pilpulta CSS
 import './components/UnsavedChangesModal.css'; // Import UnsavedChangesModal CSS
 import './components/NewFileModal.css'; // Import NewFileModal CSS
 import './components/QuotaLimitModal.css'; // Import QuotaLimitModal CSS
 import './components/ModelOverloadedModal.css'; // Import ModelOverloadedModal CSS
+import './components/AiWarningBanner.css'; // Import AiWarningBanner CSS
+import './ProfessionalBlackTheme.css';
 
 import Sidebar from './components/Sidebar';
 import MainContentArea from './components/MainContentArea';
-import OnboardingTutorial from './components/OnboardingTutorial';
+import GuidedTour from './components/GuidedTour';
+import './components/GuidedTour.css';
 import EditorToolbar from './components/EditorToolbar';
 import TranscriptionInputModal from './components/TranscriptionInputModal';
 import QuestionnaireButton from './components/QuestionnaireButton';
@@ -52,13 +55,20 @@ import ConfirmDeleteModal from './components/ConfirmDeleteModal'; // Import Conf
 import CreateFolderModal from './components/CreateFolderModal'; // Import CreateFolderModal
 import QuotaLimitModal from './components/QuotaLimitModal'; // Import QuotaLimitModal
 import ModelOverloadedModal from './components/ModelOverloadedModal'; // Import ModelOverloadedModal
+import AiWarningBanner from './components/AiWarningBanner'; // Import AiWarningBanner
+import FontSizeModal from './components/FontSizeModal';
+import FontSelectionModal from './components/FontSelectionModal';
+import ErrorBoundary from './components/ErrorBoundary';
+import './components/ErrorBoundary.css';
 
 
 import useWorkspace from './hooks/useWorkspace';
 import useTabs from './hooks/useTabs'; // Removed generateTabId as it's used internally by useTabs
 import useFileOperations from './hooks/useFileOperations';
+import useAutoSave from './hooks/useAutoSave';
 import useSearch from './hooks/useSearch';
 import useStats from './hooks/useStats';
+import useUserSnapshot from './hooks/useUserSnapshot';
 import useEditorSettings from './hooks/useEditorSettings';
 import useAiFeatures from './hooks/useAiFeatures';
 import useRepetitions from './hooks/useRepetitions';
@@ -66,18 +76,37 @@ import useQuestionnaire from './hooks/useQuestionnaire';
 import useLearningGraph from './hooks/useLearningGraph'; // Import useLearningGraph
 import useJudaismChat from './hooks/useJudaismChat'; // Import useJudaismChat
 import { useThemeSettings } from './hooks/useThemeSettings'; // Import useThemeSettings
+import useResizableSidebar from './hooks/useResizableSidebar';
+import useFocusMode from './hooks/useFocusMode';
+import useAnnotations from './hooks/useAnnotations';
+import useDrawings from './hooks/useDrawings';
+import useBookmarks from './hooks/useBookmarks';
+import useAramaicStudy from './hooks/useAramaicStudy';
+import useTextAnalysis from './hooks/useTextAnalysis';
+import useDragAndDrop from './hooks/useDragAndDrop';
 import JudaismChatModal from './components/JudaismChatModal'; // Import JudaismChatModal
+import ImportExportModal from './components/ImportExportModal';
+import AramaicStudyModal from './components/AramaicStudyModal';
+import TextAnalysisModal from './components/TextAnalysisModal';
+import FocusModePanel from './components/FocusModePanel';
 
 import path from './utils/pathUtils';
-import { APP_DIRECTION, API_BASE_URL, HEBREW_TEXT, API_KEY_STORAGE_KEY, API_KEY_IS_PAID_STORAGE_KEY, DEFAULT_FONT_SIZE_PX } from './utils/constants'; // Import DEFAULT_FONT_SIZE_PX
+import { APP_DIRECTION, API_BASE_URL, HEBREW_TEXT, API_KEY_IS_PAID_STORAGE_KEY, DEFAULT_FONT_SIZE_PX } from './utils/constants'; // Import DEFAULT_FONT_SIZE_PX
+import { clearApiKey, setApiKey as restoreApiKey } from './utils/aiProxy';
 
-// List of models from the screenshot - simplified to just Gemini 2.5 models
+// Free tier models as of March 2026
 const defaultAiModels = [
-  'gemini-2.5-pro',
   'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3-flash-preview',
 ];
-const DEFAULT_AI_MODEL = defaultAiModels[0]; // Define default model constant
-const GROUNDING_MODEL = 'gemini-1.5-pro-latest'; // Define grounding model constant
+// Paid-only models
+const paidAiModels = [
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-pro',
+];
+const DEFAULT_AI_MODEL = 'gemini-3-flash-preview'; // Define default model constant
+const GROUNDING_MODEL = 'gemini-3-flash-preview'; // Best model for paid-key users
 
 function App() {
   const [backendMessage, setBackendMessage] = useState('');
@@ -86,7 +115,7 @@ function App() {
     const isPaid = localStorage.getItem(API_KEY_IS_PAID_STORAGE_KEY) === 'true';
     return isPaid ? GROUNDING_MODEL : DEFAULT_AI_MODEL;
   });
-  
+
   // State for custom added models
   const [customModels, setCustomModels] = useState(() => {
     try {
@@ -97,13 +126,14 @@ function App() {
       return [];
     }
   });
-  
-  // Combined models (default + custom)
-  const aiModels = [...defaultAiModels, ...customModels];
 
-  const [isZenMode, setIsZenMode] = useState(false);
+  // Combined models (default + paid + custom)
+  const aiModels = [...defaultAiModels, ...paidAiModels, ...customModels];
+
+  const { sidebarWidth, onDragStart } = useResizableSidebar();
   const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
   // 'editor', 'flashcards', 'summary', 'sourceResults', 'search', 'recent', 'frequent', 'repetitions', 'weeklySummary', 'notificationSettings', 'learningGraph'
+  // Only restore 'editor' mode — other views depend on data that isn't available immediately after refresh.
   const [mainViewMode, setMainViewMode] = useState('editor');
   const [globalLoadingMessage, setGlobalLoadingMessage] = useState('');
 
@@ -112,14 +142,21 @@ function App() {
   });
 
   const editorSharedRef = useRef(null);
+  const rightEditorRef = useRef(null);
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [rightPaneTabPath, setRightPaneTabPath] = useState(null);
   const [appLevelActiveTabPath, setAppLevelActiveTabPath] = useState(null);
 
   const [isTranscriptionModalOpen, setIsTranscriptionModalOpen] = useState(false);
   const [isLearningGraphViewOpen, setIsLearningGraphViewOpen] = useState(false); // State for Learning Graph modal
   const [isJudaismChatModalOpen, setIsJudaismChatModalOpen] = useState(false);
+  const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false); // State for API Key modal
   const [isAiModelModalOpen, setIsAiModelModalOpen] = useState(false); // State for AI Model modal
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // State for Help modal
+  const [isGuidedTourOpen, setIsGuidedTourOpen] = useState(() => {
+    return !localStorage.getItem('torah-ide-tour-completed');
+  });
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // State for Settings modal
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false); // State for New File modal
   const [selectedFolderForNewFile, setSelectedFolderForNewFile] = useState(null); // State for context menu new file
@@ -127,34 +164,40 @@ function App() {
   const [saveAsData, setSaveAsData] = useState(null); // Data for Save As modal
   const [isPilpultaVisible, setIsPilpultaVisible] = useState(false); // State for Pilpulta window
   const [pilpultaData, setPilpultaData] = useState([]); // Data for Pilpulta window
+  const [isZenMode, setIsZenMode] = useState(false); // State for Zen mode
   const [isFileConversionModalOpen, setIsFileConversionModalOpen] = useState(false); // State for File Conversion modal
+  const [hasSeenWelcomeModal, setHasSeenWelcomeModal] = useState(() => {
+    // Initialize from localStorage - check if user has seen welcome before
+    return localStorage.getItem('fileConversionNeverShow') === 'true';
+  });
   const [isSingleFileConversionModalOpen, setIsSingleFileConversionModalOpen] = useState(false); // State for Single File Conversion modal
   const [singleFileConversionData, setSingleFileConversionData] = useState(null); // Data for Single File Conversion modal
-  
+
   // New states for delete confirmation and folder creation
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [baseFolderForDelete, setBaseFolderForDelete] = useState(null);
-  
+
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [createFolderData, setCreateFolderData] = useState(null);
-  
+
   // Quota Limit Modal state
   const [isQuotaLimitModalOpen, setIsQuotaLimitModalOpen] = useState(false);
   const [isModelOverloadedModalOpen, setIsModelOverloadedModalOpen] = useState(false);
-  
+
   // Smart Search modal state is managed within useAiFeatures hook
   const [editorFontSize, setEditorFontSize] = useState(DEFAULT_FONT_SIZE_PX);
   const [presentationFontSize, setPresentationFontSize] = useState(DEFAULT_FONT_SIZE_PX);
-  
+
   // Font management state
   const [appFont, setAppFont] = useState('Arial');
-  const [editorFont, setEditorFont] = useState('Arial');
+  const [editorFont, setEditorFont] = useState('Segoe UI');
 
 
   // --- Initialize Hooks ---
   const workspaceHook = useWorkspace(setGlobalLoadingMessage);
   const statsHook = useStats({ workspaceFolders: workspaceHook.workspaceFolders });
+  const userSnapshotHook = useUserSnapshot({ workspaceFolders: workspaceHook.workspaceFolders });
   const repetitionsHook = useRepetitions(setGlobalLoadingMessage);
   const questionnaireHook = useQuestionnaire(setGlobalLoadingMessage); // Pass setGlobalLoadingMessage
   const learningGraphHook = useLearningGraph(); // Initialize Learning Graph Hook
@@ -164,20 +207,48 @@ function App() {
   useEffect(() => {
     // Initialize AI organization backup system
     initializeBackupSystem();
-    
+
+    // If user has already seen the welcome modal, don't show it again
+    if (hasSeenWelcomeModal) {
+      console.log('User has already seen welcome modal - skipping initial check');
+      return;
+    }
+
     const hasSeenConversionPrompt = localStorage.getItem('hasSeenFileConversionPrompt');
     const shouldShowPrompt = localStorage.getItem('showFileConversionPrompt');
     const hasCompletedConversion = localStorage.getItem('hasCompletedFileConversion') === 'true';
-    
+
     // Show prompt on first app load unless user specifically disabled it or already completed conversion
     if ((!hasSeenConversionPrompt || shouldShowPrompt === 'true') && !hasCompletedConversion) {
       // Small delay to let the app initialize
       const timer = setTimeout(() => {
         setIsFileConversionModalOpen(true);
       }, 1500);
-      
+
       return () => clearTimeout(timer);
     }
+  }, [hasSeenWelcomeModal]);
+
+  // Global link handler for external links
+  useEffect(() => {
+    const handleLinkClick = (e) => {
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        const url = link.href;
+        // Check if it's an external link (http/https)
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          e.preventDefault();
+          if (window.electronAPI && window.electronAPI.openExternal) {
+            window.electronAPI.openExternal(url);
+          } else {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handleLinkClick);
+    return () => document.removeEventListener('click', handleLinkClick);
   }, []);
 
   const handleEditorFontSizeChange = (newSize) => {
@@ -191,19 +262,41 @@ function App() {
     // Persist to localStorage if desired
     localStorage.setItem('presentationFontSize', newSize);
   };
-  
+
   const handleAppFontChange = (newFont) => {
     setAppFont(newFont);
     localStorage.setItem('appFont', newFont);
     // Apply font to the entire app
     document.documentElement.style.setProperty('--app-font-family', newFont);
   };
-  
+
   const handleEditorFontChange = (newFont) => {
     setEditorFont(newFont);
     localStorage.setItem('editorFont', newFont);
     // Apply font to editor
     document.documentElement.style.setProperty('--editor-font-family', newFont);
+  };
+
+  const [isFontSizeModalOpen, setIsFontSizeModalOpen] = useState(false);
+  const [isFontSelectionModalOpen, setIsFontSelectionModalOpen] = useState(false);
+
+  const handleFontSizeSave = (newSize, fontType) => {
+    if (fontType === 'editor') handleEditorFontSizeChange(newSize);
+    else if (fontType === 'presentation') handlePresentationFontSizeChange(newSize);
+  };
+
+  const handleUndo = () => {
+    try {
+      const view = editorSharedRef.current?.getEditorView?.();
+      if (view?.state) { const { undo } = require('@codemirror/commands'); undo(view); view.focus(); }
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleRedo = () => {
+    try {
+      const view = editorSharedRef.current?.getEditorView?.();
+      if (view?.state) { const { redo } = require('@codemirror/commands'); redo(view); view.focus(); }
+    } catch (e) { /* ignore */ }
   };
 
   // Load font size from localStorage on initial mount if needed
@@ -217,19 +310,24 @@ function App() {
     if (savedPresentationFontSize) {
       setPresentationFontSize(parseInt(savedPresentationFontSize, 10));
     }
-    
+
     // Load saved fonts
     const savedAppFont = localStorage.getItem('appFont');
     const savedEditorFont = localStorage.getItem('editorFont');
-    
+
     if (savedAppFont) {
       setAppFont(savedAppFont);
       document.documentElement.style.setProperty('--app-font-family', savedAppFont);
     }
-    
-    if (savedEditorFont) {
+
+    if (savedEditorFont && savedEditorFont !== 'Arial') {
       setEditorFont(savedEditorFont);
       document.documentElement.style.setProperty('--editor-font-family', savedEditorFont);
+    } else {
+      // Keep a stable editor default font when no prior user preference exists.
+      setEditorFont('Segoe UI');
+      document.documentElement.style.setProperty('--editor-font-family', 'Segoe UI');
+      localStorage.setItem('editorFont', 'Segoe UI');
     }
   }, []);
 
@@ -240,8 +338,10 @@ function App() {
     setAppLevelActiveTabPath(null);
     // Clear relevant localStorage items
     localStorage.removeItem('lastOpenedFolderPaths'); // This is also cleared server-side but good to do client-side too
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    localStorage.removeItem('gemini_has_key');
+    localStorage.removeItem('gemini_api_key_val');
     localStorage.removeItem(API_KEY_IS_PAID_STORAGE_KEY);
+    clearApiKey().catch(() => { }); // Clear server-side session API key
     localStorage.removeItem('selectedAiModel'); // If you store this
     localStorage.removeItem('customAiModels'); // Clear custom AI models
     localStorage.removeItem('editorSettings'); // Example, if you store editor settings
@@ -249,11 +349,13 @@ function App() {
     localStorage.removeItem('presentationFontSize'); // Clear presentation font size
     localStorage.removeItem('appFont'); // Clear app font
     localStorage.removeItem('editorFont'); // Clear editor font
+    localStorage.removeItem('torahIdeOpenTabs'); // Clear persisted tabs
+    localStorage.removeItem('torahIdeMainViewMode'); // Clear persisted view mode
     // Add any other localStorage keys that store user-specific data
-    
+
     // Optionally, clear other states if they hold user data not covered by hooks
     // e.g., searchHook.setSearchTerm(''); searchHook.setSearchResults([]);
-    
+
     console.log("Frontend state cleared for user data deletion.");
     // Reload the application to ensure a fresh start
     window.location.reload();
@@ -290,36 +392,36 @@ function App() {
 
 
   const initialAiFeaturesPlaceholders = {
-    setFlashcardData: () => {},
+    setFlashcardData: () => { },
     originalFileForSummary: () => null,
-    setOriginalFileForSummary: () => {},
-    setSummaryText: () => {},
-    setSummaryError: () => {},
-    setSourceFindingResults: () => {},
+    setOriginalFileForSummary: () => { },
+    setSummaryText: () => { },
+    setSummaryError: () => { },
+    setSourceFindingResults: () => { },
     originalFileForSourceFinding: () => null,
-    setOriginalFileForSourceFinding: () => {},
-    setSourceFindingError: () => {},
-    setPilpultaData: () => {}, // Placeholder
-    setPilpultaError: () => {}, // Placeholder
+    setOriginalFileForSourceFinding: () => { },
+    setSourceFindingError: () => { },
+    setPilpultaData: () => { }, // Placeholder
+    setPilpultaError: () => { }, // Placeholder
     // Smart Search placeholders (if needed before hook initializes, though hook manages its own state)
     isSmartSearchModalOpen: false,
     smartSearchResults: null,
     isLoadingSmartSearch: false,
     smartSearchError: null,
-    openSmartSearchModal: () => {},
-    closeSmartSearchModal: () => {},
-    performSmartSearch: async () => {},
+    openSmartSearchModal: () => { },
+    closeSmartSearchModal: () => { },
+    performSmartSearch: async () => { },
   };
 
   const initialSearchPlaceholders = {
-    setSearchTermToHighlightInEditor: () => {},
-    searchInputRef: {current: null},
+    setSearchTermToHighlightInEditor: () => { },
+    searchInputRef: { current: null },
   };
 
   const initialEditorSettingsPlaceholders = {
-      setScrollToLine: () => {},
-      highlightActiveLine: true,
-      showLineNumbers: true,
+    setScrollToLine: () => { },
+    highlightActiveLine: true,
+    showLineNumbers: true,
   };
 
 
@@ -338,6 +440,7 @@ function App() {
     originalFileForSourceFinding: () => aiFeaturesHook?.originalFileForSourceFinding,
     setOriginalFileForSourceFinding: (file) => aiFeaturesHook?.setOriginalFileForSourceFinding(file),
     setSourceFindingError: (error) => aiFeaturesHook?.setSourceFindingError(error),
+    initialFoldersLoaded: workspaceHook.initialFoldersLoaded,
   });
 
   useEffect(() => {
@@ -379,6 +482,12 @@ function App() {
     setMainViewMode,
   });
 
+  const { isAutoSaving } = useAutoSave({
+    activeTabObject,
+    handleSaveFile: fileOperationsHook.handleSaveFile,
+    autoSaveEnabled: editorSettingsHook.autoSaveEnabled,
+  });
+
   useEffect(() => {
     // console.log('workspaceFolders changed:', workspaceHook.workspaceFolders); // Less noisy log
   }, [workspaceHook.workspaceFolders]);
@@ -396,12 +505,28 @@ function App() {
   });
 
   // --- Effects & Callbacks ---
+  // Restore API key into server session on startup (in case session expired after page refresh)
+  useEffect(() => {
+    const storedKey = localStorage.getItem('gemini_api_key_val');
+    const isPaid = localStorage.getItem('gemini_api_key_is_paid') === 'true';
+    if (storedKey) {
+      restoreApiKey(storedKey, isPaid).catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/hello`)
       .then(response => response.ok ? response.json() : Promise.reject('Network response was not ok'))
       .then(data => setBackendMessage(data.message))
       .catch(err => console.warn("לא ניתן להתחבר לשרת לקבלת הודעת 'hello':", err.message));
   }, []);
+
+  // Persist mainViewMode so the editor stays open after a refresh.
+  // We only restore 'editor' — other views (flashcards, summary, etc.) require
+  // freshly-loaded data that won't be available immediately after reload.
+  useEffect(() => {
+    localStorage.setItem('torahIdeMainViewMode', mainViewMode);
+  }, [mainViewMode]);
 
   // Auto-open file conversion modal when no workspace is present
   useEffect(() => {
@@ -410,25 +535,30 @@ function App() {
       workspaceFoldersCount: workspaceHook.workspaceFolders.length,
       isModalOpen: isFileConversionModalOpen
     });
-    
+
     // Only check after initial workspace folders have been loaded
     if (!workspaceHook.initialFoldersLoaded) {
       console.log('Initial folders not yet loaded, waiting...');
       return;
     }
-    
-    const neverShowAgain = localStorage.getItem('fileConversionNeverShow') === 'true';
+
+    // Check state instead of re-reading localStorage
+    if (hasSeenWelcomeModal) {
+      console.log('User has already seen welcome modal - not showing');
+      return;
+    }
+
     const postponedTimestamp = localStorage.getItem('fileConversionPostponedTime');
-    
+
     // Check if 5 hours (5 * 60 * 60 * 1000 = 18000000 ms) have passed since postponement
     const fiveHoursInMs = 5 * 60 * 60 * 1000;
     const now = Date.now();
     let shouldRespectPostponement = false;
-    
+
     if (postponedTimestamp) {
       const timeSincePostponed = now - parseInt(postponedTimestamp);
       shouldRespectPostponement = timeSincePostponed < fiveHoursInMs;
-      
+
       if (!shouldRespectPostponement) {
         console.log('5 hours have passed since postponement - clearing postponed flag');
         localStorage.removeItem('fileConversionPostponedTime');
@@ -439,63 +569,61 @@ function App() {
         console.log(`File conversion still postponed for ${remainingHours}h ${remainingMinutes}m`);
       }
     }
-    
+
     console.log('Checking workspace status for file conversion modal:', {
       workspaceFoldersCount: workspaceHook.workspaceFolders.length,
       isModalOpen: isFileConversionModalOpen,
-      neverShowAgain,
+      hasSeenWelcomeModal,
       postponedTimestamp,
       shouldRespectPostponement,
       initialFoldersLoaded: workspaceHook.initialFoldersLoaded
     });
-    
-    // If no workspace folders exist, and either no postponement or 5 hours have passed, show modal
-    if (workspaceHook.workspaceFolders.length === 0 && 
-        !isFileConversionModalOpen && 
-        !neverShowAgain && 
-        !shouldRespectPostponement) {
+
+    // If no workspace folders exist and modal should be shown
+    if (workspaceHook.workspaceFolders.length === 0 &&
+      !isFileConversionModalOpen &&
+      !shouldRespectPostponement) {
       // Delay the modal opening to ensure the component is fully mounted
       const timer = setTimeout(() => {
-        console.log('Opening file conversion modal - no workspace detected and postponement expired/cleared');
+        console.log('Opening file conversion modal - no workspace detected');
         setIsFileConversionModalOpen(true);
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     } else {
       console.log('Not opening file conversion modal because:', {
         hasWorkspace: workspaceHook.workspaceFolders.length > 0,
         modalAlreadyOpen: isFileConversionModalOpen,
-        neverShowAgain,
         shouldRespectPostponement
       });
     }
-  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen, workspaceHook.initialFoldersLoaded]);
+  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen, workspaceHook.initialFoldersLoaded, hasSeenWelcomeModal]);
 
   useEffect(() => {
     const previousWorkspaceFolders = JSON.stringify(workspaceHook.workspaceFolders.map(f => f.path).sort());
 
     return () => {
-        const currentWorkspaceFolders = workspaceHook.workspaceFolders;
-        const currentWorkspaceFolderPaths = currentWorkspaceFolders.map(f => f.path).sort();
+      const currentWorkspaceFolders = workspaceHook.workspaceFolders;
+      const currentWorkspaceFolderPaths = currentWorkspaceFolders.map(f => f.path).sort();
 
-        if (previousWorkspaceFolders !== JSON.stringify(currentWorkspaceFolderPaths)) {
-            const prevPathsSet = new Set(JSON.parse(previousWorkspaceFolders));
-            const currentPathsSet = new Set(currentWorkspaceFolderPaths);
-            const removedFolderPaths = [...prevPathsSet].filter(p => !currentPathsSet.has(p));
+      if (previousWorkspaceFolders !== JSON.stringify(currentWorkspaceFolderPaths)) {
+        const prevPathsSet = new Set(JSON.parse(previousWorkspaceFolders));
+        const currentPathsSet = new Set(currentWorkspaceFolderPaths);
+        const removedFolderPaths = [...prevPathsSet].filter(p => !currentPathsSet.has(p));
 
-            if (removedFolderPaths.length > 0) {
-                removedFolderPaths.forEach(removedPath => {
-                    const tabsToClose = tabsHook.openTabs.filter(tab => tab.basePath === removedPath);
-                    tabsToClose.forEach(tab => tabsHook.handleCloseTab(tab.id, null));
+        if (removedFolderPaths.length > 0) {
+          removedFolderPaths.forEach(removedPath => {
+            const tabsToClose = tabsHook.openTabs.filter(tab => tab.basePath === removedPath);
+            tabsToClose.forEach(tab => tabsHook.handleCloseTab(tab.id, null));
 
-                    if (searchHook.currentSearchScope.basePath === removedPath) {
-                        searchHook.setCurrentSearchScope({ basePath: null, relativePath: null, name: null });
-                        searchHook.setSearchResults([]);
-                        searchHook.setSearchError(HEBREW_TEXT.folderRemovedSearchScopeCleared);
-                    }
-                });
+            if (searchHook.currentSearchScope.basePath === removedPath) {
+              searchHook.setCurrentSearchScope({ basePath: null, relativePath: null, name: null });
+              searchHook.setSearchResults([]);
+              searchHook.setSearchError(HEBREW_TEXT.folderRemovedSearchScopeCleared);
             }
+          });
         }
+      }
     };
   }, [workspaceHook.workspaceFolders, tabsHook.openTabs, tabsHook.handleCloseTab, searchHook.currentSearchScope, searchHook.setCurrentSearchScope, searchHook.setSearchResults, searchHook.setSearchError]);
 
@@ -503,25 +631,100 @@ function App() {
   const handleActualRemoveWorkspaceFolder = async (folderPathToRemove) => {
     const removedPath = await workspaceHook.removeWorkspaceFolder(folderPathToRemove);
     if (removedPath) {
-        const tabsToClose = tabsHook.openTabs.filter(tab => tab.basePath === removedPath);
-        tabsToClose.forEach(tab => tabsHook.handleCloseTab(tab.id, null));
+      const tabsToClose = tabsHook.openTabs.filter(tab => tab.basePath === removedPath);
+      tabsToClose.forEach(tab => tabsHook.handleCloseTab(tab.id, null));
 
-        if (searchHook.currentSearchScope.basePath === removedPath) {
-            searchHook.setCurrentSearchScope({ basePath: null, relativePath: null, name: null });
-            searchHook.setSearchResults([]);
-            searchHook.setSearchError(HEBREW_TEXT.folderRemovedSearchScopeCleared);
-            if (searchHook.searchTerm.trim() && workspaceHook.workspaceFolders.length > 0) {
-                searchHook.handleSearch();
-            } else if (workspaceHook.workspaceFolders.length === 0) {
-                searchHook.setSearchTermToHighlightInEditor('');
-            }
+      if (searchHook.currentSearchScope.basePath === removedPath) {
+        searchHook.setCurrentSearchScope({ basePath: null, relativePath: null, name: null });
+        searchHook.setSearchResults([]);
+        searchHook.setSearchError(HEBREW_TEXT.folderRemovedSearchScopeCleared);
+        if (searchHook.searchTerm.trim() && workspaceHook.workspaceFolders.length > 0) {
+          searchHook.handleSearch();
+        } else if (workspaceHook.workspaceFolders.length === 0) {
+          searchHook.setSearchTermToHighlightInEditor('');
         }
+      }
     }
   };
 
 
-  const toggleZenMode = () => setIsZenMode(prev => !prev);
   const toggleFormattingToolbar = () => setShowFormattingToolbar(prev => !prev);
+  const toggleZenMode = () => setIsZenMode(prev => !prev);
+
+  const handleRightPaneEditorChange = useCallback((newContent) => {
+    if (!rightPaneTabPath) return;
+    tabsHook.setOpenTabs(prevTabs => prevTabs.map(tab =>
+      (tab.id === rightPaneTabPath && tab.type === 'file')
+        ? { ...tab, content: newContent, isDirty: true }
+        : tab
+    ));
+  }, [rightPaneTabPath, tabsHook]);
+
+  const toggleSplitMode = useCallback(() => {
+    setIsSplitMode(prev => {
+      if (!prev) {
+        const otherTab = tabsHook.openTabs.find(t => t.id !== appLevelActiveTabPath && t.type === 'file');
+        setRightPaneTabPath(otherTab?.id || appLevelActiveTabPath);
+      } else {
+        setRightPaneTabPath(null);
+      }
+      return !prev;
+    });
+  }, [tabsHook.openTabs, appLevelActiveTabPath]);
+
+  const focusHook = useFocusMode();
+  const annotationsHook = useAnnotations();
+  const drawingsHook = useDrawings();
+  const bookmarksHook = useBookmarks();
+  const aramaicStudyHook = useAramaicStudy({ selectedAiModel, showQuotaLimitModal, showModelOverloadedModal });
+  const textAnalysisHook = useTextAnalysis({ selectedAiModel, showQuotaLimitModal, showModelOverloadedModal });
+
+  // Sync annotation hook's current file with the active tab
+  useEffect(() => {
+    annotationsHook.setCurrentFileId(activeTabObject?.id || null);
+    drawingsHook.setCurrentFileId(activeTabObject?.id || null);
+  }, [activeTabObject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track time spent per file — report to backend when tab changes
+  const activeTabStartRef = useRef(null);
+  const prevTabRef = useRef(null);
+  useEffect(() => {
+    const prev = prevTabRef.current;
+    const now = Date.now();
+
+    // Report time for previously active tab
+    if (prev && prev.type === 'file' && activeTabStartRef.current) {
+      const seconds = Math.round((now - activeTabStartRef.current) / 1000);
+      if (seconds >= 5 && prev.basePath && prev.relativePath) {
+        fetch(`${API_BASE_URL}/file-time`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds }),
+        }).catch(() => {});
+      }
+    }
+
+    // Start tracking new tab
+    prevTabRef.current = activeTabObject || null;
+    activeTabStartRef.current = activeTabObject?.type === 'file' ? now : null;
+  }, [appLevelActiveTabPath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Also report time on page unload
+  useEffect(() => {
+    const handleUnload = () => {
+      const prev = prevTabRef.current;
+      if (prev && prev.type === 'file' && activeTabStartRef.current && prev.basePath && prev.relativePath) {
+        const seconds = Math.round((Date.now() - activeTabStartRef.current) / 1000);
+        if (seconds >= 5) {
+          navigator.sendBeacon(`${API_BASE_URL}/file-time`,
+            new Blob([JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds })],
+              { type: 'application/json' }));
+        }
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleMainView = useCallback((viewType) => {
     // Added 'learningGraph' and 'search' to the list of views that don't toggle back to editor on second click
@@ -530,6 +733,7 @@ function App() {
     } else {
       setMainViewMode(viewType);
       if (viewType === 'recent' || viewType === 'frequent') statsHook.fetchStatsFiles();
+      if (viewType === 'snapshot') userSnapshotHook.fetchSnapshot();
       if (viewType === 'search' && searchHook.searchInputRef.current) {
         setTimeout(() => searchHook.searchInputRef.current?.focus(), 0);
       }
@@ -575,14 +779,14 @@ function App() {
         action: () => {
           // Calculate the target path
           const targetPath = path.join(baseFolder.path, item.path);
-          
+
           // Open the new file modal with the selected folder as default location
           setIsNewFileModalOpen(true);
           // We'll need to pass the target path to the modal somehow
           // For now, we'll store it in a state variable
-          setSelectedFolderForNewFile({ 
-            path: targetPath, 
-            workspaceFolder: baseFolder 
+          setSelectedFolderForNewFile({
+            path: targetPath,
+            workspaceFolder: baseFolder
           });
         }
       });
@@ -600,27 +804,28 @@ function App() {
       });
     }
     menuItems.push({ type: 'separator' });
-    
+
     // Add conversion option for files only
     if (!item.isFolder) {
       menuItems.push({
-        label: "המר ל... 🔄",
+        label: "המר ל...",
         action: () => {
           // Calculate the full file path
           const fullFilePath = path.join(baseFolder.path, item.path);
-          
+
           // Open the single file conversion modal
           setSingleFileConversionData({
             filePath: fullFilePath,
             fileName: item.name,
-            baseFolder: baseFolder
+            baseFolder: baseFolder,
+            relativePath: item.path
           });
           setIsSingleFileConversionModalOpen(true);
         }
       });
       menuItems.push({ type: 'separator' });
     }
-    
+
     menuItems.push({
       label: HEBREW_TEXT.deleteItem,
       action: () => {
@@ -630,10 +835,10 @@ function App() {
         setIsConfirmDeleteModalOpen(true);
       }
     });
-    menuItems.push({type: 'separator'});
+    menuItems.push({ type: 'separator' });
     menuItems.push({
-        label: `${HEBREW_TEXT.searchIn(item.isFolder ? 'תיקייה זו' : 'קובץ זה')}...`,
-        action: () => searchHook.handleSetSearchScopeAndTriggerSearch(baseFolder, item.path, item.name)
+      label: `${HEBREW_TEXT.searchIn(item.isFolder ? 'תיקייה זו' : 'קובץ זה')}...`,
+      action: () => searchHook.handleSetSearchScopeAndTriggerSearch(baseFolder, item.path, item.name)
     });
 
     setContextMenuState({
@@ -644,11 +849,11 @@ function App() {
 
 
   const handleCreateNewFileAction = useCallback(async () => {
-    if (workspaceHook.workspaceFolders.length === 0) { 
-      alert(HEBREW_TEXT.addFolderFirst); 
-      return; 
+    if (workspaceHook.workspaceFolders.length === 0) {
+      alert(HEBREW_TEXT.addFolderFirst);
+      return;
     }
-    
+
     // Open the new file modal instead of using prompts
     setIsNewFileModalOpen(true);
   }, [workspaceHook.workspaceFolders]);
@@ -664,8 +869,8 @@ function App() {
         if (selectedPath.startsWith(folder.path)) {
           targetWorkspaceFolder = folder;
           // Calculate relative path from workspace folder
-          relativePath = selectedPath === folder.path 
-            ? fileName 
+          relativePath = selectedPath === folder.path
+            ? fileName
             : `${selectedPath.slice(folder.path.length + 1)}\\${fileName}`;
           break;
         }
@@ -674,21 +879,21 @@ function App() {
       if (targetWorkspaceFolder) {
         // Use existing workspace folder
         await fileOperationsHook.handleCreateNewFileOrSummary(
-          targetWorkspaceFolder.path, 
+          targetWorkspaceFolder.path,
           relativePath.replace(/\\/g, '/'), // Convert to forward slashes for consistency
-          '', 
+          '',
           true
         );
       } else {
         // The selected path is outside existing workspace folders
         // Add it as a new workspace folder first
         await workspaceHook.addWorkspaceFolder(selectedPath);
-        
+
         // Then create the file in the root of the new workspace
         await fileOperationsHook.handleCreateNewFileOrSummary(
-          selectedPath, 
-          fileName, 
-          '', 
+          selectedPath,
+          fileName,
+          '',
           true
         );
       }
@@ -701,7 +906,7 @@ function App() {
   // Handle saving file from the modal (for Save As functionality)
   const handleSaveFileFromModal = useCallback(async (selectedPath, fileName) => {
     if (!saveAsData) return;
-    
+
     try {
       // Check if the selected path is within an existing workspace folder
       let targetWorkspaceFolder = null;
@@ -711,8 +916,8 @@ function App() {
         if (selectedPath.startsWith(folder.path)) {
           targetWorkspaceFolder = folder;
           // Calculate relative path from workspace folder
-          relativePath = selectedPath === folder.path 
-            ? fileName 
+          relativePath = selectedPath === folder.path
+            ? fileName
             : `${selectedPath.slice(folder.path.length + 1)}\\${fileName}`;
           break;
         }
@@ -721,8 +926,8 @@ function App() {
       if (targetWorkspaceFolder) {
         // Use the fileOperations hook to save with the new path
         await fileOperationsHook.saveFileToPath(
-          saveAsData.tabId, 
-          targetWorkspaceFolder.path, 
+          saveAsData.tabId,
+          targetWorkspaceFolder.path,
           relativePath.replace(/\\/g, '/'), // Convert to forward slashes for consistency
           saveAsData.content
         );
@@ -730,16 +935,16 @@ function App() {
         // The selected path is outside existing workspace folders
         // Add it as a new workspace folder first
         await workspaceHook.addWorkspaceFolder(selectedPath);
-        
+
         // Then save the file in the root of the new workspace
         await fileOperationsHook.saveFileToPath(
-          saveAsData.tabId, 
-          selectedPath, 
-          fileName, 
+          saveAsData.tabId,
+          selectedPath,
+          fileName,
           saveAsData.content
         );
       }
-      
+
       // Clear the save data and close modal
       setSaveAsData(null);
       setIsSaveAsModalOpen(false);
@@ -836,10 +1041,10 @@ function App() {
   const clearSearchScopeAndRelatedState = () => {
     searchHook.setCurrentSearchScope({ basePath: null, relativePath: null, name: null });
     if (searchHook.searchTerm.trim()) {
-        searchHook.handleSearch();
+      searchHook.handleSearch();
     } else {
-        searchHook.setSearchResults([]);
-        searchHook.setSearchError(null);
+      searchHook.setSearchResults([]);
+      searchHook.setSearchError(null);
     }
   };
 
@@ -867,8 +1072,8 @@ function App() {
       }
 
       // Handle Redo: Ctrl+Y (English) or Ctrl+ט (Hebrew) or Ctrl+Shift+Z
-      if (isCtrlOrMeta && ((event.key.toLowerCase() === 'y' || event.key === 'ט') || 
-                           (event.shiftKey && (event.key.toLowerCase() === 'z' || event.key === 'ז')))) {
+      if (isCtrlOrMeta && ((event.key.toLowerCase() === 'y' || event.key === 'ט') ||
+        (event.shiftKey && (event.key.toLowerCase() === 'z' || event.key === 'ז')))) {
         // Only handle if we're in editor mode and have an active editor
         if (mainViewMode === 'editor' && editorSharedRef.current) {
           event.preventDefault();
@@ -898,19 +1103,19 @@ function App() {
           }
         }
       }
+      // Print: Ctrl+P — handled separately in capture-phase listener above
       // Zen mode toggle with Ctrl+Q (English) or Ctrl+ק (Hebrew)
       if (isCtrlOrMeta && (event.key.toLowerCase() === 'q' || event.key === '/' || event.key === 'ק')) {
         event.preventDefault();
         toggleZenMode();
-      }
-      // Toggle formatting toolbar with Shift+Q (English) or Shift+/ 
+      }      // Toggle formatting toolbar with Shift+Q (English) or Shift+/ 
       if (event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key.toLowerCase() === 'q' || event.key === '/')) {
         event.preventDefault();
         toggleFormattingToolbar();
       }
       if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'f' || event.key === 'כ')) {
         event.preventDefault();
-        
+
         // If there's an active file in the editor, focus on the CodeMirror search
         if (appLevelActiveTabPath && mainViewMode === 'editor' && editorSharedRef.current) {
           // Try to open the in-file search panel
@@ -931,7 +1136,7 @@ function App() {
         setIsJudaismChatModalOpen(prev => !prev);
       }
       if (event.key === 'Escape') {
-         // Order of closing: Most specific/top-level modals first
+        // Order of closing: Most specific/top-level modals first
         if (tabsHook.unsavedChangesModal.isOpen) tabsHook.handleModalCancel();
         else if (aiFeaturesHook.isSmartSearchModalOpen) aiFeaturesHook.closeSmartSearchModal();
         else if (isPilpultaVisible) hidePilpulta();
@@ -956,36 +1161,41 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-      appLevelActiveTabPath, mainViewMode, fileOperationsHook.handleSaveFile, toggleZenMode, toggleFormattingToolbar,
-      searchHook.searchInputRef, contextMenuState.visible, handleCloseContextMenu,
-      handleToggleMainView, isTranscriptionModalOpen,
-      questionnaireHook.isModalOpen, questionnaireHook.closeQuestionnaireModal,
-      questionnaireHook.showNotificationSettings, questionnaireHook.setShowNotificationSettings,
-      isLearningGraphViewOpen, setIsLearningGraphViewOpen,
-      isJudaismChatModalOpen, setIsJudaismChatModalOpen,
-      isAiModelModalOpen, setIsAiModelModalOpen,
-      isApiKeyModalOpen, setIsApiKeyModalOpen,
-      isHelpModalOpen, setIsHelpModalOpen,
-      isFileConversionModalOpen, setIsFileConversionModalOpen,
-      isPilpultaVisible, hidePilpulta, // Added Pilpulta escape handling
-      isQuotaLimitModalOpen, hideQuotaLimitModal, // Added quota limit modal escape handling
-      isModelOverloadedModalOpen, hideModelOverloadedModal, // Added model overloaded modal escape handling
-      aiFeaturesHook.isSmartSearchModalOpen, aiFeaturesHook.closeSmartSearchModal, // Added Smart Search escape
-      tabsHook.unsavedChangesModal.isOpen, tabsHook.handleModalCancel, // Added UnsavedChanges modal escape
+    appLevelActiveTabPath, mainViewMode, fileOperationsHook.handleSaveFile, toggleZenMode, toggleFormattingToolbar,
+    searchHook.searchInputRef, contextMenuState.visible, handleCloseContextMenu,
+    handleToggleMainView, isTranscriptionModalOpen,
+    questionnaireHook.isModalOpen, questionnaireHook.closeQuestionnaireModal,
+    questionnaireHook.showNotificationSettings, questionnaireHook.setShowNotificationSettings,
+    isLearningGraphViewOpen, setIsLearningGraphViewOpen,
+    isJudaismChatModalOpen, setIsJudaismChatModalOpen,
+    isAiModelModalOpen, setIsAiModelModalOpen,
+    isApiKeyModalOpen, setIsApiKeyModalOpen,
+    isHelpModalOpen, setIsHelpModalOpen,
+    isFileConversionModalOpen, setIsFileConversionModalOpen,
+    isPilpultaVisible, hidePilpulta, // Added Pilpulta escape handling
+    isQuotaLimitModalOpen, hideQuotaLimitModal, // Added quota limit modal escape handling
+    isModelOverloadedModalOpen, hideModelOverloadedModal, // Added model overloaded modal escape handling
+    aiFeaturesHook.isSmartSearchModalOpen, aiFeaturesHook.closeSmartSearchModal, // Added Smart Search escape
+    tabsHook.unsavedChangesModal.isOpen, tabsHook.handleModalCancel, // Added UnsavedChanges modal escape
   ]);
 
-  // Add event listener for save requests from modal
+  // Capture-phase Ctrl+P interceptor — runs before CodeMirror can stop propagation
   useEffect(() => {
-    const handleSaveActiveFile = (event) => {
-      const { tabId } = event.detail;
-      if (tabId && appLevelActiveTabPath === tabId) {
-        fileOperationsHook.handleSaveFile();
+    const handlePrintCapture = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (mainViewMode === 'editor' && appLevelActiveTabPath) {
+          const activeTab = tabsHook.openTabs.find(t => t.id === appLevelActiveTabPath);
+          if (activeTab && activeTab.type === 'file' && activeTab.content !== undefined) {
+            printDocument(activeTab.content, activeTab.name);
+          }
+        }
       }
     };
-
-    window.addEventListener('saveActiveFile', handleSaveActiveFile);
-    return () => window.removeEventListener('saveActiveFile', handleSaveActiveFile);
-  }, [appLevelActiveTabPath, fileOperationsHook.handleSaveFile]);
+    window.addEventListener('keydown', handlePrintCapture, { capture: true });
+    return () => window.removeEventListener('keydown', handlePrintCapture, { capture: true });
+  }, [mainViewMode, appLevelActiveTabPath, tabsHook.openTabs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Transcription Modal Handlers ---
   const handleOpenTranscriptionModal = () => {
@@ -1011,8 +1221,8 @@ function App() {
   };
 
   const handleClearProcessedTextForModal = () => {
-      aiFeaturesHook.setProcessedText('');
-      aiFeaturesHook.setProcessingError(null);
+    aiFeaturesHook.setProcessedText('');
+    aiFeaturesHook.setProcessingError(null);
   };
 
   // --- Learning Graph Modal Handlers ---
@@ -1072,19 +1282,33 @@ function App() {
     setIsHelpModalOpen(false);
   };
 
+  const handleStartGuidedTour = () => {
+    setIsHelpModalOpen(false);
+    setIsGuidedTourOpen(true);
+  };
+
+  const handleCloseGuidedTour = () => {
+    setIsGuidedTourOpen(false);
+    localStorage.setItem('torah-ide-tour-completed', 'true');
+  };
+
   // --- File Conversion Modal Handlers ---
   const handleOpenFileConversionModal = () => {
     setIsFileConversionModalOpen(true);
   };
 
   const handleCloseFileConversionModal = (option = 'postpone') => {
+    console.log('handleCloseFileConversionModal called with option:', option);
     setIsFileConversionModalOpen(false);
-    
+
     if (option === 'never') {
-      // User clicked "Don't show again"
+      // User closed the modal - never show again on this browser
       localStorage.setItem('fileConversionNeverShow', 'true');
       localStorage.removeItem('fileConversionPostponedTime');
-      console.log('File conversion modal set to never show again');
+      setHasSeenWelcomeModal(true); // Update state so useEffect won't trigger again
+      console.log('✅ Welcome modal closed - will NEVER show again');
+      console.log('✅ localStorage.fileConversionNeverShow =', localStorage.getItem('fileConversionNeverShow'));
+      console.log('✅ hasSeenWelcomeModal state set to:', true);
     } else if (option === 'postpone') {
       // User clicked "I'll do it later" or closed the modal - store timestamp for 5-hour reminder
       const currentTime = Date.now();
@@ -1095,6 +1319,7 @@ function App() {
       // User completed conversion successfully - clear all restrictions
       localStorage.removeItem('fileConversionNeverShow');
       localStorage.removeItem('fileConversionPostponedTime');
+      setHasSeenWelcomeModal(true); // Mark as seen to prevent re-showing
       console.log('File conversion completed successfully - cleared all restrictions');
     }
   };
@@ -1114,12 +1339,12 @@ function App() {
 
   const handleSingleFileConversionSuccess = (result) => {
     console.log('File conversion successful:', result);
-    
+
     // Refresh the workspace structure to show the new file
     if (singleFileConversionData && singleFileConversionData.baseFolder) {
       workspaceHook.refreshWorkspaceFolder(singleFileConversionData.baseFolder.path);
     }
-    
+
     // Close the modal
     handleCloseSingleFileConversionModal();
   };
@@ -1151,15 +1376,15 @@ function App() {
     localStorage.setItem('selectedAiModel', model);
     // No need to close here, modal component does it onClick
   };
-  
+
   const handleAddCustomModel = (modelName) => {
     if (!modelName || defaultAiModels.includes(modelName) || customModels.includes(modelName)) {
       return; // Don't add if empty, already in default list, or already added as custom
     }
-    
+
     const updatedCustomModels = [...customModels, modelName];
     setCustomModels(updatedCustomModels);
-    
+
     // Store the updated custom models in localStorage
     localStorage.setItem('customAiModels', JSON.stringify(updatedCustomModels));
   };
@@ -1170,16 +1395,121 @@ function App() {
   const isEditorToolbarDisabled = isAnyAiLoading || !!globalLoadingMessage || isAnyModalOpen;
   const isGlobalActionDisabled = !!globalLoadingMessage || isAnyModalOpen;
 
+  // --- Drag & Drop handlers ---
+  const handleDraggedTextFile = useCallback((fileName, content) => {
+    const tabId = `__dragged__::${fileName}`;
+    // If the tab already exists, just activate it and update its content
+    const existing = tabsHook.openTabs.find(t => t.id === tabId);
+    if (existing) {
+      tabsHook.setActiveTabPath(tabId);
+      setMainViewMode('editor');
+      return;
+    }
+    const newTab = {
+      id: tabId,
+      name: fileName,
+      basePath: '__dragged__',
+      relativePath: fileName,
+      type: 'file',
+      content,
+      isDirty: false,
+      isNewUnsaved: true, // treat like unsaved so content persists in localStorage
+      scrollPosition: 0,
+    };
+    tabsHook.setOpenTabs(prev => [...prev, newTab]);
+    tabsHook.setActiveTabPath(tabId);
+    setMainViewMode('editor');
+  }, [tabsHook, setMainViewMode]);
+
+  const handleDraggedBinaryFile = useCallback((fileName, fileType, objectUrl) => {
+    const tabId = `__dragged__::${fileName}`;
+    const existing = tabsHook.openTabs.find(t => t.id === tabId);
+    if (existing) {
+      tabsHook.setActiveTabPath(tabId);
+      setMainViewMode('editor');
+      return;
+    }
+    const newTab = {
+      id: tabId,
+      name: fileName,
+      basePath: '__dragged__',
+      relativePath: fileName,
+      type: fileType,
+      content: null,
+      isDirty: false,
+      isNewUnsaved: false,
+      scrollPosition: 0,
+      ...(fileType === 'image' && { imageUrl: objectUrl }),
+      ...(fileType === 'pdf'   && { pdfUrl: objectUrl }),
+      ...(fileType === 'audio' && { audioUrl: objectUrl }),
+      ...(fileType === 'video' && { videoUrl: objectUrl }),
+    };
+    tabsHook.setOpenTabs(prev => [...prev, newTab]);
+    tabsHook.setActiveTabPath(tabId);
+    setMainViewMode('editor');
+  }, [tabsHook, setMainViewMode]);
+
+  const handleDraggedConversion = useCallback((newFileName, markdownContent) => {
+    const tabId = `__dragged__::${newFileName}`;
+    const existing = tabsHook.openTabs.find(t => t.id === tabId);
+    if (existing) {
+      // Update content in existing tab
+      tabsHook.setOpenTabs(prev => prev.map(t => t.id === tabId ? { ...t, content: markdownContent } : t));
+      tabsHook.setActiveTabPath(tabId);
+      setMainViewMode('editor');
+      return;
+    }
+    const newTab = {
+      id: tabId,
+      name: newFileName,
+      basePath: '__dragged__',
+      relativePath: newFileName,
+      type: 'file',
+      content: markdownContent,
+      isDirty: false,
+      isNewUnsaved: true,
+      scrollPosition: 0,
+    };
+    tabsHook.setOpenTabs(prev => [...prev, newTab]);
+    tabsHook.setActiveTabPath(tabId);
+    setMainViewMode('editor');
+  }, [tabsHook, setMainViewMode]);
+
+  const { isDragOver, dragError, setDragError, dragHandlers } = useDragAndDrop({
+    onOpenTextTab: handleDraggedTextFile,
+    onOpenBinaryTab: handleDraggedBinaryFile,
+    onConversionResult: handleDraggedConversion,
+    setGlobalLoadingMessage,
+  });
 
   return (
-    <div className="app-container">
+    <div className={[
+      'app-container',
+      isZenMode ? 'is-zen-mode' : '',
+      focusHook.isFocusMode && focusHook.focusUiPrefs.hideTopbar ? 'focus-hide-topbar' : '',
+      focusHook.isFocusMode && focusHook.focusUiPrefs.hideEditorToolbar ? 'focus-hide-editor-toolbar' : '',
+    ].filter(Boolean).join(' ')}
+    {...dragHandlers}
+    >
       {globalLoadingMessage && (
-        <div style={{
-          position: 'fixed', top: '10px', left: '50%', transform: 'translateX(-50%)',
-          backgroundColor: '#2c5282', color: 'white', padding: '8px 15px',
-          borderRadius: '4px', zIndex: 2000, /* fontSize removed */ boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-        }}>
+        <div className="global-loading-banner">
           {globalLoadingMessage}
+        </div>
+      )}
+
+      {/* Drag & Drop overlay */}
+      {isDragOver && (
+        <div className="drag-drop-overlay">
+          <div className="drag-drop-overlay__inner">
+            <div className="drag-drop-overlay__icon">↓</div>
+            <div className="drag-drop-overlay__text">שחרר קובץ לפתיחה</div>
+            <div className="drag-drop-overlay__subtext">טקסט • תמונות • PDF • אודיו • וידאו • DOCX</div>
+          </div>
+        </div>
+      )}
+      {dragError && (
+        <div className="drag-drop-error-banner" onClick={() => setDragError('')}>
+          {dragError} ×
         </div>
       )}
       {contextMenuState.visible && (
@@ -1192,37 +1522,71 @@ function App() {
           baseFolder={contextMenuState.baseFolder}
         />
       )}
+      {isZenMode && !focusHook.isFocusMode && (
+        <button
+          className="zen-floating-toggle btn btn-subtle"
+          onClick={toggleZenMode}
+          disabled={isAnyModalOpen}
+          title={HEBREW_TEXT.zenMode(isZenMode)}
+        >
+          צא מ־Zen
+        </button>
+      )}
+      {focusHook.isFocusMode && (
+        <FocusModePanel
+          phase={focusHook.phase}
+          secondsLeft={focusHook.secondsLeft}
+          workMinutes={focusHook.workMinutes}
+          breakMinutes={focusHook.breakMinutes}
+          setWorkMinutes={focusHook.setWorkMinutes}
+          setBreakMinutes={focusHook.setBreakMinutes}
+          startWork={focusHook.startWork}
+          pauseTimer={focusHook.pauseTimer}
+          resetTimer={focusHook.resetTimer}
+          exitFocusMode={focusHook.exitFocusMode}
+          todayStats={focusHook.todayStats}
+          focusUiPrefs={focusHook.focusUiPrefs}
+          setFocusUiPrefs={focusHook.setFocusUiPrefs}
+          PHASE_WORK={focusHook.PHASE_WORK}
+          PHASE_BREAK={focusHook.PHASE_BREAK}
+          PHASE_IDLE={focusHook.PHASE_IDLE}
+          PHASE_PAUSED={focusHook.PHASE_PAUSED}
+        />
+      )}
       {/* Header-like section - can be extracted to its own component later if needed */}
-      <div style={{ padding: '10px 15px', borderBottom: `1px solid var(--theme-border-color)`, backgroundColor: `var(--theme-bg-secondary)`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div className="app-topbar" data-tutorial="app-topbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {!isZenMode && <h1 style={{ margin: 0, /* fontSize removed */ color: `var(--theme-text-primary)`, whiteSpace: 'nowrap' }}>{HEBREW_TEXT.appName}</h1>}
           {!isZenMode && (
             <>
               {/* Changed btn-primary to btn and removed inline style */}
+              <button className="btn" onClick={() => handleToggleMainView('editor')} disabled={isGlobalActionDisabled || mainViewMode === 'editor'} title="חזרה לעורך הטקסט הראשי">בית</button>
               <button className="btn" onClick={handleCreateNewFileAction} disabled={workspaceHook.workspaceFolders.length === 0 || workspaceHook.isAddingFolder || isGlobalActionDisabled} title={HEBREW_TEXT.createNewFileGlobal}>{HEBREW_TEXT.newFile}</button>
               {/* Save button */}
               <button className="btn" onClick={() => fileOperationsHook.handleSaveFile()} disabled={!appLevelActiveTabPath || tabsHook.isLoadingFileContent || mainViewMode !== 'editor' || isGlobalActionDisabled} title={HEBREW_TEXT.save}>שמור</button>
               {/* Changed btn-danger to btn */}
               <button className="btn" onClick={handleDeleteActiveFileAction} disabled={!appLevelActiveTabPath || tabsHook.isLoadingFileContent || mainViewMode !== 'editor' || isGlobalActionDisabled} title={HEBREW_TEXT.deleteActiveFile}>{HEBREW_TEXT.deleteItem}</button>
 
-              {mainViewMode === 'editor' && activeTabObject && activeTabObject.type === 'file' && (
+              {/* Non-AI editor tools — shown only when in editor mode */}
+              {mainViewMode === 'editor' && (
                 <>
-                  {/* Changed btn-primary to btn and removed inline style */}
-                  <button className="btn" onClick={aiFeaturesHook.generateSummary} disabled={isEditorToolbarDisabled || aiFeaturesHook.isLoadingSummary} title={HEBREW_TEXT.generateSummary}>
-                    {aiFeaturesHook.isLoadingSummary ? HEBREW_TEXT.generatingSummary : HEBREW_TEXT.generateSummary}
+                  <button className="btn" onClick={handleUndo} disabled={isGlobalActionDisabled || !appLevelActiveTabPath} title="חזור לשינוי הקודם (Ctrl+Z)">↶ חזור</button>
+                  <button className="btn" onClick={handleRedo} disabled={isGlobalActionDisabled || !appLevelActiveTabPath} title="חזור לשינוי הבא (Ctrl+Y)">↷ קדימה</button>
+                  <button
+                    title={HEBREW_TEXT.repetitions?.title || "חזרות"}
+                    onClick={() => handleToggleMainView('repetitions')}
+                    disabled={isGlobalActionDisabled}
+                    className="btn"
+                    style={{ position: 'relative' }}
+                  >
+                    {HEBREW_TEXT.repetitions?.title || "חזרות"}
+                    {repetitionsHook?.hasRepetitionsDueToday?.() && (
+                      <span style={{ position: 'absolute', top: '4px', right: '4px', width: '10px', height: '10px', backgroundColor: '#ef4444', borderRadius: '50%', border: '1px solid white', boxSizing: 'border-box' }} />
+                    )}
                   </button>
                 </>
               )}
-              {(mainViewMode === 'flashcards' || mainViewMode === 'summary' || mainViewMode === 'sourceResults' || mainViewMode === 'repetitions' || mainViewMode === 'weeklySummary' || mainViewMode === 'learningGraph') && (
-                <button className="btn" onClick={() => handleToggleMainView('editor')} title={HEBREW_TEXT.returnToEditor} disabled={isGlobalActionDisabled}>
-                  {HEBREW_TEXT.returnToEditor}
-                </button>
-              )}
-              <QuestionnaireButton
-                onClick={() => questionnaireHook.openQuestionnaireModal()} // Opens for today by default
-                disabled={isGlobalActionDisabled || questionnaireHook.isLoadingQuestionnaire}
-                notificationActive={questionnaireHook.shouldShowReminderIcon}
-              />
+
               <LearningGraphButton
                 onClick={handleOpenLearningGraph}
                 disabled={isGlobalActionDisabled || learningGraphHook.isLoadingGraph}
@@ -1234,6 +1598,7 @@ function App() {
                 onClick={handleOpenAiModelModal}
                 disabled={isGlobalActionDisabled}
                 title={HEBREW_TEXT.selectAiModelTitle || "בחר מודל בינה מלאכותית"}
+                data-tutorial="ai-model-button"
               >
                 {HEBREW_TEXT.selectAiModelButton || "בחר מודל AI"} ({selectedAiModel})
               </button>
@@ -1249,216 +1614,224 @@ function App() {
               >
                 {HEBREW_TEXT.geminiApiKeyButton}
               </button>
-              
+
               {/* Help Button */}
               <button
                 className="btn"
                 onClick={handleOpenHelpModal}
                 disabled={isGlobalActionDisabled}
                 title={HEBREW_TEXT.helpButtonTooltip}
+                data-tutorial="help-button"
               >
                 {HEBREW_TEXT.helpButton}
               </button>
-              
-              {/* File Conversion Button - moved before settings */}
-              <button
-                className="btn"
-                onClick={handleOpenFileConversionFromSettings}
-                disabled={isGlobalActionDisabled}
-                title="המרת קבצים לפורמט Markdown"
-              >
-                המרת קבצים
-              </button>
-              
+
               <button
                 onClick={() => setIsSettingsModalOpen(true)}
                 disabled={isGlobalActionDisabled}
                 title="הגדרות התוכנה"
-                className="btn btn-icon" // Using btn-icon for the gear
+                className="btn btn-icon"
+                data-tutorial="settings-button" // Using btn-icon for the gear
                 style={{ /* fontSize removed */ }}
-                >
+              >
                 ⚙️
               </button>
             </>
           )}
-          {workspaceHook.addFolderError && !isZenMode && <span style={{ color: '#fc8181', marginLeft: '10px', /* fontSize removed */ }}>{HEBREW_TEXT.addFolderError}: {workspaceHook.addFolderError}</span>}
+          {workspaceHook.addFolderError && <span style={{ color: '#fc8181', marginLeft: '10px' }}>{HEBREW_TEXT.addFolderError}: {workspaceHook.addFolderError}</span>}
         </div>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-          {!isZenMode && (
-            <>
-              {/* Removed conditional btn-primary/btn-subtle, always use btn */}
-              <button className={`btn`} onClick={editorSettingsHook.toggleShowLineNumbers} disabled={isAnyModalOpen} title={HEBREW_TEXT.toggleLineNumbers(editorSettingsHook.showLineNumbers)}>{editorSettingsHook.showLineNumbers ? 'מספרים ✓' : 'מספרים ✕'}</button>
-              {/* Keep Zen mode toggle as is for now, unless user wants it changed too */}
-              <button className={`btn ${isZenMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleZenMode} disabled={isAnyModalOpen} title={HEBREW_TEXT.zenMode(isZenMode)}>{isZenMode ? 'Zen ✓' : 'Zen ✕'}</button>
-            </>
-          )}
-          {/* Show only zen button when in zen mode - but only if not in editor with markdown file */}
-          {isZenMode && !(mainViewMode === 'editor' && activeTabObject && activeTabObject.id?.toLowerCase().endsWith('.md')) && (
-            <button className={`btn btn-primary`} onClick={toggleZenMode} disabled={isAnyModalOpen} title={HEBREW_TEXT.zenMode(isZenMode)}>Zen ✓</button>
-          )}
+          <>
+            <button data-tutorial="focus-button" className={`btn ${focusHook.isFocusMode ? 'btn-primary' : 'btn-subtle'}`} onClick={() => focusHook.isFocusMode ? focusHook.exitFocusMode() : focusHook.enterFocusMode()} disabled={isAnyModalOpen} title="מצב מיקוד עם טיימר פומודורו">{focusHook.isFocusMode ? 'מיקוד ✓' : 'מיקוד'}</button>
+            <button data-tutorial="split-button" className={`btn ${isSplitMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleSplitMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="פצל עורך — הצג שני קבצים זה לצד זה">{isSplitMode ? 'פצל ✓' : 'פצל'}</button>
+            <button data-tutorial="annotations-button" className={`btn ${annotationsHook.isAnnotationMode ? 'btn-primary' : 'btn-subtle'}`} onClick={annotationsHook.toggleAnnotationMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="הערות שוליים — סמן טקסט והוסף הערות">{annotationsHook.isAnnotationMode ? 'הערות ✓' : 'הערות'}</button>
+            <button data-tutorial="bookmarks-button" className={`btn ${bookmarksHook.isPanelOpen ? 'btn-primary' : 'btn-subtle'}`} onClick={bookmarksHook.togglePanel} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="סימניות — שמור קטעי טקסט ממקורות שונים">סימניות{bookmarksHook.isPanelOpen ? ' ✓' : ''}</button>
+          </>
         </div>
       </div>
 
-      {mainViewMode === 'editor' && !isZenMode && (
+      {mainViewMode === 'editor' && (
+        <ErrorBoundary name="סרגל כלים">
           <EditorToolbar
             onFindSources={aiFeaturesHook.findJewishSources}
             isFindingSources={aiFeaturesHook.isLoadingSourceFinding}
-            isAiFeaturesActive={isEditorToolbarDisabled || aiFeaturesHook.isLoadingPilpulta || aiFeaturesHook.isLoadingSmartSearch} // Disable toolbar during Pilpulta/SmartSearch loading too
+            isAiFeaturesActive={isEditorToolbarDisabled || aiFeaturesHook.isLoadingPilpulta || aiFeaturesHook.isLoadingSmartSearch}
             onOpenTranscriptionModal={handleOpenTranscriptionModal}
-            onGeneratePilpulta={aiFeaturesHook.generatePilpulta} // Pass Pilpulta handler
-            onOpenSmartSearchModal={aiFeaturesHook.openSmartSearchModal} // Pass Smart Search handler
-            onGenerateFlashcards={aiFeaturesHook.generateFlashcards} // Pass Flashcards handler
-            isGeneratingFlashcards={aiFeaturesHook.isLoadingFlashcards} // Pass flashcards loading state
-            editorFontSize={editorFontSize} // Pass down font size
-            onEditorFontSizeChange={handleEditorFontSizeChange} // Pass down handler
-            presentationFontSize={presentationFontSize} // Pass down presentation font size
-            onPresentationFontSizeChange={handlePresentationFontSizeChange} // Pass down presentation handler
-            appFont={appFont} // Pass app font
-            editorFont={editorFont} // Pass editor font
-            onAppFontChange={handleAppFontChange} // Pass app font change handler
-            onEditorFontChange={handleEditorFontChange} // Pass editor font change handler
-            handleToggleMainView={handleToggleMainView} // Pass function to toggle main view
-            mainViewMode={mainViewMode} // Pass current main view mode
-            activeTabObject={activeTabObject} // Pass active tab object to check file type
-            repetitionsHook={repetitionsHook} // Pass repetitions hook for notifications
-            editorRef={editorSharedRef} // Pass editor reference for undo functionality
+            onGeneratePilpulta={aiFeaturesHook.generatePilpulta}
+            onOpenSmartSearchModal={aiFeaturesHook.openSmartSearchModal}
+            onGenerateFlashcards={aiFeaturesHook.generateFlashcards}
+            isGeneratingFlashcards={aiFeaturesHook.isLoadingFlashcards}
+            activeTabObject={activeTabObject}
+            onGenerateSummary={aiFeaturesHook.generateSummary}
+            isLoadingSummary={aiFeaturesHook.isLoadingSummary}
+            onOpenQuestionnaire={() => questionnaireHook.openQuestionnaireModal()}
+            questionnaireNotificationActive={questionnaireHook.shouldShowReminderIcon}
+            isLoadingQuestionnaire={questionnaireHook.isLoadingQuestionnaire}
+            onOpenAramaicStudy={aramaicStudyHook.openModal}
+            onOpenTextAnalysis={textAnalysisHook.openModal}
           />
+        </ErrorBoundary>
       )}
 
       {/* This div will now use the .app-layout class */}
-      <div className="app-layout">
-        {!isZenMode && (
-          <Sidebar
-            className="sidebar" // Added class
-            workspaceFolders={workspaceHook.workspaceFolders}
-            folderPathInput={workspaceHook.folderPathInput}
-            setFolderPathInput={workspaceHook.setFolderPathInput}
-            handleAddFolder={workspaceHook.addWorkspaceFolder}
-            isAddingFolder={workspaceHook.isAddingFolder}
-            addFolderError={workspaceHook.addFolderError}
+      <div className={`app-layout ${isZenMode ? 'is-zen-mode' : ''}`.trim()}>
+        {(!isZenMode && !(focusHook.isFocusMode && focusHook.focusUiPrefs.hideSidebar)) && (
+          <ErrorBoundary name="סייד-בר">
+            <Sidebar
+              className="sidebar"
+              style={{ width: sidebarWidth }}
+              workspaceFolders={workspaceHook.workspaceFolders}
+              folderPathInput={workspaceHook.folderPathInput}
+              setFolderPathInput={workspaceHook.setFolderPathInput}
+              handleAddFolder={workspaceHook.addWorkspaceFolder}
+              isAddingFolder={workspaceHook.isAddingFolder}
+              addFolderError={workspaceHook.addFolderError}
+              mainViewMode={mainViewMode}
+              handleToggleMainView={handleToggleMainView}
+              handleFileSelect={tabsHook.handleFileSelect}
+              currentSearchScope={searchHook.currentSearchScope}
+              searchTerm={searchHook.searchTerm}
+              setSearchTerm={searchHook.setSearchTerm}
+              handleSearch={searchHook.handleSearch}
+              isSearching={searchHook.isSearching}
+              searchError={searchHook.searchError}
+              setSearchError={searchHook.setSearchError}
+              searchResults={searchHook.searchResults}
+              setSearchResults={searchHook.setSearchResults}
+              searchInputRef={searchHook.searchInputRef}
+              setCurrentSearchScope={searchHook.setCurrentSearchScope}
+              handleSetSearchScopeAndTriggerSearch={searchHook.handleSetSearchScopeAndTriggerSearch}
+              onContextMenuRequest={handleContextMenuRequest}
+              startRenameInExplorerUI={workspaceHook.startRenameInExplorerUI}
+              clearRenameFlagInExplorerUI={workspaceHook.clearRenameFlagInExplorerUI}
+              renameItemInExplorer={fileOperationsHook.renameItemInExplorer}
+              dropItemInExplorer={fileOperationsHook.dropItemInExplorer}
+              createNewFileFromExplorer={fileOperationsHook.createNewFileFromExplorer}
+              createNewFolderFromExplorer={handleCreateFolderFromSidebar}
+              deleteItemFromExplorer={handleDeleteFromSidebar}
+              setContextMenuState={setContextMenuState}
+              globalLoadingMessage={globalLoadingMessage}
+              handleRemoveWorkspaceFolder={handleActualRemoveWorkspaceFolder}
+              isSidebarDisabled={isAnyModalOpen}
+              onOpenJudaismChat={handleOpenJudaismChatModal}
+              onOpenImportExport={() => setIsImportExportModalOpen(true)}
+              pendingFolders={workspaceHook.pendingFolders}
+              restoringPendingFolder={workspaceHook.restoringPendingFolder}
+              onRestorePendingFolder={workspaceHook.restorePendingFolder}
+            />
+          </ErrorBoundary>
+        )}
+        {(!isZenMode && !(focusHook.isFocusMode && focusHook.focusUiPrefs.hideSidebar)) && (
+          <div className="resize-handle" onMouseDown={onDragStart} />
+        )}
+        <ErrorBoundary name="עורך ראשי">
+          <MainContentArea
+            className="main-content-area"
             mainViewMode={mainViewMode}
-            handleToggleMainView={handleToggleMainView}
+            openTabs={tabsHook.openTabs}
+            activeTabPath={appLevelActiveTabPath}
+            activeTabObject={activeTabObject}
+            editorFontSize={editorFontSize} // Pass editorFontSize to MainContentArea
+            editorFont={editorFont} // Pass editorFont to MainContentArea
+            presentationFontSize={presentationFontSize} // Pass presentationFontSize to MainContentArea
+            selectedAiModel={selectedAiModel} // Pass selectedAiModel to MainContentArea
+            showFormattingToolbar={showFormattingToolbar} // Pass formatting toolbar state
+            toggleFormattingToolbar={toggleFormattingToolbar} // Pass formatting toolbar toggle function
+            toggleShowLineNumbers={editorSettingsHook.toggleShowLineNumbers} // Pass line numbers toggle function
+            showLineNumbers={editorSettingsHook.showLineNumbers} // Pass line numbers state
+            handleTabClick={tabsHook.handleTabClick}
+            handleCloseTab={tabsHook.handleCloseTab}
+            handleOpenNewTab={tabsHook.handleOpenNewTab} // Pass the new handler
+            savingTabPath={fileOperationsHook.savingTabPath}
+            isAutoSaving={isAutoSaving}
+            editorSharedRef={editorSharedRef}
+            isSplitMode={isSplitMode}
+            rightPaneTabPath={rightPaneTabPath}
+            rightPaneTabObject={rightPaneTabPath ? tabsHook.openTabs.find(t => t.id === rightPaneTabPath) : null}
+            onRightPaneTabClick={setRightPaneTabPath}
+            handleRightPaneEditorChange={handleRightPaneEditorChange}
+            rightEditorRef={rightEditorRef}
+            isAnnotationMode={annotationsHook.isAnnotationMode}
+            annotations={annotationsHook.annotations}
+            selectedAnnotationId={annotationsHook.selectedAnnotationId}
+            onSelectAnnotation={annotationsHook.setSelectedAnnotationId}
+            onUpdateAnnotation={annotationsHook.updateAnnotation}
+            onDeleteAnnotation={annotationsHook.deleteAnnotation}
+            onAddAnnotation={annotationsHook.addAnnotation}
+            drawingsHook={drawingsHook}
+            bookmarks={bookmarksHook.bookmarks}
+            isBookmarkPanelOpen={bookmarksHook.isPanelOpen}
+            onAddBookmark={bookmarksHook.addBookmark}
+            onDeleteBookmark={bookmarksHook.deleteBookmark}
+            onUpdateBookmark={bookmarksHook.updateBookmark}
+            onToggleBookmarkPin={bookmarksHook.togglePin}
+            onCloseBookmarkPanel={() => bookmarksHook.setIsPanelOpen(false)}
+            isLoadingFileContent={tabsHook.isLoadingFileContent}
+            fileError={tabsHook.fileError}
+            handleEditorChange={tabsHook.handleEditorChange}
+            searchTermToHighlightInEditor={searchHook.searchTermToHighlightInEditor}
+            scrollToLine={editorSettingsHook.scrollToLine}
+            highlightActiveLine={editorSettingsHook.highlightActiveLine}
+            initialScrollPosition={getCurrentScrollPosition()}
+            onScrollPositionChange={handleScrollPositionChange}
+
+            flashcardData={aiFeaturesHook.flashcardData}
+            isLoadingFlashcards={aiFeaturesHook.isLoadingFlashcards}
+            flashcardError={aiFeaturesHook.flashcardError}
+            setMainViewMode={setMainViewMode}
+            generateFlashcards={aiFeaturesHook.generateFlashcards}
+
+            summaryText={aiFeaturesHook.summaryText}
+            isLoadingSummary={aiFeaturesHook.isLoadingSummary}
+            summaryError={aiFeaturesHook.summaryError}
+            saveSummary={aiFeaturesHook.saveSummary}
+            discardSummary={aiFeaturesHook.discardSummary}
+            generateSummary={aiFeaturesHook.generateSummary}
+
+            sourceFindingResults={aiFeaturesHook.sourceFindingResults}
+            isLoadingSourceFinding={aiFeaturesHook.isLoadingSourceFinding}
+            sourceFindingError={aiFeaturesHook.sourceFindingError}
+            findJewishSources={aiFeaturesHook.findJewishSources}
+            saveSourceFindingResults={aiFeaturesHook.saveSourceFindingResults}
+            discardSourceFindingResults={aiFeaturesHook.discardSourceFindingResults}
+
+            generatePilpultaFromSelectedText={aiFeaturesHook.generatePilpultaFromSelectedText}
+            findJewishSourcesFromSelectedText={aiFeaturesHook.findJewishSourcesFromSelectedText}
+            generateFlashcardsFromSelectedText={aiFeaturesHook.generateFlashcardsFromSelectedText}
+            generateSummaryFromSelectedText={aiFeaturesHook.generateSummaryFromSelectedText}
+            organizeSelectedText={aiFeaturesHook.organizeSelectedText}
+
+            searchResults={searchHook.searchResults}
             handleFileSelect={tabsHook.handleFileSelect}
-            currentSearchScope={searchHook.currentSearchScope}
             searchTerm={searchHook.searchTerm}
             setSearchTerm={searchHook.setSearchTerm}
-            handleSearch={searchHook.handleSearch}
-            isSearching={searchHook.isSearching}
-            searchError={searchHook.searchError}
-            setSearchError={searchHook.setSearchError}
-            searchResults={searchHook.searchResults}
-            setSearchResults={searchHook.setSearchResults}
             searchInputRef={searchHook.searchInputRef}
-            setCurrentSearchScope={searchHook.setCurrentSearchScope}
-            handleSetSearchScopeAndTriggerSearch={searchHook.handleSetSearchScopeAndTriggerSearch}
-            recentFiles={statsHook.recentFiles}
-            frequentFiles={statsHook.frequentFiles}
-            isLoadingStats={statsHook.isLoadingStats}
-            statsError={statsHook.statsError}
-            fetchStatsFiles={statsHook.fetchStatsFiles}
-            onContextMenuRequest={handleContextMenuRequest}
-            startRenameInExplorerUI={workspaceHook.startRenameInExplorerUI}
-            clearRenameFlagInExplorerUI={workspaceHook.clearRenameFlagInExplorerUI}
-            renameItemInExplorer={fileOperationsHook.renameItemInExplorer}
-            dropItemInExplorer={fileOperationsHook.dropItemInExplorer}
-            createNewFileFromExplorer={fileOperationsHook.createNewFileFromExplorer}
-            createNewFolderFromExplorer={handleCreateFolderFromSidebar}
-            deleteItemFromExplorer={handleDeleteFromSidebar}
-            setContextMenuState={setContextMenuState}
+            searchError={searchHook.searchError}
+            isLoadingSearch={searchHook.isSearching}
+            currentSearchScope={searchHook.currentSearchScope}
+            clearSearchScope={clearSearchScopeAndRelatedState}
+            handleSearch={searchHook.handleSearch}
+
+            searchOptions={searchHook.searchOptions}
+            handleSearchOptionChange={searchHook.handleSearchOptionChange}
+            includePatternsInput={searchHook.includePatternsInput}
+            handleIncludePatternsChange={searchHook.handleIncludePatternsChange}
+            excludePatternsInput={searchHook.excludePatternsInput}
+            handleExcludePatternsChange={searchHook.handleExcludePatternsChange}
+
+            userSnapshotHook={userSnapshotHook}
+
+            repetitionsHook={repetitionsHook}
+            onCloseRepetitionView={() => handleToggleMainView('editor')}
+
+            questionnaireHook={questionnaireHook}
+            learningGraphHook={learningGraphHook} // Pass learning graph hook
+
+            workspaceFolders={workspaceHook.workspaceFolders}
             globalLoadingMessage={globalLoadingMessage}
-            handleRemoveWorkspaceFolder={handleActualRemoveWorkspaceFolder}
-            isSidebarDisabled={isAnyModalOpen}
-            onOpenJudaismChat={handleOpenJudaismChatModal}
+            isContentAreaDisabled={isAnyModalOpen}
           />
-        )}
-        <MainContentArea
-          className="main-content-area" // Added class
-          mainViewMode={mainViewMode}
-          openTabs={tabsHook.openTabs}
-          activeTabPath={appLevelActiveTabPath}
-          activeTabObject={activeTabObject}
-          editorFontSize={editorFontSize} // Pass editorFontSize to MainContentArea
-          editorFont={editorFont} // Pass editorFont to MainContentArea
-          presentationFontSize={presentationFontSize} // Pass presentationFontSize to MainContentArea
-          selectedAiModel={selectedAiModel} // Pass selectedAiModel to MainContentArea
-          isZenMode={isZenMode} // Pass zen mode state
-          showFormattingToolbar={showFormattingToolbar} // Pass formatting toolbar state
-          toggleZenMode={toggleZenMode} // Pass zen mode toggle function
-          toggleFormattingToolbar={toggleFormattingToolbar} // Pass formatting toolbar toggle function
-          toggleShowLineNumbers={editorSettingsHook.toggleShowLineNumbers} // Pass line numbers toggle function
-          showLineNumbers={editorSettingsHook.showLineNumbers} // Pass line numbers state
-          handleTabClick={tabsHook.handleTabClick}
-          handleCloseTab={tabsHook.handleCloseTab}
-          handleOpenNewTab={tabsHook.handleOpenNewTab} // Pass the new handler
-          savingTabPath={fileOperationsHook.savingTabPath}
-          editorSharedRef={editorSharedRef}
-          isLoadingFileContent={tabsHook.isLoadingFileContent}
-          fileError={tabsHook.fileError}
-          handleEditorChange={tabsHook.handleEditorChange}
-          searchTermToHighlightInEditor={searchHook.searchTermToHighlightInEditor}
-          scrollToLine={editorSettingsHook.scrollToLine}
-          highlightActiveLine={editorSettingsHook.highlightActiveLine}
-          initialScrollPosition={getCurrentScrollPosition()}
-          onScrollPositionChange={handleScrollPositionChange}
-
-          flashcardData={aiFeaturesHook.flashcardData}
-          isLoadingFlashcards={aiFeaturesHook.isLoadingFlashcards}
-          flashcardError={aiFeaturesHook.flashcardError}
-          setMainViewMode={setMainViewMode}
-          generateFlashcards={aiFeaturesHook.generateFlashcards}
-
-          summaryText={aiFeaturesHook.summaryText}
-          isLoadingSummary={aiFeaturesHook.isLoadingSummary}
-          summaryError={aiFeaturesHook.summaryError}
-          saveSummary={aiFeaturesHook.saveSummary}
-          discardSummary={aiFeaturesHook.discardSummary}
-          generateSummary={aiFeaturesHook.generateSummary}
-
-          sourceFindingResults={aiFeaturesHook.sourceFindingResults}
-          isLoadingSourceFinding={aiFeaturesHook.isLoadingSourceFinding}
-          sourceFindingError={aiFeaturesHook.sourceFindingError}
-          findJewishSources={aiFeaturesHook.findJewishSources}
-          saveSourceFindingResults={aiFeaturesHook.saveSourceFindingResults}
-          discardSourceFindingResults={aiFeaturesHook.discardSourceFindingResults}
-
-          generatePilpultaFromSelectedText={aiFeaturesHook.generatePilpultaFromSelectedText}
-          findJewishSourcesFromSelectedText={aiFeaturesHook.findJewishSourcesFromSelectedText}
-          generateFlashcardsFromSelectedText={aiFeaturesHook.generateFlashcardsFromSelectedText}
-          generateSummaryFromSelectedText={aiFeaturesHook.generateSummaryFromSelectedText}
-          organizeSelectedText={aiFeaturesHook.organizeSelectedText}
-
-          searchResults={searchHook.searchResults}
-          handleFileSelect={tabsHook.handleFileSelect}
-          searchTerm={searchHook.searchTerm}
-          searchError={searchHook.searchError}
-          isLoadingSearch={searchHook.isSearching}
-          currentSearchScope={searchHook.currentSearchScope}
-          clearSearchScope={clearSearchScopeAndRelatedState}
-          handleSearch={searchHook.handleSearch}
-
-          searchOptions={searchHook.searchOptions}
-          handleSearchOptionChange={searchHook.handleSearchOptionChange}
-          includePatternsInput={searchHook.includePatternsInput}
-          handleIncludePatternsChange={searchHook.handleIncludePatternsChange}
-          excludePatternsInput={searchHook.excludePatternsInput}
-          handleExcludePatternsChange={searchHook.handleExcludePatternsChange}
-
-          recentFiles={statsHook.recentFiles}
-          frequentFiles={statsHook.frequentFiles}
-          isLoadingStats={statsHook.isLoadingStats}
-          statsError={statsHook.statsError}
-          fetchStatsFiles={statsHook.fetchStatsFiles}
-
-          repetitionsHook={repetitionsHook}
-          onCloseRepetitionView={() => handleToggleMainView('editor')}
-
-          questionnaireHook={questionnaireHook}
-          learningGraphHook={learningGraphHook} // Pass learning graph hook
-
-          workspaceFolders={workspaceHook.workspaceFolders}
-          globalLoadingMessage={globalLoadingMessage}
-          isContentAreaDisabled={isAnyModalOpen}
-        />
+        </ErrorBoundary>
       </div>
       {questionnaireHook.isModalOpen && (
         <QuestionnaireModal
@@ -1470,30 +1843,47 @@ function App() {
           error={questionnaireHook.questionnaireError}
           isSubmittedForSelectedDate={questionnaireHook.isSubmittedForSelectedDate}
           selectedDate={questionnaireHook.selectedDateForQuestionnaire}
-          onDateChange={questionnaireHook.setSelectedDateForQuestionnaire} // Pass the setter from hook
-          getFormattedDate={questionnaireHook.getFormattedDate} // Pass helper
-          onResetAllDataSuccess={resetFrontendStateForUserDataDelete} // Pass the reset function
+          onDateChange={questionnaireHook.setSelectedDateForQuestionnaire}
+          onResetAllDataSuccess={resetFrontendStateForUserDataDelete}
+          activeTab={questionnaireHook.activeTab}
+          setActiveTab={questionnaireHook.setActiveTab}
+          weeklySummary={questionnaireHook.weeklySummary}
+          isLoadingSummary={questionnaireHook.isLoadingSummary}
+          summaryError={questionnaireHook.summaryError}
+          fetchLatestWeeklySummary={questionnaireHook.fetchLatestWeeklySummary}
+          triggerWeeklySummaryGeneration={questionnaireHook.triggerWeeklySummaryGeneration}
+          personalInsights={questionnaireHook.personalInsights}
+          isInsightsLoading={questionnaireHook.isInsightsLoading}
+          insightsError={questionnaireHook.insightsError}
+          generateInsights={questionnaireHook.generateInsights}
+          chatMessages={questionnaireHook.chatMessages}
+          isChatLoading={questionnaireHook.isChatLoading}
+          chatError={questionnaireHook.chatError}
+          sendChatMessage={questionnaireHook.sendChatMessage}
+          clearChat={questionnaireHook.clearChat}
+          notificationSettings={questionnaireHook.notificationSettings}
+          setShowNotificationSettings={questionnaireHook.setShowNotificationSettings}
         />
       )}
       {questionnaireHook.showNotificationSettings && (
         <NotificationSettings
-            currentSettings={questionnaireHook.notificationSettings}
-            onUpdateSettings={questionnaireHook.updateNotificationSettings}
-            onClose={() => questionnaireHook.setShowNotificationSettings(false)}
-            isLoading={questionnaireHook.isLoadingSettings}
+          currentSettings={questionnaireHook.notificationSettings}
+          onUpdateSettings={questionnaireHook.updateNotificationSettings}
+          onClose={() => questionnaireHook.setShowNotificationSettings(false)}
+          isLoading={questionnaireHook.isLoadingSettings}
         />
       )}
       {isTranscriptionModalOpen && (
         <TranscriptionInputModal
-            isOpen={isTranscriptionModalOpen}
-            onClose={handleCloseTranscriptionModal}
-            onSubmitTranscription={handleSubmitTranscriptionToAi}
-            isLoading={aiFeaturesHook.isProcessingText}
-            processedText={aiFeaturesHook.processedText}
-            processingError={aiFeaturesHook.processingError}
-            onSaveProcessedText={handleSaveProcessedTextFromModal}
-            onClearProcessedText={handleClearProcessedTextForModal}
-            processingMode={aiFeaturesHook.processingMode}
+          isOpen={isTranscriptionModalOpen}
+          onClose={handleCloseTranscriptionModal}
+          onSubmitTranscription={handleSubmitTranscriptionToAi}
+          isLoading={aiFeaturesHook.isProcessingText}
+          processedText={aiFeaturesHook.processedText}
+          processingError={aiFeaturesHook.processingError}
+          onSaveProcessedText={handleSaveProcessedTextFromModal}
+          onClearProcessedText={handleClearProcessedTextForModal}
+          processingMode={aiFeaturesHook.processingMode}
         />
       )}
       {isLearningGraphViewOpen && (
@@ -1513,6 +1903,11 @@ function App() {
           useJudaismChatHook={judaismChatHook}
         />
       )}
+      <ImportExportModal
+        isOpen={isImportExportModalOpen}
+        onClose={() => setIsImportExportModalOpen(false)}
+        workspaceFolders={workspaceHook.workspaceFolders}
+      />
       {/* Render API Key Modal */}
       <ApiKeyModal
         isOpen={isApiKeyModalOpen}
@@ -1523,6 +1918,8 @@ function App() {
         isOpen={isAiModelModalOpen}
         onClose={handleCloseAiModelModal}
         models={aiModels}
+        freeModels={defaultAiModels}
+        paidModels={paidAiModels}
         selectedModel={selectedAiModel}
         onSelectModel={handleSelectAiModel}
         onAddCustomModel={handleAddCustomModel}
@@ -1542,14 +1939,75 @@ function App() {
         isLoading={aiFeaturesHook.isLoadingSmartSearch}
         searchResults={aiFeaturesHook.smartSearchResults}
         searchError={aiFeaturesHook.smartSearchError}
+        onOpenFile={(result) => {
+          const folder = workspaceHook.workspaceFolders[0];
+          if (!folder || !result.sourceFile) return;
+          tabsHook.handleFileSelect(
+            folder,
+            { name: result.fileName || result.sourceFile, relativePath: result.sourceFile },
+            result.lineNumber || null,
+            result.quote || ''
+          );
+          aiFeaturesHook.closeSmartSearchModal();
+        }}
       />
-      
+
       {/* Render Help Modal */}
       <HelpModal
         isOpen={isHelpModalOpen}
         onClose={handleCloseHelpModal}
+        onStartTour={handleStartGuidedTour}
       />
-      
+
+      {/* Font Modals */}
+      <FontSizeModal
+        isOpen={isFontSizeModalOpen}
+        onClose={() => setIsFontSizeModalOpen(false)}
+        currentEditorSize={editorFontSize}
+        currentPresentationSize={presentationFontSize}
+        onSaveFontSize={handleFontSizeSave}
+      />
+      <FontSelectionModal
+        isOpen={isFontSelectionModalOpen}
+        onClose={() => setIsFontSelectionModalOpen(false)}
+        currentAppFont={appFont}
+        currentEditorFont={editorFont}
+        onSaveAppFont={handleAppFontChange}
+        onSaveEditorFont={handleEditorFontChange}
+      />
+
+      {/* Aramaic Study Modal */}
+      <AramaicStudyModal
+        isOpen={aramaicStudyHook.isModalOpen}
+        onClose={aramaicStudyHook.closeModal}
+        difficulty={aramaicStudyHook.difficulty}
+        words={aramaicStudyHook.words}
+        isLoading={aramaicStudyHook.isLoading}
+        error={aramaicStudyHook.error}
+        viewMode={aramaicStudyHook.viewMode}
+        setViewMode={aramaicStudyHook.setViewMode}
+        onSelectDifficulty={aramaicStudyHook.generateWords}
+        onGenerateMore={aramaicStudyHook.generateMore}
+      />
+
+      {/* Text Analysis Modal */}
+      <TextAnalysisModal
+        isOpen={textAnalysisHook.isModalOpen}
+        onClose={textAnalysisHook.closeModal}
+        inputText={textAnalysisHook.inputText}
+        setInputText={textAnalysisHook.setInputText}
+        analysisResult={textAnalysisHook.analysisResult}
+        flowchartCode={textAnalysisHook.flowchartCode}
+        isLoading={textAnalysisHook.isLoading}
+        isLoadingFlowchart={textAnalysisHook.isLoadingFlowchart}
+        error={textAnalysisHook.error}
+        mode={textAnalysisHook.mode}
+        onAnalyze={textAnalysisHook.analyzeText}
+        onGenerateFlowchart={textAnalysisHook.generateFlowchart}
+        onBackToInput={textAnalysisHook.backToInput}
+        onBackToAnalysis={textAnalysisHook.backToAnalysis}
+      />
+
       {/* Render Settings Modal */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
@@ -1560,8 +2018,27 @@ function App() {
         currentTheme={themeHook.currentTheme}
         onUpdateTheme={themeHook.updateTheme}
         onOpenFileConversion={handleOpenFileConversionFromSettings}
+        editorFontSize={editorFontSize}
+        onEditorFontSizeChange={handleEditorFontSizeChange}
+        presentationFontSize={presentationFontSize}
+        onPresentationFontSizeChange={handlePresentationFontSizeChange}
+        appFont={appFont}
+        onAppFontChange={handleAppFontChange}
+        editorFont={editorFont}
+        onEditorFontChange={handleEditorFontChange}
+        showLineNumbers={editorSettingsHook.showLineNumbers}
+        onToggleLineNumbers={editorSettingsHook.toggleShowLineNumbers}
+        highlightActiveLine={editorSettingsHook.highlightActiveLine}
+        onToggleHighlightActiveLine={editorSettingsHook.toggleHighlightActiveLine}
+        autoSaveEnabled={editorSettingsHook.autoSaveEnabled}
+        onToggleAutoSaveEnabled={editorSettingsHook.toggleAutoSaveEnabled}
+        selectedAiModel={selectedAiModel}
+        onResetTour={() => { localStorage.removeItem('torah-ide-tour-completed'); setIsGuidedTourOpen(true); }}
+        showFormattingToolbar={showFormattingToolbar}
+        onToggleFormattingToolbar={() => setShowFormattingToolbar(prev => !prev)}
+        onDeleteAllData={resetFrontendStateForUserDataDelete}
       />
-      
+
       {/* Render Unsaved Changes Modal */}
       <UnsavedChangesModal
         isOpen={tabsHook.unsavedChangesModal.isOpen}
@@ -1571,23 +2048,25 @@ function App() {
         onCancel={tabsHook.handleModalCancel}
         isSaving={tabsHook.unsavedChangesModal.isSaving}
       />
-      
+
       {/* Render File Conversion Modal */}
       <FileConversionModal
         isOpen={isFileConversionModalOpen}
         onClose={handleCloseFileConversionModal}
         addWorkspaceFolder={workspaceHook.addWorkspaceFolder}
       />
-      
+
       {/* Render Single File Conversion Modal */}
       <SingleFileConversionModal
         isOpen={isSingleFileConversionModalOpen}
         onClose={handleCloseSingleFileConversionModal}
         filePath={singleFileConversionData?.filePath || ''}
         fileName={singleFileConversionData?.fileName || ''}
+        basePath={singleFileConversionData?.baseFolder?.path || ''}
+        relativePath={singleFileConversionData?.relativePath || ''}
         onSuccess={handleSingleFileConversionSuccess}
       />
-      
+
       {/* Render New File Modal */}
       <NewFileModal
         isOpen={isNewFileModalOpen}
@@ -1600,7 +2079,7 @@ function App() {
         defaultLocation={activeTabObject ? workspaceHook.workspaceFolders.find(wf => wf.path === activeTabObject.basePath) : null}
         preselectedPath={selectedFolderForNewFile?.path || null}
       />
-      
+
       {/* Render Save As Modal */}
       <NewFileModal
         isOpen={isSaveAsModalOpen}
@@ -1615,7 +2094,7 @@ function App() {
         initialFileName={saveAsData?.fileName || ''}
         initialExtension={saveAsData?.extension || 'md'}
       />
-      
+
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         isOpen={isConfirmDeleteModalOpen}
@@ -1628,7 +2107,7 @@ function App() {
         itemName={itemToDelete?.name || ''}
         itemType={itemToDelete?.isFolder ? 'folder' : 'file'}
       />
-      
+
       {/* Create Folder Modal */}
       <CreateFolderModal
         isOpen={isCreateFolderModalOpen}
@@ -1639,24 +2118,23 @@ function App() {
         onCreateFolder={handleCreateFolder}
         parentFolderName={createFolderData?.parentFolderName || ''}
       />
-      
+
       {/* Quota Limit Modal */}
       <QuotaLimitModal
         isOpen={isQuotaLimitModalOpen}
         onClose={hideQuotaLimitModal}
       />
-      
+
       {/* Model Overloaded Modal */}
       <ModelOverloadedModal
         isOpen={isModelOverloadedModalOpen}
         onClose={hideModelOverloadedModal}
       />
-      
-      {/* Onboarding Tutorial */}
-      <OnboardingTutorial
-        isWorkspaceSetup={workspaceHook.workspaceFolders.length > 0}
-        onOpenApiKeyModal={handleOpenApiKeyModal}
-        onClose={() => {}}
+
+      {/* Guided Tour */}
+      <GuidedTour
+        isOpen={isGuidedTourOpen}
+        onClose={handleCloseGuidedTour}
       />
     </div>
   );

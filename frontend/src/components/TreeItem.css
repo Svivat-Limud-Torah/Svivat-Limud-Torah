@@ -2,9 +2,11 @@
 .tree-item {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  min-height: 30px;
+  line-height: 1.35;
+  padding: 6px 8px;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.95em;
   color: var(--theme-text-primary); /* Default text color for items */
   transition: background-color 0.15s ease-in-out;
   user-select: none; /* Prevent text selection during drag attempts */
@@ -23,6 +25,7 @@
   margin-right: 6px; /* RTL: should be marginLeft */
   margin-left: 0; /* RTL support */
   display: inline-flex; /* Helps align icon better */
+  flex-shrink: 0;
   align-items: center;
   color: var(--theme-text-secondary); /* Chevron icon color */
 }
@@ -35,6 +38,7 @@
 .tree-item-icon {
   margin-right: 6px; /* RTL: should be marginLeft */
   margin-left: 0; /* RTL: default */
+  flex-shrink: 0;
   color: var(--theme-text-secondary); /* Default icon color */
 }
 [dir="rtl"] .tree-item-icon {
@@ -54,9 +58,12 @@
 
 .tree-item-name {
   flex-grow: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--theme-sidebar-text, #f3f7ff);
+  font-weight: 600;
 }
 [dir="rtl"] .tree-item-name {
   text-align: right;
@@ -67,11 +74,16 @@
   border: none;
   color: var(--theme-text-secondary); /* Lighter, less prominent color */
   cursor: pointer;
-  padding: 2px 4px;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
   margin-left: auto; /* Pushes button to the end */
   margin-right: 0; /* RTL support */
-  display: none; /* Initially hidden */
+  opacity: 0; /* Hidden until hover for less layout jump */
+  pointer-events: none;
   line-height: 1; /* Ensure icon is vertically centered if text is larger */
+  transition: opacity 0.12s ease-in-out, width 0.12s ease-in-out, padding 0.12s ease-in-out;
 }
 [dir="rtl"] .tree-item-search-button {
   margin-right: auto;
@@ -80,7 +92,11 @@
 
 
 .tree-item:hover .tree-item-search-button {
-  display: inline-block; /* Show on hover of the tree item */
+  width: 22px;
+  min-width: 22px;
+  padding: 2px 4px;
+  opacity: 1; /* Show on hover of the tree item */
+  pointer-events: auto;
 }
 
 .tree-item-search-button:hover {

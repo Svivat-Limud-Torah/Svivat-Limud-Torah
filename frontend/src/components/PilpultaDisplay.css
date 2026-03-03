@@ -1,4 +1,4 @@
-/* frontend/src/components/PilpultaDisplay.css */
+﻿/* frontend/src/components/PilpultaDisplay.css */
 .pilpulta-window {
   position: fixed; /* Use fixed to keep it in view even when scrolling */
   top: 100px; /* Default starting position */
@@ -9,24 +9,24 @@
   height: 350px; /* Default height */
   min-height: 200px; /* Minimum height */
   max-height: 70vh; /* Max height relative to viewport */
-  background-color: #2d3748; /* Dark background */
-  border: 1px solid #4a5568; /* Border */
+  background-color: #1e1e1e; /* Dark background */
+  border: 1px solid #3c3c3c; /* Border */
   border-radius: 5px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1500; /* Ensure it's above most other elements */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Hide overflow during resize/drag */
-  color: #e2e8f0; /* Light text */
+  color: #cccccc; /* Light text */
   font-size: 14px; /* Base font size */
 }
 
 .pilpulta-header {
-  background-color: #1a202c; /* Even darker header */
-  color: #cbd5e0;
+  background-color: #1e1e1e; /* Even darker header */
+  color: #cccccc;
   padding: 6px 12px;
   cursor: move; /* Indicate draggable */
-  border-bottom: 1px solid #4a5568;
+  border-bottom: 1px solid #3c3c3c;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -41,7 +41,7 @@
 .pilpulta-close-button {
   background: none;
   border: none;
-  color: #cbd5e0;
+  color: #cccccc;
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
@@ -63,7 +63,7 @@
 .pilpulta-item {
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px dashed #4a5568; /* Separator */
+  border-bottom: 1px dashed #3c3c3c; /* Separator */
 }
 
 .pilpulta-item:last-child {
@@ -74,13 +74,13 @@
 .pilpulta-question {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #a0aec0; /* Slightly dimmer question text */
+  color: #969696; /* Slightly dimmer question text */
 }
 
 .pilpulta-source {
   font-style: italic;
   margin-left: 10px;
-  color: #718096; /* Even dimmer source text */
+  color: #808080; /* Even dimmer source text */
   white-space: pre-wrap; /* Preserve line breaks in source */
 }
 

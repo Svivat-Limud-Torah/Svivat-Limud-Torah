@@ -141,68 +141,33 @@ class TextOrganizationProgressService extends EventEmitter {
      * הגדרת שלבי העיבוד בהתאם לגודל הטקסט
      */
     defineProcessingSteps(textLength) {
-        const baseSteps = [
+        return [
             {
                 title: 'הכנה וניתוח ראשוני',
-                description: 'ניתוח מבנה הטקסט וזיהוי דפוסים',
-                subSteps: [
-                    'זיהוי כותרות קיימות',
-                    'ניתוח מבנה פסקאות',
-                    'זיהוי רשימות ואלמנטים מיוחדים'
-                ]
+                description: 'ניתוח מבנה הטקסט וחלוקה לקטעים',
+                subSteps: ['זיהוי כותרות קיימות', 'ניתוח מבנה פסקאות', 'חלוקה חכמה לקטעים']
             },
             {
-                title: 'יצירת אסטרטגיית ארגון',
-                description: 'יצירת prompt מותאם לטקסט הספציפי',
-                subSteps: [
-                    'בחירת היררכיית כותרות מתאימה',
-                    'הגדרת עומק הארגון',
-                    'התאמת פרמטרים למודל AI'
-                ]
+                title: 'הכנת אסטרטגיית ארגון',
+                description: 'הכנת הקטעים לעיבוד',
+                subSteps: ['קביעת גבולות קטעים', 'הגדרת פרמטרים למודל AI']
             },
             {
-                title: 'עיבוד בבינה מלאכותית',
-                description: 'שליחה לבינה מלאכותית לארגון',
-                subSteps: [
-                    'שליחת הטקסט למודל',
-                    'קבלת התגובה',
-                    'ניתוח ראשוני של התוצאה'
-                ]
+                title: 'עיבוד קטע-קטע בבינה מלאכותית',
+                description: 'שליחת כל קטע בנפרד — מבנה בלבד, ללא סיכום',
+                subSteps: ['שליחת קטע למודל', 'קבלת קטע מאורגן', 'חיבור קטעים']
             },
             {
                 title: 'עיבוד ושיפור תוצאות',
                 description: 'ניקוי ושיפור הטקסט המאורגן',
-                subSteps: [
-                    'ניקוי תגיות מיותרות',
-                    'תיקון פורמט Markdown',
-                    'איחוד שורות ריקות מיותרות'
-                ]
+                subSteps: ['ניקוי פורמט', 'תיקון שורות ריקות']
             },
             {
                 title: 'אימות איכות וסיום',
-                description: 'בדיקת איכות התוצאה הסופית',
-                subSteps: [
-                    'אימות שלמות התוכן',
-                    'בדיקת תקינות הפורמט',
-                    'הכנה להחזרה'
-                ]
+                description: 'בדיקה שכל התוכן נשמר',
+                subSteps: ['אימות שלמות', 'הכנה להחזרה']
             }
         ];
-
-        // הוספת שלבים נוספים לטקסטים גדולים
-        if (textLength > 200) {
-            baseSteps.splice(2, 0, {
-                title: 'חלוקה לקטעים',
-                description: 'חלוקת טקסט גדול לקטעים לעיבוד מיטבי',
-                subSteps: [
-                    'זיהוי נקודות חלוקה טבעיות',
-                    'חלוקה לקטעים מאוזנים',
-                    'שמירת הקשר בין קטעים'
-                ]
-            });
-        }
-
-        return baseSteps;
     }
 
     /**
@@ -274,81 +239,13 @@ class TextOrganizationProgressService extends EventEmitter {
     }
 
     /**
-     * יצירת prompt מותאם
+     * יצירת prompt מותאם — מבנה בלבד, ללא סיכום
      */
     async createOptimizedPrompt(text, basePrompt, textLength, disableItalicFormatting = false) {
         await this.delay(300);
-        
-        const analysis = await this.analyzeTextStructure(text);
-        
-        // Create formatting instruction based on user preference
-        const formattingInstructions = disableItalicFormatting 
-            ? `4. הדגש מילות מפתח חשובות (**מילה**) - אל תשתמש בעיצוב נטייה (*מילה*)`
-            : `4. הדגש מילות מפתח חשובות (**מילה**, *מילה*)`;
-        
-        let optimizedPrompt = basePrompt || `
-אתה מומחה בארגון ועריכת טקסטים בעברית. המשימה שלך היא לארגן את הטקסט הספציפי שהמשתמש סיפק ולא ליצור תוכן חדש.
-
-🔥 חוקים קריטיים - CRITICAL RULES:
-• שמור על כל התוכן המקורי - אל תמחק או תחסיר מידע
-• ⚠️ חובה לשמור על השורות האחרונות של הטקסט המקורי ללא יוצא מהכלל!
-• אל תחזור על תוכן - כל חלק צריב להופיע פעם אחת בלבד  
-• וודא שהטקסט המאורגן כולל את כל התוכן המקורי מההתחלה ועד הסוף
-• אל תוסיף מידע שלא היה בטקסט המקורי
-• אל תחליף את התוכן בנושא אחר - רק ארגן את מה שכבר קיים!
-• אסור לך ליצור תוכן חדש על תיקון מידות או נושאים אחרים!
-• המילה האחרונה בטקסט המאורגן חייבת להיות זהה או קרובה למילה האחרונה בטקסט המקורי!
-
-⚠️ אזהרה חשובה: 
-המשתמש רוצה לארגן את הטקסט שלו, לא לקבל תוכן חדש על נושא אחר!
-אל תחליף את התוכן המקורי בתוכן על נושאים כמו תיקון מידות או כל נושא אחר!
-
-📋 משימות הארגון:
-1. צור היררכיה ברורה עם כותרות H1, H2, H3 לפי הקשר הלוגי של הטקסט הקיים
-2. חלק לפסקאות מובנות ונושאיות את התוכן הקיים
-3. ארגן רשימות בפורמט Markdown נכון (-, *, 1., 2., וכו')
-${formattingInstructions}
-5. צור מבנה לוגי וזורם שקל לקריאה של התוכן הקיים
-6. שפר פיסוק ומבנה משפטים ללא שינוי המשמעות
-7. הסר שורות ריקות מיותרות (לא יותר מ-2 שורות ריקות ברצף)
-8. 🚨 ודא שהסיום של הטקסט המאורגן כולל את כל התוכן שהיה בסוף הטקסט המקורי!
-
-📖 כללי פורמט:
-• השתמש בעברית תקינה וברורה
-• שמור על המינוח המקורי של מושגים יהודיים/תורניים
-• ארגן ציטוטים ומקורות בפורמט אחיד
-• צור מבנה חזותי נעים ומאורגן
-• אל תשנה את הנושא או התוכן - רק ארגן אותו!
-• 🔥 חובה להגיע עד סוף הטקסט המקורי - אל תעצור באמצע!
-
-🚨 זכור: המטרה היא לארגן את הטקסט הקיים מתחילתו ועד סופו, לא ליצור תוכן חדש!
-`;
-
-        // התאמות מיוחדות לפי גודל הטקסט
-        if (textLength > 200) {
-            optimizedPrompt += `
-
-🔧 הנחיות מיוחדות לטקסט גדול (${textLength} שורות):
-• חלק לחלקים ראשיים עם כותרות H1 על פי התוכן הקיים
-• השתמש בכותרות H2 לתת-נושאים מהתוכן הקיים
-• וודא זרימה לוגית בין הקטעים הקיימים
-• שמור על היררכיה עקבית לאורך הטקסט הקיים
-• 🚨 חובה מוחלטת: כלול את כל התוכן מההתחלה ועד הסוף - אל תעצור באמצע!
-• בדוק שהמילה האחרונה בטקסט המאורגן תואמת לסוף הטקסט המקורי
-• אסור לחתוך את הטקסט או להשאיר חלקים מהסוף!
-`;
-        } else {
-            optimizedPrompt += `
-
-🔧 הנחיות מיוחדות לטקסט קצר/בינוני (${textLength} שורות):
-• ארגן בצורה פשוטה וברורה
-• השתמש בכותרות H2, H3 לפי הצורך
-• שמור על זרימה טבעית של הטקסט
-• 🚨 חובה: כלול את כל התוכן ללא יוצא מהכלל!
-`;
-        }
-
-        return optimizedPrompt;
+        // הפונקציה organizeText ב-SmartSearchService בונה את ה-prompt לכל קטע בעצמה.
+        // כאן אנחנו מחזירים null כדי לאפשר לה לבחור את ה-prompt הנכון.
+        return null;
     }
 
     /**
@@ -356,23 +253,29 @@ ${formattingInstructions}
      */
     async callAIForOrganization(text, prompt, model, apiKey, processId) {
         const processInfo = this.activeProcesses.get(processId);
-        
-        // עדכון מצב שליחה
+
         if (processInfo) {
-            processInfo.steps[processInfo.currentStep].currentOperation = 'שולח בקשה למודל AI...';
+            processInfo.steps[processInfo.currentStep].currentOperation = 'מחלק את הטקסט לקטעים ומעבד בנפרד...';
             this.emit('progress', processId, processInfo);
         }
 
+        // callback שיקרא על כל קטע — מעדכן את ה-step הנוכחי
+        const onChunkProgress = (doneChunks, totalChunks) => {
+            if (processInfo) {
+                processInfo.steps[processInfo.currentStep].currentOperation =
+                    `מעבד קטע ${doneChunks + 1} מתוך ${totalChunks}...`;
+                this.emit('progress', processId, processInfo);
+            }
+        };
+
         try {
-            // השתמש בפונקציה הקיימת מ-SmartSearchService
-            const organizedText = await organizeText(text, prompt, model, apiKey);
-            
-            // עדכון מצב
+            const organizedText = await organizeText(text, prompt, model, apiKey, onChunkProgress);
+
             if (processInfo) {
                 processInfo.steps[processInfo.currentStep].currentOperation = 'קיבל תגובה בהצלחה';
                 this.emit('progress', processId, processInfo);
             }
-            
+
             return organizedText;
         } catch (error) {
             if (processInfo) {

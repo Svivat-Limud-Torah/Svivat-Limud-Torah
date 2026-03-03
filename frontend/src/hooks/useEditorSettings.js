@@ -6,12 +6,25 @@ export default function useEditorSettings({
   editorSharedRef, // From App
   setOpenTabs,     // From useTabs, passed through App
 }) {
-  const [showLineNumbers, setShowLineNumbers] = useState(true);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
   const [highlightActiveLine, setHighlightActiveLine] = useState(true);
   const [scrollToLine, setScrollToLine] = useState(null);
 
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
+    const saved = localStorage.getItem('autoSaveEnabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+
   const toggleShowLineNumbers = () => setShowLineNumbers(prev => !prev);
   const toggleHighlightActiveLine = () => setHighlightActiveLine(prev => !prev);
+
+  const toggleAutoSaveEnabled = () => {
+    setAutoSaveEnabled(prev => {
+      const newValue = !prev;
+      localStorage.setItem('autoSaveEnabled', newValue.toString());
+      return newValue;
+    });
+  };
 
   return {
     showLineNumbers,
@@ -20,7 +33,10 @@ export default function useEditorSettings({
     setHighlightActiveLine,
     scrollToLine,
     setScrollToLine,
+    autoSaveEnabled,
+    setAutoSaveEnabled,
     toggleShowLineNumbers,
     toggleHighlightActiveLine,
+    toggleAutoSaveEnabled,
   };
 }

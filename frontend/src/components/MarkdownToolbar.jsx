@@ -1,45 +1,37 @@
 // frontend/src/components/MarkdownToolbar.jsx
-import React, { useState } from 'react';
+import React from 'react';
 import './MarkdownToolbar.css';
 import { HEBREW_TEXT } from '../utils/constants';
 
-const MarkdownToolbar = ({ 
-  editorRef, 
-  isDisabled = false, 
-  onPreviewToggle, 
-  onOrganizeTextToggle, 
-  isOrganizing = false, 
-  hasUnsavedChanges = false, 
+const MarkdownToolbar = ({
+  editorRef,
+  isDisabled = false,
+  onPreviewToggle,
+  onUserHidePreview,
+  onMarkdownInserted,
+  showPreview = false,
+  onOrganizeTextToggle,
+  isOrganizing = false,
+  hasUnsavedChanges = false,
   onAiOrganizeComplete,
-  isZenMode = false,
   showLineNumbers = true,
-  toggleZenMode,
   toggleFormattingToolbar,
   toggleShowLineNumbers
 }) => {
-  const [showPreview, setShowPreview] = useState(false);
-  const [shouldBlinkPreview, setShouldBlinkPreview] = useState(false);
-
-  // Listen for AI organize completion signal
-  React.useEffect(() => {
-    if (onAiOrganizeComplete) {
-      setShouldBlinkPreview(true);
-    }
-  }, [onAiOrganizeComplete]);
 
   const insertMarkdown = (before, after = '', placeholder = '') => {
     if (!editorRef?.current || isDisabled) return;
-    
+
     try {
       // Get the CodeMirror view from the Editor component
       const view = editorRef.current.getEditorView?.();
       if (!view || !view.state) return;
-      
+
       const selection = view.state.selection.main;
       const selectedText = view.state.doc.sliceString(selection.from, selection.to);
       const textToInsert = selectedText || placeholder;
       const newText = `${before}${textToInsert}${after}`;
-      
+
       view.dispatch({
         changes: {
           from: selection.from,
@@ -51,11 +43,11 @@ const MarkdownToolbar = ({
           head: selection.from + before.length + textToInsert.length
         }
       });
-      
+
       view.focus();
-      
-      // Trigger preview blink when using markdown formatting
-      setShouldBlinkPreview(true);
+
+      // Notify parent to auto-show preview
+      onMarkdownInserted?.();
     } catch (error) {
       console.error('שגיאה בהוספת Markdown:', error);
     }
@@ -113,20 +105,18 @@ const MarkdownToolbar = ({
   ];
 
   const togglePreview = () => {
-    const newShowPreview = !showPreview;
-    setShowPreview(newShowPreview);
-    
-    // Stop blinking when toggling to preview or back to edit
-    setShouldBlinkPreview(false);
-    
-    if (onPreviewToggle) {
-      onPreviewToggle(newShowPreview);
+    if (showPreview) {
+      // User is explicitly hiding - notify parent so it won't auto-show again
+      onUserHidePreview?.();
+    } else {
+      // User is manually showing - reset the "user hidden" flag via onPreviewToggle
+      onPreviewToggle?.(true);
     }
   };
 
   const handleOrganizeText = async () => {
     if (isDisabled || isOrganizing) return;
-    
+
     try {
       if (onOrganizeTextToggle) {
         await onOrganizeTextToggle();
@@ -138,35 +128,10 @@ const MarkdownToolbar = ({
 
   return (
     <div className="markdown-toolbar">
-      {/* Zen mode controls on the left side when in zen mode */}
-      {isZenMode && (
-        <>
-          <button
-            className={`markdown-toolbar-button ${showLineNumbers ? 'active' : ''}`}
-            onClick={toggleShowLineNumbers}
-            title={HEBREW_TEXT.toggleLineNumbers(showLineNumbers)}
-            disabled={isDisabled}
-          >
-            {showLineNumbers ? 'מספרים ✓' : 'מספרים ✕'}
-          </button>
-          
-          <button
-            className="markdown-toolbar-button active"
-            onClick={toggleZenMode}
-            title={HEBREW_TEXT.zenMode(true)}
-            disabled={isDisabled}
-          >
-            Zen ✓
-          </button>
-          
-          <div className="toolbar-separator"></div>
-        </>
-      )}
-      
       <span className="markdown-toolbar-label">
         כלי עיצוב טקסט:
       </span>
-      
+
       {markdownButtons.map((button, index) => (
         <button
           key={index}
@@ -178,19 +143,19 @@ const MarkdownToolbar = ({
           {button.label}
         </button>
       ))}
-      
+
       <div className="toolbar-separator"></div>
-      
+
       <button
-        title="מעבר בין מצב עריכה למצב תצוגה - בתצוגה תראה איך הטקסט ייראה בסוף"
+        title="הצג תצוגה מקדימה לצד העורך - ערוך וראה את התוצאה בו זמנית"
         onClick={togglePreview}
         disabled={isDisabled}
         data-tutorial="preview-button"
-        className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''} ${shouldBlinkPreview && !showPreview ? 'blinking' : ''}`}
+        className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''}`}
       >
-        {showPreview ? 'חזור לעריכה' : 'תצוגה'}
+        {showPreview ? 'הסתר תצוגה' : 'תצוגה מקדימה'}
       </button>
-      
+
       <button
         title="בינה מלאכותית תסדר ותארגן את הטקסט שלך באופן אוטומטי"
         onClick={handleOrganizeText}

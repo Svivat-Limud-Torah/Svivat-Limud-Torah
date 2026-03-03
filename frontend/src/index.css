@@ -1,329 +1,347 @@
-/* Updated: 2025-07-29 - FORCE ALL BUTTONS TO USE THEME VARIABLES */
-
-/* Added "Varela Round" as default software font */
+﻿/* Global Theme: VS Code Dark+ (pre-JS fallback)
+ *
+ * These :root variables are the initial values rendered before the JS theme
+ * engine (themeEngine.js) hydrates the real values.  Do NOT treat this as
+ * the source of truth — themeEngine.js is the single source of truth.
+ */
 :root {
-  font-family: "Varela Round", Inter, "Assistant", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+  font-family: "Assistant", "Heebo", "Rubik", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  /* color: rgba(255, 255, 255, 0.87); */
-  /* background-color: #242424; */
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* ChatGPT-inspired dark theme - pure grays and blacks */
-  --theme-bg-primary: #0d1117;        /* Very dark background like ChatGPT */
-  --theme-bg-secondary: #161b22;      /* Slightly lighter dark */
-  --theme-bg-tertiary: #21262d;       /* Medium dark */
-  --theme-bg-quaternary: #30363d;     /* Lighter dark */
-  --theme-text-primary: #f0f6fc;      /* Very light text */
-  --theme-text-secondary: #8b949e;    /* Muted light gray text */
-  --theme-accent-primary: #30363d;    /* Dark gray accent */
-  --theme-accent-secondary: #484f58;  /* Medium gray accent */
-  --theme-accent-color: #30363d;      /* Dark gray */
-  --theme-accent-hover: #484f58;      /* Medium gray hover */
-  --theme-border-color: #30363d;      /* Dark gray borders */
-  --theme-button-text-color: #f0f6fc; /* Light text on buttons */
-  --theme-input-bg: #21262d;          /* Dark input backgrounds */
-  --theme-hover-bg: #30363d;          /* Dark hover backgrounds */
-  --theme-error-color: #da3633;       /* Keep red for errors */
-  --theme-error-hover: #b91c1c;       /* Darker red hover */
-  --theme-warning-color: #fb8500;     /* Keep orange for warnings */
-  --theme-success-color: #238636;     /* Keep green for success */
-  --theme-scrollbar-track: #161b22;   /* Dark scrollbar track */
-  --theme-scrollbar-thumb: #30363d;   /* Dark gray scrollbar thumb */
-  --theme-scrollbar-thumb-hover: #484f58; /* Medium gray scrollbar hover */
-  --theme-page-bg: #0d1117;           /* Very dark page background */
-  --theme-editor-bg: #0d1117;         /* Very dark editor background */
-  --theme-tab-bg: #161b22;            /* Dark tab background */
-  --theme-toolbar-bg: #161b22;        /* Dark toolbar background */
-  --theme-button-bg: #21262d;         /* Dark gray buttons */
-  --theme-button-hover-bg: #30363d;   /* Slightly lighter on hover */
+  --app-font-family: "Assistant", "Heebo", "Rubik", sans-serif;
+  --editor-font-family: "Segoe UI", "Assistant", "Rubik", sans-serif;
 
-  /* Base application styling using new theme colors */
+  /* ── Master colors (VS Code Dark+) ── */
+  --master-bg-main: #1e1e1e;
+  --master-bg-secondary: #252526;
+  --master-accent: #007acc;
+  --master-text: #cccccc;
+  --master-border: #3c3c3c;
+
+  /* ── Backgrounds ── */
+  --theme-bg-primary: #1e1e1e;
+  --theme-bg-secondary: #1e1e1e;
+  --theme-bg-tertiary: #252526;
+  --theme-bg-quaternary: #2d2d2d;
+  --theme-page-bg: #141414;
+  --theme-editor-bg: #2d2d2d;
+  --theme-toolbar-bg: #1e1e1e;
+  --theme-tab-bg: #252526;
+
+  /* ── Text ── */
+  --theme-text-primary: #cccccc;
+  --theme-text-secondary: #b0b0b0;
+  --theme-text-tertiary: #8d8d8d;
+  --theme-button-text-color: #cccccc;
+  --theme-editor-text: #ffffff;
+  --theme-sidebar-text: #d6d6d6;
+
+  /* ── Accent / brand ── */
+  --theme-accent-primary: #007acc;
+  --theme-accent-secondary: #1a8fd4;
+  --theme-accent-color: #007acc;
+  --theme-accent-hover: #1a8fd4;
+  --theme-accent-primary-transparent: rgba(0, 122, 204, 0.2);
+  --theme-primary: #007acc;
+  --theme-primary-hover: #1a8fd4;
+
+  /* ── Borders ── */
+  --theme-border-color: #3c3c3c;
+  --theme-border-strong: #484848;
+
+  /* ── Interactive surfaces ── */
+  --theme-button-bg: #3c3c3c;
+  --theme-button-hover-bg: #454545;
+  --theme-input-bg: #3c3c3c;
+  --theme-hover-bg: rgba(0, 122, 204, 0.14);
+
+  /* ── Status colors ── */
+  --theme-error-color: #f85149;
+  --theme-warning-color: #d29922;
+  --theme-success-color: #3fb950;
+
+  /* Status — tinted backgrounds for inline messages */
+  --theme-error-bg: rgba(248, 81, 73, 0.12);
+  --theme-error-text: #fca5a5;
+  --theme-error-border: rgba(248, 81, 73, 0.35);
+  --theme-warning-bg: rgba(210, 153, 34, 0.12);
+  --theme-warning-text: #fbbf24;
+  --theme-warning-border: rgba(210, 153, 34, 0.35);
+  --theme-success-bg: rgba(63, 185, 80, 0.12);
+  --theme-success-text: #68d391;
+  --theme-success-border: rgba(63, 185, 80, 0.35);
+  --theme-success-color-hover: #339648;
+  --theme-success-color-light: #5fdb78;
+
+  /* ── Semantic highlight ── */
+  --theme-highlight-accent: #7dd3fc;
+  --theme-custom-color: #8b5cf6;
+
+  /* ── Scrollbar ── */
+  --theme-scrollbar-track: #1e1e1e;
+  --theme-scrollbar-thumb: #424242;
+  --theme-scrollbar-thumb-hover: #4f4f4f;
+
+  /* ── Focus ring ── */
+  --focus-ring: 0 0 0 1px #007acc;
+
+  /* Legacy glass/liquid variables — kept as transparent for compatibility */
+  --glass-rim-main: transparent;
+  --glass-rim-soft: transparent;
+  --glass-fill: #1e1e1e;
+  --glass-fill-strong: #1e1e1e;
+  --glass-top-light: transparent;
+  --glass-highlight: transparent;
+  --glass-glow: transparent;
+  --liquid-rim-main: transparent;
+  --liquid-rim-soft: transparent;
+  --liquid-fill: #1e1e1e;
+  --liquid-fill-strong: #1e1e1e;
+  --liquid-top-light: transparent;
+  --liquid-highlight: transparent;
+  --liquid-glow: transparent;
+  --glass-surface: none;
+  --glass-edge: none;
+  --glass-shadow: none;
+
   color: var(--theme-text-primary);
-  background-color: var(--theme-bg-primary);
+  background-color: var(--theme-page-bg);
 }
 
-a {
-  font-weight: 500;
-  color: var(--theme-accent-primary);
-  text-decoration: inherit;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
-a:hover {
-  color: var(--theme-accent-secondary);
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
-  min-height: 100vh;
-  font-size: 14px; /* Set a base font size for easier rem calculations */
-}
-
-/* Typography Scale */
-h1, h2, h3, h4, h5, h6 {
-  margin-top: 1.5em;
-  margin-bottom: 0.75em;
-  font-weight: 600; /* Slightly bolder for headings */
-  line-height: 1.2;
+  font-size: 14px;
+  font-family: var(--app-font-family);
   color: var(--theme-text-primary);
+  background: var(--theme-page-bg);
+  overflow: hidden;
 }
 
-h1 { font-size: 2.25rem; } /* Approx 36px */
-h2 { font-size: 1.875rem; } /* Approx 30px */
-h3 { font-size: 1.5rem; }  /* Approx 24px */
-h4 { font-size: 1.25rem; } /* Approx 20px */
-h5 { font-size: 1rem; }    /* Approx 16px */
-h6 { font-size: 0.875rem; } /* Approx 14px */
+a {
+  color: var(--theme-accent-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--theme-accent-secondary);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0;
+  margin-bottom: 0.65em;
+  color: var(--theme-text-primary);
+  line-height: 1.2;
+}
 
 p {
   margin-top: 0;
-  margin-bottom: 1rem; /* Default paragraph spacing */
-  line-height: 1.6; /* Slightly more line height for readability */
+  margin-bottom: 0.9em;
   color: var(--theme-text-primary);
 }
 
-/* Generic button styles removed, rely on .btn classes now */
-
-/* Standard Button Classes */
+button,
 .btn {
-  border-radius: 6px; /* Slightly less rounded than default for a sharper look */
-  padding: 0.5em 1em; /* Adjusted padding */
-  font-size: 0.9em;   /* Slightly smaller base font for buttons */
-  font-weight: 700;   /* Make all buttons bold */
+  border-radius: 2px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.15;
   font-family: inherit;
+  border: 1px solid transparent !important;
+  color: var(--theme-button-text-color) !important;
+  background: var(--theme-button-bg) !important;
+  box-shadow: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
-  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out;
-  border: 1px solid rgba(255, 255, 255, 0.2); /* Light white outline by default */
-  line-height: 1.4; /* Ensure text is centered vertically */
-  text-align: center;
-  display: inline-flex; /* For aligning icons if added */
-  align-items: center;
-  justify-content: center;
 }
 
-.btn:focus,
+button:hover:not(:disabled),
+.btn:hover:not(:disabled) {
+  background: var(--theme-button-hover-bg) !important;
+  border-color: var(--theme-border-color) !important;
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+  background: var(--theme-bg-quaternary) !important;
+}
+
+button:focus-visible,
 .btn:focus-visible {
-  outline: 2px auto var(--theme-accent-primary); /* Themed focus outline */
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
+button:disabled,
 .btn:disabled,
 .btn[disabled] {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Default Button (dark theme style with white outline) */
-.btn {
-  background-color: var(--theme-button-bg) !important;
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* MAXIMUM PRIORITY BUTTON STYLES - FORCE ALL BUTTONS TO USE THEME COLORS WITH WHITE OUTLINE */
-button, .btn, .btn-primary, .btn-secondary, .btn-info, .btn-success, .btn-warning, .btn-danger, .btn-sm, .btn-lg {
-  background-color: var(--theme-button-bg) !important;
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-button:hover, .btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-info:hover, .btn-success:hover, .btn-warning:hover, .btn-danger:hover {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Primary Button - dark gray with white outline */
-.btn-primary {
-  background-color: var(--theme-button-bg) !important; /* Use same dark gray as other buttons */
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Secondary Button - dark gray like other buttons with white outline */
-.btn-secondary {
-  background-color: var(--theme-button-bg) !important; /* Use theme dark gray */
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Danger Button with white outline */
-.btn-danger {
-  background-color: var(--theme-error-color);
-  color: var(--theme-button-text-color);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--theme-error-hover);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-/* Info Button - dark gray with white outline */
-.btn-info {
-  background-color: var(--theme-button-bg) !important; /* Use same dark gray as other buttons */
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn-info:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Success Button - use consistent dark theme colors with white outline */
-.btn-success {
-  background-color: var(--theme-button-bg) !important; /* Same as default buttons */
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn-success:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Warning Button - use consistent dark theme colors with white outline */
-.btn-warning {
-  background-color: var(--theme-button-bg) !important; /* Same as default buttons */
-  color: var(--theme-button-text-color) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.btn-warning:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Button Size Modifiers */
 .btn-sm {
-  padding: 0.5em 1em; /* Same as default .btn for consistency */
-  font-size: 0.9em;   /* Same as default .btn */
-  height: auto;       /* Let it size naturally */
-  min-height: 32px;   /* Ensure consistent minimum height */
+  padding: 0.38rem 0.72rem;
+  min-height: 31px;
+  font-size: 0.78rem;
 }
 
-/* Subtle Button (alternative to default .btn if more distinction is needed) */
 .btn-subtle {
-  background-color: transparent;
-  color: var(--theme-text-secondary);
-  border-color: var(--theme-border-color);
+  background: transparent !important;
+  color: var(--theme-text-secondary) !important;
 }
+
 .btn-subtle:hover:not(:disabled) {
-  background-color: var(--theme-bg-secondary);
-  color: var(--theme-text-primary);
-  border-color: var(--theme-accent-secondary);
+  color: var(--theme-text-primary) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
-/* Icon Button (minimal styling, for buttons that are just icons) */
+.btn-primary {
+  border-color: var(--theme-accent-primary) !important;
+  background: var(--theme-accent-primary) !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--theme-accent-hover) !important;
+}
+
 .btn-icon {
-  background-color: transparent;
-  border-color: transparent;
-  color: var(--theme-text-secondary);
-  padding: 0.4em;
-}
-.btn-icon:hover:not(:disabled) {
-  background-color: var(--theme-bg-secondary);
-  color: var(--theme-accent-primary);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0.3rem;
 }
 
-
-/* Ensure the app container takes full viewport height */
-#root {
+input[type="text"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
   width: 100%;
-  height: 100vh; /* Changed from 100% to 100vh for full viewport height */
-  margin: 0 auto;
-  /* padding: 2rem; */ /* Removing default padding to allow components to control it */
-  text-align: center;
-  display: flex; /* Added to make App.jsx fill height */
-  flex-direction: column; /* Added to make App.jsx fill height */
+  border-radius: 2px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--theme-border-color);
+  background: var(--theme-input-bg);
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  box-shadow: none;
+  transition: border-color 0.12s ease;
 }
 
-/* @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+input::placeholder,
+textarea::placeholder {
+  color: var(--theme-text-tertiary);
+}
 
-/* Basic scrollbar styling for a more modern look */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--theme-accent-primary);
+  box-shadow: none;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  text-align: initial;
+}
+
+.cm-editor,
+.cm-content,
+.cm-gutters,
+code,
+pre,
+.code,
+.editor,
+.font-preview-item {
+  font-family: var(--editor-font-family);
+}
+
+.cm-editor {
+  background-color: var(--theme-editor-bg) !important;
+  color: var(--theme-editor-text) !important;
+}
+
+::selection {
+  background: rgba(242, 242, 242, 0.26);
+  color: var(--theme-text-primary);
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--theme-bg-secondary);
-  border-radius: 10px;
+  background: var(--theme-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--theme-border-color);
-  border-radius: 10px;
+  background: var(--theme-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--theme-accent-secondary);
+  background: var(--theme-scrollbar-thumb-hover);
+  background-clip: content-box;
 }
 
-/* CodeMirror Editor Font Override */
-.cm-editor .cm-content {
-  font-family: 'Segoe UI', sans-serif; /* Added Segoe UI, kept sans-serif as fallback */
-  font-size: 11px;
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* FORCE ALL BUTTONS TO BE DARK GRAY THEME - CHATGPT STYLE WITH WHITE OUTLINE */
-button.btn,
-button.btn-primary,
-button.btn-secondary, 
-button.btn-info,
-button.btn-success,
-button.btn-warning,
-.btn,
-.btn-primary,
-.btn-secondary,
-.btn-info,
-.btn-success,
-.btn-warning {
-  background-color: var(--theme-button-bg) !important;        /* Use theme accent color */
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;     /* Light white outline */
-  color: var(--theme-button-text-color) !important;           /* Use theme text color */
+/* ── Print support ── */
+#torah-ide-print-root {
+  display: none;
 }
-
-button.btn:hover:not(:disabled),
-button.btn-primary:hover:not(:disabled),
-button.btn-secondary:hover:not(:disabled), 
-button.btn-info:hover:not(:disabled),
-button.btn-success:hover:not(:disabled),
-button.btn-warning:hover:not(:disabled),
-.btn:hover:not(:disabled),
-.btn-primary:hover:not(:disabled),
-.btn-secondary:hover:not(:disabled),
-.btn-info:hover:not(:disabled),
-.btn-success:hover:not(:disabled),
-.btn-warning:hover:not(:disabled) {
-  background-color: var(--theme-button-hover-bg) !important;  /* Use theme hover color */
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;     /* Slightly brighter white outline on hover */
-  color: var(--theme-button-text-color) !important;           /* Use theme text color */
+@media print {
+  #root {
+    display: none !important;
+  }
+  #torah-ide-print-root {
+    display: block !important;
+    font-size: 14pt;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+  @page {
+    margin: 20mm 22mm;
+  }
 }

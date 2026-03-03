@@ -104,21 +104,9 @@ function generateMatchPreview(lineText, searchTerm, searchRegExp, caseSensitive)
  * @param {string[]} [excludePatterns] - Glob patterns to exclude.
  * @returns {Promise<Array<object>>} Array of match objects.
  */
-async function performSearchV2(basePath, searchTerm, options, includePatterns, excludePatterns) {
+async function performSearchV2(basePath, searchTerm, options, includePatterns, excludePatterns, providedFiles = null) {
     const finalResults = [];
     const CONTEXT_LINES = 2; // Number of context lines before and after
-
-    const globOptions = {
-        cwd: basePath,
-        dot: true,
-        ignore: excludePatterns && excludePatterns.length > 0 ? excludePatterns : DEFAULT_EXCLUDE_PATTERNS,
-        onlyFiles: true,
-        absolute: true,
-        caseSensitiveMatch: false,
-        followSymbolicLinks: false,
-    };
-
-    const patternsToGlob = includePatterns && includePatterns.length > 0 ? includePatterns : ['**/*'];
     
     let searchRegExp;
     try {
@@ -132,27 +120,49 @@ async function performSearchV2(basePath, searchTerm, options, includePatterns, e
             searchRegExp = new RegExp(escapedTerm, options.caseSensitive ? 'g' : 'gi');
         }
     } catch (e) {
-        // console.error("Invalid RegExp:", e.message);
         throw new Error(`Invalid regular expression: ${e.message}`);
     }
 
     try {
-        const files = await fg(patternsToGlob, globOptions);
-
-        for (const absoluteFilePath of files) {
-            if (isLikelyBinaryOrStyleFile(absoluteFilePath)) {
-                continue;
+        // Use provided files (from browser File System Access API) or discover from disk
+        let fileEntries; // Array of { filePath (relative), content }
+        if (providedFiles && providedFiles.length > 0) {
+            fileEntries = providedFiles.map(f => ({
+                relativePath: f.path,
+                fileName: f.name || f.path.split('/').pop(),
+                content: f.content,
+            }));
+        } else {
+            const globOptions = {
+                cwd: basePath,
+                dot: true,
+                ignore: excludePatterns && excludePatterns.length > 0 ? excludePatterns : DEFAULT_EXCLUDE_PATTERNS,
+                onlyFiles: true,
+                absolute: true,
+                caseSensitiveMatch: false,
+                followSymbolicLinks: false,
+            };
+            const patternsToGlob = includePatterns && includePatterns.length > 0 ? includePatterns : ['**/*'];
+            const files = await fg(patternsToGlob, globOptions);
+            fileEntries = [];
+            for (const absoluteFilePath of files) {
+                if (isLikelyBinaryOrStyleFile(absoluteFilePath)) continue;
+                let fileContent;
+                try {
+                    fileContent = await fs.readFile(absoluteFilePath, 'utf-8');
+                } catch {
+                    continue;
+                }
+                fileEntries.push({
+                    relativePath: path.relative(basePath, absoluteFilePath).replace(/\\/g, '/'),
+                    fileName: path.basename(absoluteFilePath),
+                    content: fileContent,
+                });
             }
-            
-            let fileContent;
-            try {
-                fileContent = await fs.readFile(absoluteFilePath, 'utf-8');
-            } catch (readError) {
-                // console.warn(`Skipping file ${absoluteFilePath} due to read error: ${readError.message}`);
-                continue; 
-            }
+        }
 
-            const lines = fileContent.split(/\r\n|\r|\n/);
+        for (const entry of fileEntries) {
+            const lines = entry.content.split(/\r\n|\r|\n/);
             const fileMatchesDetails = [];
 
             for (let i = 0; i < lines.length; i++) {
@@ -199,8 +209,8 @@ async function performSearchV2(basePath, searchTerm, options, includePatterns, e
 
             if (fileMatchesDetails.length > 0) {
                 finalResults.push({
-                    filePath: path.relative(basePath, absoluteFilePath).replace(/\\/g, '/'),
-                    fileName: path.basename(absoluteFilePath),
+                    filePath: entry.relativePath,
+                    fileName: entry.fileName,
                     matches: fileMatchesDetails,
                 });
             }

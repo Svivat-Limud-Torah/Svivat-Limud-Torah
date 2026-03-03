@@ -1,4 +1,4 @@
-/* frontend/src/components/NewFileModal.css */
+﻿/* frontend/src/components/NewFileModal.css */
 
 .new-file-modal-overlay {
   position: fixed;
@@ -15,15 +15,15 @@
 }
 
 .new-file-modal {
-  background-color: #2d3748;
-  color: #e2e8f0;
-  border-radius: 8px;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  border-radius: 2px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   max-width: 500px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  border: 1px solid #4a5568;
+  border: 1px solid #3c3c3c;
 }
 
 .new-file-modal-header {
@@ -31,12 +31,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 20px 10px 20px;
-  border-bottom: 1px solid #4a5568;
+  border-bottom: 1px solid #3c3c3c;
 }
 
 .new-file-modal-header h3 {
   margin: 0;
-  color: #e2e8f0;
+  color: #cccccc;
   font-size: 1.3rem;
   font-weight: 600;
 }
@@ -44,7 +44,7 @@
 .new-file-modal-close {
   background: none;
   border: none;
-  color: #a0aec0;
+  color: #969696;
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0;
@@ -58,8 +58,8 @@
 }
 
 .new-file-modal-close:hover {
-  background-color: #4a5568;
-  color: #e2e8f0;
+  background-color: #3c3c3c;
+  color: #cccccc;
 }
 
 .new-file-modal-form {
@@ -73,7 +73,7 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #e2e8f0;
+  color: #cccccc;
   font-weight: 500;
   font-size: 0.95rem;
 }
@@ -82,10 +82,10 @@
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #4a5568;
+  border: 1px solid #3c3c3c;
   border-radius: 4px;
-  background-color: #1a202c;
-  color: #e2e8f0;
+  background-color: #1e1e1e;
+  color: #cccccc;
   font-size: 0.95rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -93,24 +93,24 @@
 .form-group input[type="text"]:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #3182ce;
+  border-color: #007acc;
   box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
 }
 
 .form-group input[type="text"]::placeholder {
-  color: #718096;
+  color: #808080;
 }
 
 .file-type-note {
   margin-top: 8px;
   padding: 8px 12px;
-  background-color: #1a202c;
-  border: 1px solid #4a5568;
+  background-color: #1e1e1e;
+  border: 1px solid #3c3c3c;
   border-radius: 4px;
 }
 
 .file-type-note small {
-  color: #a0aec0;
+  color: #969696;
   font-size: 0.85rem;
   line-height: 1.4;
 }
@@ -127,7 +127,7 @@
 
 .location-option input[type="radio"] {
   margin-left: 8px;
-  accent-color: #3182ce;
+  accent-color: #007acc;
 }
 
 .location-option label {
@@ -144,7 +144,7 @@
 
 .custom-location-input {
   font-family: 'Courier New', monospace;
-  background-color: #1a202c;
+  background-color: #1e1e1e;
 }
 
 .directory-selection {
@@ -152,9 +152,9 @@
 }
 
 .select-directory-btn {
-  background-color: #3182ce;
+  background-color: #007acc;
   color: white;
-  border: 1px solid #3182ce;
+  border: 1px solid #007acc;
   padding: 10px 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -186,11 +186,11 @@
 }
 
 .path-display {
-  background-color: #1a202c;
-  border: 1px solid #4a5568;
+  background-color: #1e1e1e;
+  border: 1px solid #3c3c3c;
   border-radius: 4px;
   padding: 8px 12px;
-  color: #e2e8f0;
+  color: #cccccc;
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   word-break: break-all;
@@ -204,7 +204,7 @@
   gap: 10px;
   margin-top: 25px;
   padding-top: 20px;
-  border-top: 1px solid #4a5568;
+  border-top: 1px solid #3c3c3c;
 }
 
 .new-file-modal-actions .btn {
@@ -218,9 +218,9 @@
 }
 
 .new-file-modal-actions .btn-secondary {
-  background-color: #4a5568;
-  color: #e2e8f0;
-  border-color: #4a5568;
+  background-color: #3c3c3c;
+  color: #cccccc;
+  border-color: #3c3c3c;
 }
 
 .new-file-modal-actions .btn-secondary:hover {
@@ -229,9 +229,9 @@
 }
 
 .new-file-modal-actions .btn-primary {
-  background-color: #3182ce;
+  background-color: #007acc;
   color: white;
-  border-color: #3182ce;
+  border-color: #007acc;
 }
 
 .new-file-modal-actions .btn-primary:hover {

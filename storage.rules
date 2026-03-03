@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the file
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // User files - users can only access their own files
+    match /users/{userId}/files/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Public files - read-only for authenticated users
+    match /public/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admins can write
+    }
+    
+    // Temporary uploads - authenticated users can upload to temp folder
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+      
+      // Auto-delete after 24 hours (requires Cloud Functions)
+    }
+  }
+}

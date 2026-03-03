@@ -2,6 +2,7 @@
 import { useState, useCallback, useRef } from 'react';
 import path from '../utils/pathUtils';
 import { API_BASE_URL, HEBREW_TEXT } from '../utils/constants';
+import LocalFileSystemService from '../services/LocalFileSystemService';
 
 export default function useSearch({
   workspaceFolders,
@@ -25,6 +26,40 @@ export default function useSearch({
   const [currentSearchScope, setCurrentSearchScope] = useState({ basePath: null, relativePath: null, name: null });
   const [searchTermToHighlightInEditor, setSearchTermToHighlightInEditor] = useState(''); // State variable
 
+  const searchOneFolder = useCallback(async (basePath, term, options, include, exclude) => {
+    // Read files from browser File System Access API.
+    // readAllTextFiles will try to restore permission from IndexedDB if needed
+    // (this is called inside a user gesture so requestPermission is allowed).
+    let files = null;
+    try {
+      files = await LocalFileSystemService.readAllTextFiles(basePath, 500);
+    } catch (e) {
+      // Permission denied or handle missing — fall through without files.
+      // The backend /api/v2/search will return a clear error for missing basePath.
+      throw new Error(
+        'לא ניתן לקרוא את הקבצים. אנא סגור ופתח מחדש את התיקייה בסביבת העבודה: ' + basePath
+      );
+    }
+
+    const response = await fetch(`${API_BASE_URL}/v2/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        basePath,
+        searchTerm: term,
+        options,
+        ...(include.length > 0 && { includePatterns: include }),
+        ...(exclude.length > 0 && { excludePatterns: exclude }),
+        ...(files && { files }),
+      }),
+    });
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || `Search failed: ${response.status}`);
+    }
+    return response.json();
+  }, []);
+
   const handleSearchV2 = useCallback(async (triggeredFromUI = false) => {
     const term = searchTerm.trim();
     if (!term) {
@@ -33,104 +68,79 @@ export default function useSearch({
       if (searchInputRef.current && triggeredFromUI) searchInputRef.current.focus();
       return;
     }
-    if (term.length < 1 && !searchOptions.isRegex) {
-      if (triggeredFromUI) setSearchError(HEBREW_TEXT.searchQueryTooShort || "Search term is too short.");
-      setSearchResults([]);
-      if (searchInputRef.current && triggeredFromUI) searchInputRef.current.focus();
+
+    if (workspaceFolders.length === 0) {
+      setSearchError(HEBREW_TEXT.addFolderToStart || "Please add a folder to the workspace to search.");
       return;
     }
 
     setIsSearching(true);
     setSearchError(null);
-    setSearchResults([]); 
+    setSearchResults([]);
     setGlobalLoadingMessage(HEBREW_TEXT.searching || "Searching...");
 
-    let effectiveBasePath;
-    if (currentSearchScope.basePath) {
-        effectiveBasePath = currentSearchScope.relativePath 
-            ? path.join(currentSearchScope.basePath, currentSearchScope.relativePath)
-            : currentSearchScope.basePath;
-    } else if (workspaceFolders.length > 0 && workspaceFolders[0]?.path) {
-        effectiveBasePath = workspaceFolders[0].path;
-    } else {
-        setIsSearching(false);
-        setGlobalLoadingMessage('');
-        if (triggeredFromUI) setSearchError(HEBREW_TEXT.addFolderToStart || "Please add a folder to the workspace to search.");
-        return;
-    }
-    
     const include = includePatternsInput.split(',').map(p => p.trim()).filter(p => p.length > 0);
     const exclude = excludePatternsInput.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    const opts = searchOptions;
 
-    const requestBody = {
-        basePath: effectiveBasePath,
-        searchTerm: term,
-        options: searchOptions,
-        ...(include.length > 0 && { includePatterns: include }),
-        ...(exclude.length > 0 && { excludePatterns: exclude }),
-    };
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/v2/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        });
+      let allFormattedResults = [];
 
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error || `Search failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        const rootNameForDisplay = currentSearchScope.name || 
-                                   (currentSearchScope.basePath ? path.basename(currentSearchScope.basePath) : null) ||
-                                   (workspaceFolders[0]?.name ? workspaceFolders[0].name : null) ||
-                                   (effectiveBasePath ? path.basename(effectiveBasePath) : "Search Results");
-        
-        let originalWorkspaceRootPath = currentSearchScope.basePath || (workspaceFolders[0]?.path || effectiveBasePath);
-
-        const formattedResults = data.map(fileResult => ({
-            searchRootPath: effectiveBasePath,
-            originalRootPath: originalWorkspaceRootPath,
-            rootName: rootNameForDisplay, 
-            relativePath: fileResult.filePath,
-            fileName: fileResult.fileName,
-            matches: fileResult.matches.map(match => ({
-                lineNumber: match.lineNumber,
-                lineText: match.lineText,
-                matchPreview: match.matchPreview,
-                contextBefore: match.contextBefore,
-                contextAfter: match.contextAfter,
-                charPositionsInLine: match.charPositionsInLine || [],
-            })),
-            type: 'file', 
+      if (currentSearchScope.basePath) {
+        // Scoped search — single folder/subfolder
+        const effectiveBasePath = currentSearchScope.relativePath
+          ? path.join(currentSearchScope.basePath, currentSearchScope.relativePath)
+          : currentSearchScope.basePath;
+        const rootName = currentSearchScope.name || path.basename(effectiveBasePath);
+        const data = await searchOneFolder(effectiveBasePath, term, opts, include, exclude);
+        allFormattedResults = data.map(f => ({
+          searchRootPath: effectiveBasePath,
+          originalRootPath: currentSearchScope.basePath,
+          rootName,
+          relativePath: f.filePath,
+          fileName: f.fileName,
+          matches: f.matches,
+          type: 'file',
         }));
+      } else {
+        // Global search — search ALL workspace folders
+        const promises = workspaceFolders.map(async (folder) => {
+          try {
+            const data = await searchOneFolder(folder.path, term, opts, include, exclude);
+            return data.map(f => ({
+              searchRootPath: folder.path,
+              originalRootPath: folder.path,
+              rootName: folder.name || path.basename(folder.path),
+              relativePath: f.filePath,
+              fileName: f.fileName,
+              matches: f.matches,
+              type: 'file',
+            }));
+          } catch {
+            return []; // Skip folders that error
+          }
+        });
+        const resultsArrays = await Promise.all(promises);
+        allFormattedResults = resultsArrays.flat();
+      }
 
-        setSearchResults(formattedResults);
-        if (formattedResults.length === 0 && triggeredFromUI) {
-            setSearchError(HEBREW_TEXT.noResultsFound || "No results found.");
-        }
-        setSearchTermToHighlightInEditor(term); 
+      setSearchResults(allFormattedResults);
+      if (allFormattedResults.length === 0 && triggeredFromUI) {
+        setSearchError(HEBREW_TEXT.noResultsFound || "No results found.");
+      }
+      setSearchTermToHighlightInEditor(term);
     } catch (error) {
-        console.error("Error performing V2 search:", error);
-        if (triggeredFromUI) setSearchError(error.message || (HEBREW_TEXT.error || "Error") + " performing search.");
-        setSearchTermToHighlightInEditor('');
+      console.error("Error performing V2 search:", error);
+      if (triggeredFromUI) setSearchError(error.message || "Error performing search.");
+      setSearchTermToHighlightInEditor('');
     } finally {
-        setIsSearching(false);
-        setGlobalLoadingMessage('');
+      setIsSearching(false);
+      setGlobalLoadingMessage('');
     }
   }, [
-    searchTerm, 
-    workspaceFolders, 
-    currentSearchScope, 
-    setGlobalLoadingMessage, 
-    searchOptions, 
-    includePatternsInput, 
-    excludePatternsInput,
-    // Added setSearchTermToHighlightInEditor to dependency array as it's used inside
-    setSearchTermToHighlightInEditor 
+    searchTerm, workspaceFolders, currentSearchScope, setGlobalLoadingMessage,
+    searchOptions, includePatternsInput, excludePatternsInput,
+    setSearchTermToHighlightInEditor, searchOneFolder,
   ]);
 
   const handleSetSearchScopeAndTriggerSearch = useCallback((baseFolderOfItem, relativeItemPath, itemNameInScope) => {

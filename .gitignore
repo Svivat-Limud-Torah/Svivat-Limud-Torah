@@ -1,21 +1,94 @@
-﻿# Dependencies
-/node_modules
-/.pnp
+﻿# ─── Dependencies ─────────────────────────────────────────────────────────────
+# Match node_modules at every level (root, backend/, frontend/, functions/, …)
+node_modules/
+.pnp
 .pnp.js
+.yarn/install-state.gz
 
-# Testing
-/coverage
+# ─── Build / Production output ────────────────────────────────────────────────
+dist/
+build/
+out/
+frontend/dist/
+frontend/build/
 
-# Production
-/build
-/dist
-/dist_electron
-*.exe
+# Electron packaged output
+dist_electron/
+backend/dist_electron/
+**/*.exe
+**/*.blockmap
+**/*.AppImage
+**/*.deb
+**/*.rpm
+**/*.snap
+
+# Windows installer
 *.msi
-*.blockmap
 
-# Misc
-.DS_Store
-*.pem
-*.log
+# ─── Secrets & Environment ────────────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+# Keep .env.example (documents required variables)
+!.env.example
+!frontend/.env.example
+
+# ─── Firebase ─────────────────────────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+.firebaserc
+
+# ─── Database / Runtime data ──────────────────────────────────────────────────
 *.sqlite
+*.sqlite3
+*.db
+
+# ─── OS generated ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Editor & IDE ─────────────────────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.vscode/*.log
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.pem
+*.tmp
+*.cache
+.cache/
+*.tgz
+*.gz
