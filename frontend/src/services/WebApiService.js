@@ -723,6 +723,14 @@ ${historyCtx}`;
       stats[key].relativePath = relativePath;
       localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
     } catch (e) {}
+
+    // Append to activity log for hourly/daily charts (keep last 1000 entries)
+    try {
+      const log = JSON.parse(localStorage.getItem('web_activity_log') || '[]');
+      log.push(Date.now());
+      if (log.length > 1000) log.splice(0, log.length - 1000);
+      localStorage.setItem('web_activity_log', JSON.stringify(log));
+    } catch (e) {}
   },
 
   // ─── Settings ──────────────────────────────────────────────────────────────

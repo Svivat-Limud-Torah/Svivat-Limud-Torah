@@ -43,11 +43,31 @@ function buildLocalSnapshot() {
     const ratings = questionnaires.map(q => q.overallRating).filter(r => typeof r === 'number');
     const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
+    // Build activityByHour and dailyActivity from the activity log
+    const activityLog = JSON.parse(localStorage.getItem('web_activity_log') || '[]');
+    const hourCounts = {};
+    const dayCounts = {};
+    for (const ts of activityLog) {
+        const d = new Date(ts);
+        const hour = d.getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+        const dayStr = d.toISOString().substring(0, 10); // YYYY-MM-DD
+        dayCounts[dayStr] = (dayCounts[dayStr] || 0) + 1;
+    }
+    const activityByHour = Object.entries(hourCounts).map(([h, c]) => ({ hour: Number(h), count: c }));
+    // Last 30 days
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+    const dailyActivity = Object.entries(dayCounts)
+        .filter(([day]) => day >= thirtyDaysAgo)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([day, count]) => ({ day, count }));
+
     return {
         totalStats: { unique_files: fileEntries.length, total_opens: totalOpens, total_time_seconds: totalTime, last_activity_timestamp: lastTs || null },
         fileTypeDistribution: [],
-        activityByHour: [],
-        dailyActivity: [],
+        activityByHour,
+        dailyActivity,
         questionnaireInsights: { averageRating: avgRating, totalEntries: questionnaires.length, firstEntryDate: questionnaires[0]?.date || null, lastEntryDate: questionnaires[questionnaires.length - 1]?.date || null },
         topFiles: fileEntries.sort((a, b) => (b.time_spent_seconds || 0) - (a.time_spent_seconds || 0)).slice(0, 20),
         weeklySummary: summaries[summaries.length - 1] || null,
