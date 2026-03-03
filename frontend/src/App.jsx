@@ -609,11 +609,21 @@ function App() {
     if (prev && prev.type === 'file' && activeTabStartRef.current) {
       const seconds = Math.round((now - activeTabStartRef.current) / 1000);
       if (seconds >= 5 && prev.basePath && prev.relativePath) {
-        fetch(`${API_BASE_URL}/file-time`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds }),
-        }).catch(() => {});
+        if (IS_WEB_MODE) {
+          // Store file time locally
+          const stats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
+          const key = `${prev.basePath}/${prev.relativePath}`;
+          if (!stats[key]) stats[key] = { path: key, openCount: 0, totalSeconds: 0, lastOpened: 0 };
+          stats[key].totalSeconds = (stats[key].totalSeconds || 0) + seconds;
+          stats[key].lastOpened = Date.now();
+          localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
+        } else {
+          fetch(`${API_BASE_URL}/file-time`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds }),
+          }).catch(() => {});
+        }
       }
     }
 
@@ -629,9 +639,18 @@ function App() {
       if (prev && prev.type === 'file' && activeTabStartRef.current && prev.basePath && prev.relativePath) {
         const seconds = Math.round((Date.now() - activeTabStartRef.current) / 1000);
         if (seconds >= 5) {
-          navigator.sendBeacon(`${API_BASE_URL}/file-time`,
-            new Blob([JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds })],
-              { type: 'application/json' }));
+          if (IS_WEB_MODE) {
+            const stats = JSON.parse(localStorage.getItem('web_file_usage_stats') || '{}');
+            const key = `${prev.basePath}/${prev.relativePath}`;
+            if (!stats[key]) stats[key] = { path: key, openCount: 0, totalSeconds: 0, lastOpened: 0 };
+            stats[key].totalSeconds = (stats[key].totalSeconds || 0) + seconds;
+            stats[key].lastOpened = Date.now();
+            localStorage.setItem('web_file_usage_stats', JSON.stringify(stats));
+          } else {
+            navigator.sendBeacon(`${API_BASE_URL}/file-time`,
+              new Blob([JSON.stringify({ baseFolderPath: prev.basePath, relativeFilePath: prev.relativePath, seconds })],
+                { type: 'application/json' }));
+          }
         }
       }
     };

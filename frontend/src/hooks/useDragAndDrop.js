@@ -1,6 +1,6 @@
 // frontend/src/hooks/useDragAndDrop.js
 import { useState, useCallback, useRef } from 'react';
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 
 // File type classification
 const TEXT_EXTENSIONS = new Set([
@@ -97,6 +97,10 @@ export default function useDragAndDrop({
           onOpenBinaryTab(file.name, fileType, objectUrl);
 
         } else if (fileType === 'convertible') {
+          if (IS_WEB_MODE) {
+            setDragError(`המרת קובץ "${file.name}" אינה זמינה במצב אינטרנט. שמור כ-.md או .txt.`);
+            continue;
+          }
           setGlobalLoadingMessage(`ממיר את ${file.name}...`);
           try {
             const ext = getFileExtension(file.name);
