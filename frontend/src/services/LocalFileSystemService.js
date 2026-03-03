@@ -8,39 +8,45 @@ class LocalFileSystemService {
     this.dbName = 'TorahIDEFileSystem';
     this.storeName = 'directoryHandles';
     this.db = null;
-    this.initDB();
+    this.dbReady = this.initDB(); // Store promise so callers can await readiness
   }
 
   /**
    * Initialize IndexedDB for storing directory handles
    */
-  async initDB() {
-    try {
-      const request = indexedDB.open(this.dbName, 1);
-      
-      request.onerror = () => {
-        console.error('IndexedDB error:', request.error);
-      };
-      
-      request.onsuccess = () => {
-        this.db = request.result;
-      };
-      
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName, { keyPath: 'name' });
-        }
-      };
-    } catch (error) {
-      console.error('Failed to initialize IndexedDB:', error);
-    }
+  initDB() {
+    return new Promise((resolve, reject) => {
+      try {
+        const request = indexedDB.open(this.dbName, 1);
+
+        request.onerror = () => {
+          console.error('IndexedDB error:', request.error);
+          reject(request.error);
+        };
+
+        request.onsuccess = () => {
+          this.db = request.result;
+          resolve();
+        };
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(this.storeName)) {
+            db.createObjectStore(this.storeName, { keyPath: 'name' });
+          }
+        };
+      } catch (error) {
+        console.error('Failed to initialize IndexedDB:', error);
+        reject(error);
+      }
+    });
   }
 
   /**
    * Save directory handle to IndexedDB
    */
   async saveDirectoryHandle(name, handle) {
+    await this.dbReady;
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not initialized'));
@@ -60,6 +66,7 @@ class LocalFileSystemService {
    * Load directory handle from IndexedDB
    */
   async loadDirectoryHandle(name) {
+    await this.dbReady;
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not initialized'));
@@ -85,6 +92,7 @@ class LocalFileSystemService {
    * Get all saved folder names
    */
   async getSavedFolderNames() {
+    await this.dbReady;
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not initialized'));
@@ -104,6 +112,7 @@ class LocalFileSystemService {
    * Remove directory handle from IndexedDB
    */
   async removeDirectoryHandle(name) {
+    await this.dbReady;
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not initialized'));

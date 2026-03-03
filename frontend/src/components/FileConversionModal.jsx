@@ -10,17 +10,21 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [conversionProgress, setConversionProgress] = useState(null);
     const [conversionResults, setConversionResults] = useState(null);
     const [error, setError] = useState('');
+    const [folderAdded, setFolderAdded] = useState(false);
+    const [isAddingFolder, setIsAddingFolder] = useState(false);
     const fileInputRef = useRef(null);
 
     // Reset state when modal opens/closes
     useEffect(() => {
         if (isOpen) {
-            setCurrentStep('welcome');
+            setCurrentStep('converting'); // Skip welcome step — guided tour handles onboarding
             setSelectedFolder('');
             setIsConverting(false);
             setConversionProgress(null);
             setConversionResults(null);
             setError('');
+            setFolderAdded(false);
+            setIsAddingFolder(false);
         }
     }, [isOpen]);
 
@@ -91,47 +95,18 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
             }
 
             const result = await response.json();
-            setConversionResults(result);
+
+            // Stop spinner BEFORE showing results or opening folder picker
+            setIsConverting(false);
             setConversionProgress({ type: 'complete' });
+            setConversionResults(result);
             setCurrentStep('results');
 
-            // Add the new target directory to workspace automatically
-            if (result.targetDirectory && addWorkspaceFolder) {
-                try {
-                    const addedSuccessfully = await addWorkspaceFolder(result.targetDirectory);
-                    if (addedSuccessfully) {
-                        // Mark that user has completed file conversion to avoid showing welcome modal again
-                        localStorage.setItem('hasCompletedFileConversion', 'true');
-                        
-                        // Ask user to restart the application for changes to take effect
-                        const shouldRestart = window.confirm(
-                            'התיקייה החדשה נוספה לסביבת העבודה בהצלחה!\n\n' +
-                            'כדי שהשינויים ייכנסו לתוקף מומלץ לאתחל את התוכנה.\n\n' +
-                            'האם תרצה לאתחל כעת?'
-                        );
-                        
-                        if (shouldRestart) {
-                            // Close the application to restart
-                            if (window.electronAPI && window.electronAPI.closeApp) {
-                                window.electronAPI.closeApp();
-                            } else {
-                                // Fallback for web version - reload the page
-                                window.location.reload();
-                            }
-                        }
-                    } else {
-                        console.log('Folder was not added - it might already exist in workspace');
-                    }
-                } catch (folderError) {
-                    console.warn('Error adding folder to workspace:', folderError);
-                    // Don't break the conversion success flow for this
-                }
-            }
+            localStorage.setItem('hasCompletedFileConversion', 'true');
 
         } catch (error) {
             console.error('Conversion error:', error);
             setError(error.message || 'שגיאה לא צפויה בהמרת הקבצים');
-        } finally {
             setIsConverting(false);
         }
     };
@@ -158,96 +133,75 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="file-conversion-modal-overlay">
-            <div className="file-conversion-modal">
-                <div className="file-conversion-modal-header">
-                    <h2>
-                        {currentStep === 'welcome' && 'ברוכים הבאים לסביבת לימוד תורה!'}
-                        {currentStep === 'converting' && 'המרת קבצים'}
-                        {currentStep === 'results' && 'תוצאות ההמרה'}
-                    </h2>
+        <div className="fcm-overlay" onClick={e => e.target === e.currentTarget && !isConverting && handleClose()}>
+            <div className="fcm-modal">
+
+                {/* Header */}
+                <div className="fcm-header">
+                    <div className="fcm-header-title">
+                        <span className="fcm-header-icon">📄</span>
+                        <h2>{currentStep === 'results' ? 'תוצאות ההמרה' : 'המרת קבצים ל-Markdown'}</h2>
+                    </div>
                     {!isConverting && (
-                        <button 
-                            className="file-conversion-modal-close" 
-                            onClick={currentStep === 'welcome' ? handleWelcomeClose : handleClose}
-                            aria-label="סגור"
-                        >
-                            ×
-                        </button>
+                        <button className="fcm-close-btn" onClick={handleClose} aria-label="סגור">✕</button>
                     )}
                 </div>
 
-                <div className="file-conversion-modal-content">
-                    {currentStep === 'welcome' && (
-                        <div className="welcome-step">
-                            <div className="welcome-message">
-                                <p className="welcome-intro">
-                                    ברוכים הבאים לסביבת לימוד תורה! 
-                                </p>
-                                <p>
-                                    כדי להתחיל לעבוד, פשוט לחץ על כפתור <strong>"בחר תיקייה מהמחשב"</strong> בצד ימין.
-                                </p>
-                                <div className="benefits-list">
-                                    <h4>היכולות המתקדמות של התוכנה:</h4>
-                                    <ul>
-                                        <li>עריכת קבצים ישירות מהמחשב שלך - ללא העלאה!</li>
-                                        <li>חיפוש מתקדם בכל הקבצים</li>
-                                        <li>צ׳אט AI חכם לשאלות בתורה</li>
-                                        <li>יצירת כרטיסי לימוד וסיכומים</li>
-                                        <li>ארגון אוטומטי של החומר</li>
-                                    </ul>
-                                </div>
-                                <div className="safety-notice">
-                                    <p><strong>חשוב לדעת:</strong> כל הקבצים נשארים במחשב שלך!</p>
-                                    <p>התוכנה קוראת וכותבת ישירות מהדיסק המקומי שלך בצורה מאובטחת.</p>
-                                    <p style={{fontSize: '0.9em', color: 'var(--theme-text-tertiary)'}}>* נתמך בדפדפני Chrome ו-Edge בלבד</p>
-                                    <p style={{fontSize: '0.9em', color: 'var(--theme-error-color)', fontWeight: 'bold'}}>** משתמשי Mac - יש להוריד את האפליקציה מהאתר</p>
-                                </div>
-                            </div>
-                            
-                            <div className="welcome-actions">
-                                <button 
-                                    onClick={() => onClose('never')}
-                                    className="btn btn-primary welcome-convert-button"
-                                >
-                                    הבנתי, בואו נתחיל!
-                                </button>
-                            </div>
-                            
-                            {/* Removed "don't show again" checkbox - closing modal once = never show again */}
-                        </div>
-                    )}
+                <div className="fcm-body">
 
+                    {/* ── Converting step ── */}
                     {currentStep === 'converting' && (
-                        <div className="converting-step">
-                            <div className="file-conversion-explanation">
-                                <p>התוכנה תמיר קבצים מהסוגים הבאים: TXT, DOCX, PDF, HTML, RTF</p>
-                                <p style={{ fontWeight: 'bold', color: 'var(--theme-accent-primary)' }}>
-                                    הקבצים המקוריים שלך לא יימחקו! יתיצרה תיקייה חדשה עם הקבצים המומרים.
-                                </p>
+                        <div className="fcm-converting">
+
+                            {/* Why convert banner */}
+                            <div className="fcm-why-banner">
+                                <div className="fcm-why-icon">💡</div>
+                                <div className="fcm-why-text">
+                                    <strong>למה להמיר לקבצי Markdown?</strong>
+                                    <p>
+                                        קבצי <code>.md</code> מאפשרים עריכה נוחה של כותרות, רשימות, טבלאות ועיצוב טקסט —
+                                        בדיוק כמו Word, אבל קלים ומהירים יותר לניהול סיכומים ולמידה.
+                                        הכלים החכמים של התוכנה (כרטיסיות, ניתוח AI, חיפוש) עובדים הכי טוב עם קבצי MD.
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="file-conversion-folder-selection">
-                                <label htmlFor="folder-input">בחר תיקייה להמרה:</label>
-                                <div className="folder-input-group">
+                            {/* Supported formats */}
+                            <div className="fcm-formats" dir="ltr">
+                                <span className="fcm-format-badge">DOCX</span>
+                                <span className="fcm-format-badge">PDF</span>
+                                <span className="fcm-format-badge">TXT</span>
+                                <span className="fcm-format-badge">HTML</span>
+                                <span className="fcm-format-badge">RTF</span>
+                                <span className="fcm-format-arrow">→</span>
+                                <span className="fcm-format-badge fcm-format-target">MD</span>
+                            </div>
+
+                            <div className="fcm-safe-note">
+                                🔒 הקבצים המקוריים <strong>לא יימחקו</strong> — תיווצר תיקייה חדשה עם הגרסאות המומרות.
+                            </div>
+
+                            {/* Folder selection */}
+                            <div className="fcm-folder-section">
+                                <label className="fcm-label">בחר את התיקייה שברצונך להמיר:</label>
+                                <div className="fcm-folder-row">
                                     <input
                                         type="text"
                                         value={selectedFolder}
                                         onChange={(e) => setSelectedFolder(e.target.value)}
-                                        placeholder="הכנס נתיב תיקייה או לחץ על 'עיון' לבחירה"
-                                        className="folder-path-input"
+                                        placeholder="C:\Users\שם\Documents\סיכומים"
+                                        className="fcm-path-input"
                                         disabled={isConverting}
+                                        dir="ltr"
                                     />
-                                    <button 
+                                    <button
                                         onClick={handleFolderSelect}
-                                        className="folder-browse-button"
+                                        className="fcm-browse-btn"
                                         disabled={isConverting}
                                     >
-                                        עיון...
+                                        עיון…
                                     </button>
                                 </div>
-                                
-                                {/* Hidden file input for folder selection */}
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -260,100 +214,98 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                             </div>
 
                             {error && (
-                                <div className="file-conversion-error">
-                                    <strong>שגיאה:</strong> {error}
-                                </div>
+                                <div className="fcm-error">⚠️ {error}</div>
                             )}
 
                             {conversionProgress && conversionProgress.type === 'start' && (
-                                <div className="file-conversion-progress">
-                                    <p>מבצע המרה...</p>
-                                    <div className="progress-bar">
-                                        <div className="progress-bar-fill indeterminate"></div>
+                                <div className="fcm-progress">
+                                    <span>ממיר קבצים…</span>
+                                    <div className="fcm-progress-bar">
+                                        <div className="fcm-progress-fill fcm-indeterminate"></div>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="file-conversion-actions">
-                                <button 
+                            <div className="fcm-actions">
+                                <button
                                     onClick={handleConvert}
                                     disabled={!selectedFolder.trim() || isConverting}
-                                    className="btn btn-primary convert-button"
+                                    className="fcm-btn-primary"
                                 >
-                                    {isConverting ? 'מבצע המרה...' : 'התחל המרה'}
-                                </button>
-                                <button 
-                                    onClick={handleBackToWelcome}
-                                    disabled={isConverting}
-                                    className="btn cancel-button"
-                                >
-                                    חזור
+                                    {isConverting ? '⏳ ממיר…' : '▶ התחל המרה'}
                                 </button>
                             </div>
                         </div>
                     )}
 
+                    {/* ── Results step ── */}
                     {currentStep === 'results' && conversionResults && (
-                        <div className="results-step">
-                            <div className="file-conversion-results">
-                                <h3>ההמרה הושלמה!</h3>
-                                <div className="conversion-summary">
-                                    <p>
-                                        <strong>סה"כ קבצים שנמצאו:</strong> {conversionResults.totalFiles}
-                                    </p>
-                                    <p>
-                                        <strong>קבצים שהומרו בהצלחה:</strong> {conversionResults.convertedFiles}
-                                    </p>
-                                    {conversionResults.copiedFiles && conversionResults.copiedFiles > 0 && (
-                                        <p>
-                                            <strong>קבצים שהועתקו (תמונות ואחרים):</strong> {conversionResults.copiedFiles}
-                                        </p>
-                                    )}
-                                    {conversionResults.failed && conversionResults.failed.length > 0 && (
-                                        <p>
-                                            <strong>קבצים שנכשלו:</strong> {conversionResults.failed.length}
-                                        </p>
-                                    )}
-                                    <p>
-                                        <strong>התיקייה החדשה נוצרה:</strong> {conversionResults.targetDirectory}
-                                    </p>
-                                </div>
+                        <div className="fcm-results">
+                            <div className="fcm-results-success">✅ ההמרה הושלמה בהצלחה!</div>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--theme-text-secondary)', marginBottom: 16 }}>
+                        לחץ על הכפתור מטה כדי להוסיף את התיקייה המומרת לסייר הקבצים.
+                    </p>
 
-                                {conversionResults.failed && conversionResults.failed.length > 0 && (
-                                    <div className="conversion-failures">
-                                        <h4>קבצים שנכשלו:</h4>
-                                        <ul>
-                                            {conversionResults.failed.map((failure, index) => (
-                                                <li key={index}>
-                                                    <strong>{failure.path}:</strong> {failure.error}
-                                                </li>
-                                            ))}
-                                        </ul>
+                            <div className="fcm-results-grid">
+                                <div className="fcm-stat">
+                                    <span className="fcm-stat-num">{conversionResults.totalFiles}</span>
+                                    <span className="fcm-stat-label">קבצים נמצאו</span>
+                                </div>
+                                <div className="fcm-stat">
+                                    <span className="fcm-stat-num fcm-green">{conversionResults.convertedFiles}</span>
+                                    <span className="fcm-stat-label">הומרו</span>
+                                </div>
+                                {conversionResults.copiedFiles > 0 && (
+                                    <div className="fcm-stat">
+                                        <span className="fcm-stat-num">{conversionResults.copiedFiles}</span>
+                                        <span className="fcm-stat-label">הועתקו</span>
                                     </div>
                                 )}
+                                {conversionResults.failed?.length > 0 && (
+                                    <div className="fcm-stat">
+                                        <span className="fcm-stat-num fcm-red">{conversionResults.failed.length}</span>
+                                        <span className="fcm-stat-label">נכשלו</span>
+                                    </div>
+                                )}
+                            </div>
 
-                                <div className="conversion-success-message">
-                                    <p style={{ color: 'var(--theme-success-color)', fontWeight: 'bold' }}>
-                                        מעולה! התיקייה החדשה "סביבת לימוד תורה" נוצרה והוספה 
-                                        לסביבת העבודה שלך.
-                                    </p>
-                                    <p>
-                                        כעת תוכל להתחיל לעבוד עם הקבצים המומרים בסביבת העבודה החדשה.
-                                        כל התמונות והקבצים האחרים הועתקו כמו שהם כדי לשמור על המבנה המקורי.
-                                    </p>
-                                    <p>
-                                        אתה יכול להגיע לאפשרות המרת קבצים בכל עת דרך ההגדרות.
-                                    </p>
-                                </div>
+                            <div className="fcm-results-dir">
+                                📁 תיקייה חדשה: <code>{conversionResults.targetDirectory}</code>
+                            </div>
 
-                                <div className="file-conversion-actions">
-                                    <button 
-                                        onClick={handleClose}
-                                        className="btn btn-primary"
+                            {conversionResults.failed?.length > 0 && (
+                                <details className="fcm-failures">
+                                    <summary>קבצים שנכשלו ({conversionResults.failed.length})</summary>
+                                    <ul>
+                                        {conversionResults.failed.map((f, i) => (
+                                            <li key={i}><strong>{f.path}</strong>: {f.error}</li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            )}
+
+                            <div className="fcm-actions" style={{ flexDirection: 'column', gap: 10 }}>
+                                {!folderAdded ? (
+                                    <button
+                                        onClick={async () => {
+                                            if (!addWorkspaceFolder) return;
+                                            setIsAddingFolder(true);
+                                            const ok = await addWorkspaceFolder();
+                                            setIsAddingFolder(false);
+                                            if (ok) {
+                                                setFolderAdded(true);
+                                                onClose('success');
+                                            }
+                                        }}
+                                        className="fcm-btn-primary"
+                                        disabled={isAddingFolder}
                                     >
-                                        הבנתי, תודה!
+                                        {isAddingFolder ? '⏳ מוסיף…' : '📂 פתח תיקייה בסייר הקבצים'}
                                     </button>
-                                </div>
+                                ) : (
+                                    <button onClick={handleClose} className="fcm-btn-primary">סגור</button>
+                                )}
+                                <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>אעשה זאת אחר כך</button>
                             </div>
                         </div>
                     )}

@@ -203,31 +203,11 @@ function App() {
   const learningGraphHook = useLearningGraph(); // Initialize Learning Graph Hook
   const judaismChatHook = useJudaismChat({ setGlobalLoadingMessage, selectedAiModel }); // Pass selected model
 
-  // Check if user should see file conversion prompt
+  // Initialize backup system on mount
   useEffect(() => {
-    // Initialize AI organization backup system
     initializeBackupSystem();
-
-    // If user has already seen the welcome modal, don't show it again
-    if (hasSeenWelcomeModal) {
-      console.log('User has already seen welcome modal - skipping initial check');
-      return;
-    }
-
-    const hasSeenConversionPrompt = localStorage.getItem('hasSeenFileConversionPrompt');
-    const shouldShowPrompt = localStorage.getItem('showFileConversionPrompt');
-    const hasCompletedConversion = localStorage.getItem('hasCompletedFileConversion') === 'true';
-
-    // Show prompt on first app load unless user specifically disabled it or already completed conversion
-    if ((!hasSeenConversionPrompt || shouldShowPrompt === 'true') && !hasCompletedConversion) {
-      // Small delay to let the app initialize
-      const timer = setTimeout(() => {
-        setIsFileConversionModalOpen(true);
-      }, 1500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [hasSeenWelcomeModal]);
+  }, []);
+  // File conversion modal is only opened manually via the toolbar button.
 
   // Global link handler for external links
   useEffect(() => {
@@ -528,76 +508,7 @@ function App() {
     localStorage.setItem('torahIdeMainViewMode', mainViewMode);
   }, [mainViewMode]);
 
-  // Auto-open file conversion modal when no workspace is present
-  useEffect(() => {
-    console.log('FileConversion Effect Running:', {
-      initialFoldersLoaded: workspaceHook.initialFoldersLoaded,
-      workspaceFoldersCount: workspaceHook.workspaceFolders.length,
-      isModalOpen: isFileConversionModalOpen
-    });
-
-    // Only check after initial workspace folders have been loaded
-    if (!workspaceHook.initialFoldersLoaded) {
-      console.log('Initial folders not yet loaded, waiting...');
-      return;
-    }
-
-    // Check state instead of re-reading localStorage
-    if (hasSeenWelcomeModal) {
-      console.log('User has already seen welcome modal - not showing');
-      return;
-    }
-
-    const postponedTimestamp = localStorage.getItem('fileConversionPostponedTime');
-
-    // Check if 5 hours (5 * 60 * 60 * 1000 = 18000000 ms) have passed since postponement
-    const fiveHoursInMs = 5 * 60 * 60 * 1000;
-    const now = Date.now();
-    let shouldRespectPostponement = false;
-
-    if (postponedTimestamp) {
-      const timeSincePostponed = now - parseInt(postponedTimestamp);
-      shouldRespectPostponement = timeSincePostponed < fiveHoursInMs;
-
-      if (!shouldRespectPostponement) {
-        console.log('5 hours have passed since postponement - clearing postponed flag');
-        localStorage.removeItem('fileConversionPostponedTime');
-      } else {
-        const remainingTime = fiveHoursInMs - timeSincePostponed;
-        const remainingHours = Math.floor(remainingTime / (60 * 60 * 1000));
-        const remainingMinutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
-        console.log(`File conversion still postponed for ${remainingHours}h ${remainingMinutes}m`);
-      }
-    }
-
-    console.log('Checking workspace status for file conversion modal:', {
-      workspaceFoldersCount: workspaceHook.workspaceFolders.length,
-      isModalOpen: isFileConversionModalOpen,
-      hasSeenWelcomeModal,
-      postponedTimestamp,
-      shouldRespectPostponement,
-      initialFoldersLoaded: workspaceHook.initialFoldersLoaded
-    });
-
-    // If no workspace folders exist and modal should be shown
-    if (workspaceHook.workspaceFolders.length === 0 &&
-      !isFileConversionModalOpen &&
-      !shouldRespectPostponement) {
-      // Delay the modal opening to ensure the component is fully mounted
-      const timer = setTimeout(() => {
-        console.log('Opening file conversion modal - no workspace detected');
-        setIsFileConversionModalOpen(true);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    } else {
-      console.log('Not opening file conversion modal because:', {
-        hasWorkspace: workspaceHook.workspaceFolders.length > 0,
-        modalAlreadyOpen: isFileConversionModalOpen,
-        shouldRespectPostponement
-      });
-    }
-  }, [workspaceHook.workspaceFolders.length, isFileConversionModalOpen, workspaceHook.initialFoldersLoaded, hasSeenWelcomeModal]);
+  // File conversion modal is only opened manually via the toolbar button.
 
   useEffect(() => {
     const previousWorkspaceFolders = JSON.stringify(workspaceHook.workspaceFolders.map(f => f.path).sort());
@@ -1613,6 +1524,16 @@ function App() {
                 title={HEBREW_TEXT.geminiApiKeyModalTitle}
               >
                 {HEBREW_TEXT.geminiApiKeyButton}
+              </button>
+
+              {/* File Conversion Button */}
+              <button
+                className="btn"
+                onClick={handleOpenFileConversionModal}
+                disabled={isGlobalActionDisabled}
+                title="המר קבצי DOCX / PDF / TXT לפורמט Markdown לעריכה נוחה"
+              >
+                המרת קבצים
               </button>
 
               {/* Help Button */}
