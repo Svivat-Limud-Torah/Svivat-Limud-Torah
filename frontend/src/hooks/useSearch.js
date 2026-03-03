@@ -1,8 +1,9 @@
 // frontend/src/hooks/useSearch.js
 import { useState, useCallback, useRef } from 'react';
 import path from '../utils/pathUtils';
-import { API_BASE_URL, HEBREW_TEXT } from '../utils/constants';
+import { API_BASE_URL, HEBREW_TEXT, IS_WEB_MODE } from '../utils/constants';
 import LocalFileSystemService from '../services/LocalFileSystemService';
+import WebApiService from '../services/WebApiService';
 
 export default function useSearch({
   workspaceFolders,
@@ -28,17 +29,25 @@ export default function useSearch({
 
   const searchOneFolder = useCallback(async (basePath, term, options, include, exclude) => {
     // Read files from browser File System Access API.
-    // readAllTextFiles will try to restore permission from IndexedDB if needed
-    // (this is called inside a user gesture so requestPermission is allowed).
     let files = null;
     try {
       files = await LocalFileSystemService.readAllTextFiles(basePath, 500);
     } catch (e) {
-      // Permission denied or handle missing — fall through without files.
-      // The backend /api/v2/search will return a clear error for missing basePath.
       throw new Error(
         'לא ניתן לקרוא את הקבצים. אנא סגור ופתח מחדש את התיקייה בסביבת העבודה: ' + basePath
       );
+    }
+
+    // In web mode, run search entirely in the browser
+    if (IS_WEB_MODE) {
+      return WebApiService.searchV2({
+        basePath,
+        searchTerm: term,
+        options,
+        ...(include.length > 0 && { includePatterns: include }),
+        ...(exclude.length > 0 && { excludePatterns: exclude }),
+        files,
+      });
     }
 
     const response = await fetch(`${API_BASE_URL}/v2/search`, {

@@ -2,8 +2,7 @@
 import React, { useState, useRef } from 'react';
 import './SettingsModal.css'; // Reuse existing modal styles
 import LocalFileSystemService from '../services/LocalFileSystemService';
-
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'http://localhost:3001';
+import { API_BASE_URL } from '../utils/constants';
 
 const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSuccess, basePath, relativePath }) => {
   const [selectedFormat, setSelectedFormat] = useState('md');
@@ -55,7 +54,7 @@ const SingleFileConversionModal = ({ isOpen, onClose, filePath, fileName, onSucc
       const fileExtension = fileName.split('.').pop().toLowerCase();
 
       // Send file content and metadata to backend for conversion
-      const response = await fetch(`${API_BASE_URL}/api/file-conversion/convert-file-content`, {
+      const response = await fetch(`${API_BASE_URL}/file-conversion/convert-file-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

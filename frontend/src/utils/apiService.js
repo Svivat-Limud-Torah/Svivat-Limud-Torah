@@ -1,7 +1,6 @@
 // frontend/src/utils/apiService.js
-import { HEBREW_TEXT } from './constants'; // Import HEBREW_TEXT
-
-const API_BASE_URL = 'http://localhost:3001/api'; // Ensure this is correct
+import { HEBREW_TEXT, API_BASE_URL, IS_WEB_MODE } from './constants';
+import WebApiService from '../services/WebApiService';
 
 const apiService = {
   // --- File System Operations ---
@@ -503,4 +502,10 @@ const apiService = {
   },
 };
 
-export default apiService;
+// In web mode (no Express backend), override all methods that WebApiService implements.
+// File system operations remain as-is — they're handled by LocalFileSystemService in web mode.
+const exportedService = IS_WEB_MODE
+  ? { ...apiService, ...WebApiService }
+  : apiService;
+
+export default exportedService;

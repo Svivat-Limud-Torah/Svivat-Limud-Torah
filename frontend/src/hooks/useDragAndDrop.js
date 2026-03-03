@@ -1,7 +1,6 @@
 // frontend/src/hooks/useDragAndDrop.js
 import { useState, useCallback, useRef } from 'react';
-
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'http://localhost:3001';
+import { API_BASE_URL } from '../utils/constants';
 
 // File type classification
 const TEXT_EXTENSIONS = new Set([
@@ -111,7 +110,7 @@ export default function useDragAndDrop({
             }
             const base64Content = btoa(binary);
 
-            const response = await fetch(`${API_BASE_URL}/api/file-conversion/convert-file-content`, {
+            const response = await fetch(`${API_BASE_URL}/file-conversion/convert-file-content`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

@@ -91,7 +91,7 @@ import TextAnalysisModal from './components/TextAnalysisModal';
 import FocusModePanel from './components/FocusModePanel';
 
 import path from './utils/pathUtils';
-import { APP_DIRECTION, API_BASE_URL, HEBREW_TEXT, API_KEY_IS_PAID_STORAGE_KEY, DEFAULT_FONT_SIZE_PX } from './utils/constants'; // Import DEFAULT_FONT_SIZE_PX
+import { APP_DIRECTION, API_BASE_URL, IS_WEB_MODE, HEBREW_TEXT, API_KEY_IS_PAID_STORAGE_KEY, DEFAULT_FONT_SIZE_PX } from './utils/constants'; // Import DEFAULT_FONT_SIZE_PX
 import { clearApiKey, setApiKey as restoreApiKey } from './utils/aiProxy';
 
 // Free tier models as of March 2026
@@ -487,6 +487,7 @@ function App() {
   // --- Effects & Callbacks ---
   // Restore API key into server session on startup (in case session expired after page refresh)
   useEffect(() => {
+    if (IS_WEB_MODE) return;
     const storedKey = localStorage.getItem('gemini_api_key_val');
     const isPaid = localStorage.getItem('gemini_api_key_is_paid') === 'true';
     if (storedKey) {
@@ -495,6 +496,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (IS_WEB_MODE) return;
     fetch(`${API_BASE_URL}/hello`)
       .then(response => response.ok ? response.json() : Promise.reject('Network response was not ok'))
       .then(data => setBackendMessage(data.message))

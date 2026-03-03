@@ -47,7 +47,7 @@ const TOUR_STEPS = [
   },
   {
     target: '[data-tutorial="settings-button"]',
-    title: 'הגדרות ⚙️',
+    title: 'הגדרות',
     content: 'כאן תוכל להתאים את העיצוב, הצבעים, ההתראות ועוד הגדרות לפי הטעם שלך.',
     placement: 'bottom',
   },

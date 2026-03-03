@@ -28,8 +28,13 @@ export const AI_MODELS = AI_MODELS_FREE;
 export const DEFAULT_FONT_SIZE_PX = 16;
 // FONT_SIZE_INCREMENT_PX הוסר - לא נדרש יותר
 
-// Updated for V2, assuming API endpoint remains under /api but might be /v2/search
-export const API_BASE_URL = 'http://localhost:3001/api';
+// API Base URL: uses VITE_API_BASE_URL env variable if set,
+// otherwise falls back to localhost:3001 only when running locally.
+// In production (Firebase Hosting), VITE_API_BASE_URL should be set or left empty to disable backend calls.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '');
+// True when no Express backend is available (web-only mode on Firebase Hosting)
+export const IS_WEB_MODE = !API_BASE_URL;
 // The full V2 search URL will be API_BASE_URL + '/v2/search'
 
 // Hebrew UI Text Strings

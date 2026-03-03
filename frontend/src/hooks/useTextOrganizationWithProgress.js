@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getApiKeyDetails } from '../components/ApiKeyModal';
-import { DISABLE_ITALIC_FORMATTING_KEY } from '../utils/constants';
+import { DISABLE_ITALIC_FORMATTING_KEY, API_BASE_URL } from '../utils/constants';
 
 /**
  * Custom hook for text organization with real-time progress tracking
@@ -84,7 +84,7 @@ export const useTextOrganizationWithProgress = () => {
       const disableItalicFormatting = localStorage.getItem(DISABLE_ITALIC_FORMATTING_KEY) === 'true';
 
       // Start the organization process (apiKey is in server session)
-      const response = await fetch('http://localhost:3001/api/text-organization/organize-with-progress', {
+      const response = await fetch(`${API_BASE_URL}/text-organization/organize-with-progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ export const useTextOrganizationWithProgress = () => {
       setProcessId(newProcessId);
 
       // Start listening to progress updates via Server-Sent Events
-      const eventSource = new EventSource(`http://localhost:3001/api/text-organization/progress/${newProcessId}`);
+      const eventSource = new EventSource(`${API_BASE_URL}/text-organization/progress/${newProcessId}`);
       eventSourceRef.current = eventSource;
 
       eventSource.onmessage = (event) => {
@@ -187,7 +187,7 @@ export const useTextOrganizationWithProgress = () => {
     if (!processId) return;
 
     try {
-      await fetch(`http://localhost:3001/api/text-organization/cancel/${processId}`, {
+      await fetch(`${API_BASE_URL}/text-organization/cancel/${processId}`, {
         method: 'POST'
       });
       

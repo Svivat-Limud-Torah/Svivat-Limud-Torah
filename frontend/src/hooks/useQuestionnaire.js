@@ -1,7 +1,7 @@
 // frontend/src/hooks/useQuestionnaire.js
 import { useState, useCallback, useEffect } from 'react';
 import apiService from '../utils/apiService'; 
-import { HEBREW_TEXT } from '../utils/constants';
+import { HEBREW_TEXT, IS_WEB_MODE } from '../utils/constants';
 
 // Helper to format date to YYYY-MM-DD
 const getFormattedDate = (date) => {
