@@ -50,6 +50,30 @@ function ApiKeyModal({ isOpen, onClose }) {
     <div className="api-key-modal-overlay" onClick={onClose}>
       <div className="api-key-modal-content" onClick={(e) => e.stopPropagation()}>
         <h2>{HEBREW_TEXT.geminiApiKeyModalTitle}</h2>
+
+        {/* Video tutorial banner */}
+        <div className="api-key-video-banner">
+          <span className="api-key-video-icon">🎬</span>
+          <div className="api-key-video-text">
+            <strong>לא יודע מאיפה מתחילים?</strong>
+            <span> צפה בסרטון הדרכה קצר שמסביר צעד אחר צעד איך להשיג מפתח API חינמי.</span>
+          </div>
+          <button
+            type="button"
+            className="api-key-video-btn"
+            onClick={() => {
+              const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+              if (window.electronAPI && window.electronAPI.openExternal) {
+                window.electronAPI.openExternal(url);
+              } else {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }
+            }}
+          >
+            ▶ צפה בסרטון
+          </button>
+        </div>
+
         <p>
           הדבק כאן את מפתח ה-API שלך עבור Google Gemini כדי להפעיל תכונות AI.
           המפתח נשמר אצלך בלבד ואינו נשלח לאף שרת חיצוני.
