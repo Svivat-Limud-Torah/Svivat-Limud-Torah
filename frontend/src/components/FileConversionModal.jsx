@@ -401,7 +401,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                             <div className="fcm-results-success">✅ ההמרה הושלמה בהצלחה!</div>
                     <p style={{ fontSize: '0.88rem', color: 'var(--theme-text-secondary)', marginBottom: 16 }}>
                         {IS_WEB_MODE && conversionResults.autoAdded
-                            ? 'התיקייה המומרת נוספה לסייר הקבצים. כדי להוריד את התיקייה למחשב — לחץ מקש ימיני על התיקייה בסייר הקבצים ובחר "הורד תיקייה למחשב".'
+                            ? 'התיקייה המומרת נוספה לסייר הקבצים וניתן לצפות בה עכשיו.'
                             : 'לחץ על הכפתור מטה כדי להוסיף את התיקייה המומרת לסייר הקבצים.'
                         }
                     </p>
