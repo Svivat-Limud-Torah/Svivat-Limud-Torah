@@ -304,6 +304,42 @@ const MainContentArea = ({
     setShowProgressModal(false);
   };
 
+  // Version toggle handlers — defined before the completion useEffect that sets toggle state
+  const handleDismissVersionToggle = useCallback(() => {
+    setShowVersionToggle(false);
+    setIsViewingOriginal(false);
+    setOrganizedContentBackup(null);
+    setVersionToggleFileId(null);
+  }, []);
+
+  const handleSwitchToOriginal = useCallback(() => {
+    if (!versionToggleFileId) return;
+    // Save current organized content
+    if (!isViewingOriginal && activeTabObject) {
+      setOrganizedContentBackup(activeTabObject.content);
+    }
+    // Load original from backup
+    const backup = getBackupForFile(versionToggleFileId);
+    if (backup?.full?.original) {
+      handleEditorChange(backup.full.original);
+      setIsViewingOriginal(true);
+    }
+  }, [versionToggleFileId, isViewingOriginal, activeTabObject, handleEditorChange]);
+
+  const handleSwitchToOrganized = useCallback(() => {
+    if (organizedContentBackup) {
+      handleEditorChange(organizedContentBackup);
+      setIsViewingOriginal(false);
+    }
+  }, [organizedContentBackup, handleEditorChange]);
+
+  // Hide version toggle when switching to a different file
+  React.useEffect(() => {
+    if (versionToggleFileId && activeTabObject && activeTabObject.id !== versionToggleFileId) {
+      handleDismissVersionToggle();
+    }
+  }, [activeTabObject, versionToggleFileId, handleDismissVersionToggle]);
+
   // Handle organization completion
   React.useEffect(() => {
     if (result && result.organizedText && activeTabObject && !isProcessing) {
@@ -349,42 +385,6 @@ const MainContentArea = ({
       resetState();
     }
   }, [error, resetState]);
-
-  // Version toggle handlers
-  const handleSwitchToOriginal = useCallback(() => {
-    if (!versionToggleFileId) return;
-    // Save current organized content
-    if (!isViewingOriginal && activeTabObject) {
-      setOrganizedContentBackup(activeTabObject.content);
-    }
-    // Load original from backup
-    const backup = getBackupForFile(versionToggleFileId);
-    if (backup?.full?.original) {
-      handleEditorChange(backup.full.original);
-      setIsViewingOriginal(true);
-    }
-  }, [versionToggleFileId, isViewingOriginal, activeTabObject, handleEditorChange]);
-
-  const handleSwitchToOrganized = useCallback(() => {
-    if (organizedContentBackup) {
-      handleEditorChange(organizedContentBackup);
-      setIsViewingOriginal(false);
-    }
-  }, [organizedContentBackup, handleEditorChange]);
-
-  const handleDismissVersionToggle = useCallback(() => {
-    setShowVersionToggle(false);
-    setIsViewingOriginal(false);
-    setOrganizedContentBackup(null);
-    setVersionToggleFileId(null);
-  }, []);
-
-  // Hide version toggle when switching to a different file
-  React.useEffect(() => {
-    if (versionToggleFileId && activeTabObject && activeTabObject.id !== versionToggleFileId) {
-      handleDismissVersionToggle();
-    }
-  }, [activeTabObject, versionToggleFileId, handleDismissVersionToggle]);
 
   const isAiFeatureActive = ['flashcards', 'summary', 'sourceResults'].includes(mainViewMode);
 
