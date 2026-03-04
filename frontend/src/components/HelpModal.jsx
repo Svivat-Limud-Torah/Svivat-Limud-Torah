@@ -15,9 +15,9 @@ const HelpModal = ({ isOpen, onClose, onStartTour }) => {
   const openYouTubeChannel = () => {
     // כאן נוסיף את הקישור לערוץ יוטיוב בפועל
     if (window.electronAPI && window.electronAPI.openExternal) {
-      window.electronAPI.openExternal('https://www.youtube.com/@Svivat-Limud-Torah');
+      window.electronAPI.openExternal('https://www.youtube.com/@Svivat-Limud-Torah-Official');
     } else {
-      window.open('https://www.youtube.com/@Svivat-Limud-Torah', '_blank');
+      window.open('https://www.youtube.com/@Svivat-Limud-Torah-Official', '_blank');
     }
   };
 

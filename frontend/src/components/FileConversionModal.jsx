@@ -116,6 +116,39 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                     }
                 }
 
+                // Write converted files to OPFS and register as workspace folder
+                const folderName = (selectedFolder || 'קבצים') + ' (מומר)';
+                let autoAdded = false;
+                try {
+                    const opfsRoot = await navigator.storage.getDirectory();
+                    // Remove previous folder with same name to avoid stale files
+                    try { await opfsRoot.removeEntry(folderName, { recursive: true }); } catch (_) { /* didn't exist */ }
+                    const convertedFolderHandle = await opfsRoot.getDirectoryHandle(folderName, { create: true });
+
+                    for (const file of convertedFiles) {
+                        const parts = file.name.split('/');
+                        let currentDir = convertedFolderHandle;
+                        for (let i = 0; i < parts.length - 1; i++) {
+                            currentDir = await currentDir.getDirectoryHandle(parts[i], { create: true });
+                        }
+                        const filename = parts[parts.length - 1];
+                        const fileHandle = await currentDir.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(file.content);
+                        await writable.close();
+                    }
+
+                    if (addWorkspaceFolderFromHandle) {
+                        const ok = await addWorkspaceFolderFromHandle(convertedFolderHandle);
+                        if (ok) {
+                            autoAdded = true;
+                            setFolderAdded(true);
+                        }
+                    }
+                } catch (opfsErr) {
+                    console.warn('OPFS auto-save failed, falling back to download:', opfsErr);
+                }
+
                 setWebConvertedFiles(convertedFiles);
                 setIsConverting(false);
                 setConversionProgress({ type: 'complete' });
@@ -124,7 +157,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                     convertedFiles: converted,
                     copiedFiles: copiedCount,
                     failed,
-                    targetDirectory: selectedFolder + ' (מומר)',
+                    targetDirectory: folderName,
+                    autoAdded,
                 });
                 setCurrentStep('results');
                 localStorage.setItem('hasCompletedFileConversion', 'true');
@@ -299,7 +333,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
 
                             <div className="fcm-safe-note">
                                 {IS_WEB_MODE
-                                    ? <>🔒 הקבצים המקוריים <strong>לא ישתנו</strong> — הקבצים המומרים יורדו למחשב שלך.</>
+                                    ? <>🔒 הקבצים המקוריים <strong>לא ישתנו</strong> — התיקייה המומרת תתווסף אוטומטית לסביבת העבודה.</>
                                     : <>🔒 הקבצים המקוריים <strong>לא יימחקו</strong> — תיווצר תיקייה חדשה עם הגרסאות המומרות.</>
                                 }
                             </div>
@@ -367,7 +401,10 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                         <div className="fcm-results">
                             <div className="fcm-results-success">✅ ההמרה הושלמה בהצלחה!</div>
                     <p style={{ fontSize: '0.88rem', color: 'var(--theme-text-secondary)', marginBottom: 16 }}>
-                        לחץ על הכפתור מטה כדי להוסיף את התיקייה המומרת לסייר הקבצים.
+                        {IS_WEB_MODE && conversionResults.autoAdded
+                            ? 'התיקייה המומרת נוספה אוטומטית לסייר הקבצים.'
+                            : 'לחץ על הכפתור מטה כדי להוסיף את התיקייה המומרת לסייר הקבצים.'
+                        }
                     </p>
 
                             <div className="fcm-results-grid">
@@ -411,46 +448,49 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                             <div className="fcm-actions" style={{ flexDirection: 'column', gap: 10 }}>
                                 {IS_WEB_MODE ? (
                                     <>
-                                        <button
-                                            onClick={handleSaveToFolder}
-                                            className="fcm-btn-primary"
-                                            disabled={webConvertedFiles.length === 0 || isSavingToFolder}
-                                        >
-                                            {isSavingToFolder ? '⏳ שומר...' : '📂 שמור תיקייה בסייר הקבצים'}
-                                        </button>
-                                        {saveFolderError && (
-                                            <div className="fcm-error" style={{ marginTop: 4 }}>⚠️ {saveFolderError}</div>
+                                        {conversionResults.autoAdded ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--theme-success, #4caf50)', fontWeight: 'bold', marginBottom: 8 }}>
+                                                ✅ התיקייה המומרת נוספה לסייר הקבצים
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={handleSaveToFolder}
+                                                    className="fcm-btn-primary"
+                                                    disabled={webConvertedFiles.length === 0 || isSavingToFolder}
+                                                >
+                                                    {isSavingToFolder ? '⏳ שומר...' : '📂 שמור תיקייה בסייר הקבצים'}
+                                                </button>
+                                                {saveFolderError && (
+                                                    <div className="fcm-error" style={{ marginTop: 4 }}>⚠️ {saveFolderError}</div>
+                                                )}
+                                            </>
                                         )}
-                                        <button
-                                            onClick={handleDownloadAll}
-                                            disabled={webConvertedFiles.length === 0 || isSavingToFolder}
-                                            style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}
-                                        >
-                                            📥 הורד קבצים במקום ({webConvertedFiles.length})
-                                        </button>
-                                        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>סגור</button>
+                                        <button onClick={handleClose} className="fcm-btn-primary">סגור</button>
                                     </>
-                                ) : !folderAdded ? (
-                                    <button
-                                        onClick={async () => {
-                                            if (!addWorkspaceFolder) return;
-                                            setIsAddingFolder(true);
-                                            const ok = await addWorkspaceFolder();
-                                            setIsAddingFolder(false);
-                                            if (ok) {
-                                                setFolderAdded(true);
-                                                onClose('success');
-                                            }
-                                        }}
-                                        className="fcm-btn-primary"
-                                        disabled={isAddingFolder}
-                                    >
-                                        {isAddingFolder ? '⏳ מוסיף…' : '📂 פתח תיקייה בסייר הקבצים'}
-                                    </button>
                                 ) : (
-                                    <button onClick={handleClose} className="fcm-btn-primary">סגור</button>
+                                    <>
+                                        {!folderAdded && (
+                                            <button
+                                                onClick={async () => {
+                                                    if (!addWorkspaceFolder) return;
+                                                    setIsAddingFolder(true);
+                                                    const ok = await addWorkspaceFolder();
+                                                    setIsAddingFolder(false);
+                                                    if (ok) {
+                                                        setFolderAdded(true);
+                                                        onClose('success');
+                                                    }
+                                                }}
+                                                className="fcm-btn-primary"
+                                                disabled={isAddingFolder}
+                                            >
+                                                {isAddingFolder ? '⏳ מוסיף…' : '📂 פתח תיקייה בסייר הקבצים'}
+                                            </button>
+                                        )}
+                                        <button onClick={handleClose} className="fcm-btn-primary">סגור</button>
+                                    </>
                                 )}
-                                <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>אעשה זאת אחר כך</button>
                             </div>
                         </div>
                     )}
