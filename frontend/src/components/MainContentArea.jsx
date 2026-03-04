@@ -155,6 +155,8 @@ const MainContentArea = ({
   // Version toggle state for switching between original and organized text
   const [isViewingOriginal, setIsViewingOriginal] = useState(false);
   const [isVersionBannerMinimized, setIsVersionBannerMinimized] = useState(false);
+  // Incremented whenever localStorage version data is modified — forces re-evaluation of currentFileHasVersions
+  const [versionDataVersion, setVersionDataVersion] = useState(0);
   // Cursor position for status bar
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
@@ -304,7 +306,13 @@ const MainContentArea = ({
 
   // Version toggle handlers
   // Check if the current file has version comparison data (persisted in localStorage)
-  const currentFileHasVersions = activeTabObject?.id ? hasVersionComparison(activeTabObject.id) : false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const currentFileHasVersions = React.useMemo(
+    () => activeTabObject?.id ? hasVersionComparison(activeTabObject.id) : false,
+    // versionDataVersion is included so this re-evaluates whenever data is deleted
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTabObject?.id, versionDataVersion]
+  );
 
   const handleSwitchToOriginal = useCallback(() => {
     if (!activeTabObject?.id) return;
@@ -341,6 +349,7 @@ const MainContentArea = ({
     }
     removeOriginalBackup(activeTabObject.id);
     removeOrganizedContent(activeTabObject.id);
+    setVersionDataVersion(v => v + 1);
   }, [activeTabObject, isViewingOriginal, handleEditorChange]);
 
   const handleDeleteOrganized = useCallback(() => {
@@ -356,6 +365,7 @@ const MainContentArea = ({
     }
     removeOrganizedContent(activeTabObject.id);
     removeOriginalBackup(activeTabObject.id);
+    setVersionDataVersion(v => v + 1);
   }, [activeTabObject, isViewingOriginal, handleEditorChange]);
 
   const handleDismissVersionToggle = useCallback(() => {
@@ -365,6 +375,7 @@ const MainContentArea = ({
     removeOrganizedContent(activeTabObject.id);
     setIsViewingOriginal(false);
     setIsVersionBannerMinimized(false);
+    setVersionDataVersion(v => v + 1);
   }, [activeTabObject]);
 
   const handleMinimizeVersionBanner = useCallback(() => {
@@ -404,6 +415,7 @@ const MainContentArea = ({
       storeOrganizedContent(activeTabObject.id, result.organizedText);
       setIsViewingOriginal(false);
       setIsVersionBannerMinimized(false);
+      setVersionDataVersion(v => v + 1);
 
       // Close progress modal after a short delay
       setTimeout(() => {
