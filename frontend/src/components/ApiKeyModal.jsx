@@ -62,7 +62,7 @@ function ApiKeyModal({ isOpen, onClose }) {
             type="button"
             className="api-key-video-btn"
             onClick={() => {
-              const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+              const url = 'https://youtu.be/07R4L3iUikk';
               if (window.electronAPI && window.electronAPI.openExternal) {
                 window.electronAPI.openExternal(url);
               } else {
