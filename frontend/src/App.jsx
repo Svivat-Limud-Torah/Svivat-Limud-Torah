@@ -795,7 +795,7 @@ function App() {
   }, [workspaceHook.workspaceFolders]);
 
   // Handle file creation from the new file modal
-  const handleCreateFileFromModal = useCallback(async (selectedPath, fileName) => {
+  const handleCreateFileFromModal = useCallback(async (selectedPath, fileName, directoryHandle = null) => {
     try {
       // Check if the selected path is within an existing workspace folder
       let targetWorkspaceFolder = null;
@@ -820,12 +820,18 @@ function App() {
           '',
           true
         );
+      } else if (directoryHandle) {
+        // Web mode — register the directory handle first
+        await workspaceHook.addWorkspaceFolderFromHandle(directoryHandle);
+        await fileOperationsHook.handleCreateNewFileOrSummary(
+          directoryHandle.name,
+          fileName,
+          '',
+          true
+        );
       } else {
-        // The selected path is outside existing workspace folders
-        // Add it as a new workspace folder first
+        // Electron or fallback — Add it as a new workspace folder first
         await workspaceHook.addWorkspaceFolder(selectedPath);
-
-        // Then create the file in the root of the new workspace
         await fileOperationsHook.handleCreateNewFileOrSummary(
           selectedPath,
           fileName,
@@ -837,10 +843,10 @@ function App() {
       console.error('Error creating file:', error);
       alert(`שגיאה ביצירת הקובץ: ${error.message}`);
     }
-  }, [fileOperationsHook.handleCreateNewFileOrSummary, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder]);
+  }, [fileOperationsHook.handleCreateNewFileOrSummary, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder, workspaceHook.addWorkspaceFolderFromHandle]);
 
   // Handle saving file from the modal (for Save As functionality)
-  const handleSaveFileFromModal = useCallback(async (selectedPath, fileName) => {
+  const handleSaveFileFromModal = useCallback(async (selectedPath, fileName, directoryHandle = null) => {
     if (!saveAsData) return;
 
     try {
@@ -867,12 +873,18 @@ function App() {
           relativePath.replace(/\\/g, '/'), // Convert to forward slashes for consistency
           saveAsData.content
         );
+      } else if (directoryHandle) {
+        // Web mode — register the directory handle first
+        await workspaceHook.addWorkspaceFolderFromHandle(directoryHandle);
+        await fileOperationsHook.saveFileToPath(
+          saveAsData.tabId,
+          directoryHandle.name,
+          fileName,
+          saveAsData.content
+        );
       } else {
-        // The selected path is outside existing workspace folders
-        // Add it as a new workspace folder first
+        // Electron or fallback — Add it as a new workspace folder first
         await workspaceHook.addWorkspaceFolder(selectedPath);
-
-        // Then save the file in the root of the new workspace
         await fileOperationsHook.saveFileToPath(
           saveAsData.tabId,
           selectedPath,
@@ -888,7 +900,7 @@ function App() {
       console.error('Error saving file:', error);
       alert(`שגיאה בשמירת הקובץ: ${error.message}`);
     }
-  }, [saveAsData, fileOperationsHook, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder]);
+  }, [saveAsData, fileOperationsHook, workspaceHook.workspaceFolders, workspaceHook.addWorkspaceFolder, workspaceHook.addWorkspaceFolderFromHandle]);
 
   const handleDeleteActiveFileAction = useCallback(async () => {
     const currentActiveTab = activeTabObject;

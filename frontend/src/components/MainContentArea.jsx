@@ -605,7 +605,7 @@ const MainContentArea = ({
                           className="version-toggle-delete"
                           onClick={handleDeleteOrganized}
                           title="מחק את הגרסה המאורגנת"
-                        >🗑</button>
+                        ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
                       </div>
                       <div className="version-toggle-btn-group">
                         <button
@@ -619,7 +619,7 @@ const MainContentArea = ({
                           className="version-toggle-delete"
                           onClick={handleDeleteOriginal}
                           title="מחק את הגרסה המקורית"
-                        >🗑</button>
+                        ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
                       </div>
                     </div>
                     <div className="version-toggle-actions">

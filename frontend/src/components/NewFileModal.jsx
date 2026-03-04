@@ -16,6 +16,7 @@ const NewFileModal = ({
   const [fileName, setFileName] = useState('');
   const [fileExtension, setFileExtension] = useState('md');
   const [selectedCustomPath, setSelectedCustomPath] = useState('');
+  const [selectedDirectoryHandle, setSelectedDirectoryHandle] = useState(null);
   const [isSelectingPath, setIsSelectingPath] = useState(false);
 
   // Reset form when modal opens
@@ -24,6 +25,7 @@ const NewFileModal = ({
       setFileName(initialFileName || '');
       setFileExtension(initialExtension || 'md');
       setSelectedCustomPath(preselectedPath || '');
+      setSelectedDirectoryHandle(null);
       setIsSelectingPath(false);
     }
   }, [isOpen, initialFileName, initialExtension, preselectedPath]);
@@ -37,20 +39,21 @@ const NewFileModal = ({
         const result = await window.electronAPI.showDirectoryPicker();
         if (result && !result.canceled && result.filePaths.length > 0) {
           setSelectedCustomPath(result.filePaths[0]);
+          setSelectedDirectoryHandle(null);
         }
-      } else {
-        // Fallback for development mode (running in browser)
-        const path = prompt('הזן את נתיב התיקייה המלא:');
-        if (path && path.trim()) {
-          setSelectedCustomPath(path.trim());
-        }
+      } else if ('showDirectoryPicker' in window) {
+        // Web browser — use File System Access API
+        const dirHandle = await window.showDirectoryPicker({
+          mode: 'readwrite',
+          startIn: 'documents'
+        });
+        setSelectedCustomPath(dirHandle.name);
+        setSelectedDirectoryHandle(dirHandle);
       }
     } catch (error) {
-      console.error('Error opening directory picker:', error);
-      // Fallback to manual input
-      const path = prompt('הזן את נתיב התיקייה המלא:');
-      if (path && path.trim()) {
-        setSelectedCustomPath(path.trim());
+      // User cancelled the picker (AbortError) — just ignore
+      if (error.name !== 'AbortError') {
+        console.error('Error opening directory picker:', error);
       }
     } finally {
       setIsSelectingPath(false);
@@ -77,7 +80,7 @@ const NewFileModal = ({
 
     const fullFileName = `${fileName.trim()}.${fileExtension}`;
     
-    onCreateFile(selectedCustomPath, fullFileName);
+    onCreateFile(selectedCustomPath, fullFileName, selectedDirectoryHandle);
     onClose();
   };
 

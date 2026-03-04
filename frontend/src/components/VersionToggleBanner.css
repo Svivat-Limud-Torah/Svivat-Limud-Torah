@@ -4,8 +4,8 @@
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.10));
-  border-bottom: 1px solid rgba(59, 130, 246, 0.25);
+  background: var(--theme-bg-secondary, rgba(30, 30, 30, 0.6));
+  border-bottom: 1px solid var(--theme-border-color, rgba(255, 255, 255, 0.1));
   direction: rtl;
   flex-shrink: 0;
   animation: versionToggleSlideIn 0.3s ease-out;
@@ -70,41 +70,42 @@
 
 .version-toggle-btn.active {
   font-weight: 700;
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+  box-shadow: none;
 }
 
 .version-toggle-btn.active.organized {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.15));
-  border-color: rgba(99, 102, 241, 0.5);
+  background: var(--theme-bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--theme-text-secondary);
   color: var(--theme-text-primary);
 }
 
 .version-toggle-btn.active.original {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.12));
-  border-color: rgba(245, 158, 11, 0.5);
+  background: var(--theme-bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--theme-text-secondary);
   color: var(--theme-text-primary);
 }
 
 /* Trash delete button attached to the version button */
 .version-toggle-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 5px 8px;
   border: 1.5px solid var(--theme-border-color);
   border-right: none;
   border-radius: 0 20px 20px 0;
   background: var(--theme-bg-primary);
-  color: var(--theme-text-secondary);
+  color: #ef4444;
   font-size: 0.78rem;
   cursor: pointer;
   transition: all 0.2s ease;
   line-height: 1;
-  opacity: 0.6;
 }
 
 .version-toggle-delete:hover {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.5);
-  color: #ef4444;
-  opacity: 1;
+  color: #dc2626;
 }
 
 /* Action buttons container (minimize + dismiss) */
@@ -143,8 +144,8 @@
 
 /* Minimized button in MarkdownToolbar */
 .version-compare-minimized-btn {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.12)) !important;
-  border-color: rgba(99, 102, 241, 0.4) !important;
+  background: var(--theme-bg-hover, rgba(255, 255, 255, 0.08)) !important;
+  border-color: var(--theme-text-secondary) !important;
   color: var(--theme-text-primary) !important;
   font-weight: 600 !important;
 }
