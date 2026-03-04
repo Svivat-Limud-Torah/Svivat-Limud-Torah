@@ -109,6 +109,46 @@
   color: var(--theme-editor-text) !important;  /* Use editor text for hard black/white */
 }
 
+/* ── 3-way view toggle (גולמי / פצל / מסמך) ── */
+.md-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.md-view-toggle__btn {
+  padding: 3px 10px;
+  background: transparent;
+  color: var(--theme-toolbar-text, var(--theme-text-primary));
+  border: none;
+  border-right: 1px solid var(--theme-border-color);
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.md-view-toggle__btn:last-child {
+  border-right: none;
+}
+
+.md-view-toggle__btn:hover:not(:disabled):not(.active) {
+  background: var(--theme-bg-secondary, rgba(255,255,255,0.08));
+}
+
+.md-view-toggle__btn.active {
+  background: var(--theme-accent-primary);
+  color: var(--theme-editor-text, #fff);
+  font-weight: 600;
+}
+
+.md-view-toggle__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .markdown-toolbar-button.organize-text-button:hover:not(:disabled) {
   background: var(--theme-accent-secondary) !important;
   border-color: var(--theme-accent-secondary) !important;

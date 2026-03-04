@@ -141,6 +141,7 @@ const MainContentArea = ({
 }) => {
   // State for markdown preview mode
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
+  const [isFullPreview, setIsFullPreview] = useState(false);
   // Track if user explicitly hid the preview for the current file session
   const [userHiddenPreview, setUserHiddenPreview] = useState(false);
   const [aiOrganizeCompleted, setAiOrganizeCompleted] = useState(null);
@@ -184,6 +185,7 @@ const MainContentArea = ({
   // Reset preview state when switching to a different file
   React.useEffect(() => {
     setShowMarkdownPreview(false);
+    setIsFullPreview(false);
     setUserHiddenPreview(false);
     setCursorPos({ line: 1, col: 1 });
   }, [activeTabObject?.id]);
@@ -201,6 +203,7 @@ const MainContentArea = ({
 
   const handlePreviewToggle = (isPreview) => {
     setShowMarkdownPreview(isPreview);
+    setIsFullPreview(false);
     // If user manually shows the preview, reset the hidden flag
     if (isPreview) setUserHiddenPreview(false);
   };
@@ -208,13 +211,22 @@ const MainContentArea = ({
   // Called when user explicitly closes the preview panel
   const handleUserHidePreview = () => {
     setShowMarkdownPreview(false);
+    setIsFullPreview(false);
     setUserHiddenPreview(true);
+  };
+
+  // Called for full-document preview (no editor)
+  const handleFullPreview = () => {
+    setIsFullPreview(true);
+    setShowMarkdownPreview(false);
+    setUserHiddenPreview(false);
   };
 
   // Called on markdown insert or AI complete — only shows if user hasn't explicitly hidden it
   const handleAutoShowPreview = () => {
     if (!userHiddenPreview) {
       setShowMarkdownPreview(true);
+      setIsFullPreview(false);
     }
   };
 
@@ -468,6 +480,8 @@ const MainContentArea = ({
                     onUserHidePreview={handleUserHidePreview}
                     onMarkdownInserted={handleAutoShowPreview}
                     showPreview={showMarkdownPreview}
+                    isFullPreview={isFullPreview}
+                    onFullPreview={handleFullPreview}
                     onOrganizeTextToggle={handleOrganizeTextToggle}
                     isOrganizing={isProcessing}
                     hasUnsavedChanges={activeTabObject.isDirty}
@@ -478,7 +492,17 @@ const MainContentArea = ({
                   />
                 )}
 
-                <div ref={splitContainerRef} style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'row' }}>
+                {/* Full document preview mode — renders only the MD preview, no editor */}
+                {!isSplitMode && activeTabObject.id?.toLowerCase().endsWith('.md') && isFullPreview && (
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                    <MarkdownPreview
+                      content={activeTabObject.content}
+                      presentationFontSize={presentationFontSize}
+                    />
+                  </div>
+                )}
+
+                <div ref={splitContainerRef} style={{ flexGrow: isFullPreview ? 0 : 1, minHeight: 0, display: isFullPreview ? 'none' : 'flex', flexDirection: 'row' }}>
                   {/* LEFT PANE — always shown */}
                   <div style={{ flex: isSplitMode ? splitRatio : 1, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'row' }}>
                     <div style={{ flex: 1, height: '100%', minWidth: 0, position: 'relative' }}>

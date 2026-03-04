@@ -49,6 +49,34 @@
   margin: 4px 0;
 }
 
+/* ── Clipboard row (העתק / גזור / הדבק) ── */
+.selected-text-context-menu-clipboard {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid #3c3c3c;
+  padding: 2px 0;
+}
+
+.selected-text-context-menu-clipboard .clipboard-item {
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  font-size: 12px;
+  justify-content: center;
+  align-items: center;
+  border-left: 1px solid #3c3c3c;
+}
+
+.selected-text-context-menu-clipboard .clipboard-item:last-child {
+  border-left: none;
+}
+
+.selected-text-context-menu-clipboard .clipboard-item .icon {
+  margin-left: 0;
+  font-size: 14px;
+}
+
 .selected-text-info {
   padding: 8px 16px;
   color: #969696;

@@ -10,6 +10,8 @@ const MarkdownToolbar = ({
   onUserHidePreview,
   onMarkdownInserted,
   showPreview = false,
+  isFullPreview = false,
+  onFullPreview,
   onOrganizeTextToggle,
   isOrganizing = false,
   hasUnsavedChanges = false,
@@ -105,14 +107,20 @@ const MarkdownToolbar = ({
   ];
 
   const togglePreview = () => {
-    if (showPreview) {
-      // User is explicitly hiding - notify parent so it won't auto-show again
+    if (isFullPreview) {
+      // full → raw
       onUserHidePreview?.();
+    } else if (showPreview) {
+      // split → full
+      onFullPreview?.();
     } else {
-      // User is manually showing - reset the "user hidden" flag via onPreviewToggle
+      // raw → split
       onPreviewToggle?.(true);
     }
   };
+
+  // Current display mode label
+  const previewLabel = isFullPreview ? 'מסמך ✓' : showPreview ? 'פצל ✓' : 'תצוגה';
 
   const handleOrganizeText = async () => {
     if (isDisabled || isOrganizing) return;
@@ -146,15 +154,26 @@ const MarkdownToolbar = ({
 
       <div className="toolbar-separator"></div>
 
-      <button
-        title="הצג תצוגה מקדימה לצד העורך - ערוך וראה את התוצאה בו זמנית"
-        onClick={togglePreview}
-        disabled={isDisabled}
-        data-tutorial="preview-button"
-        className={`markdown-toolbar-button preview-button ${showPreview ? 'active' : ''}`}
-      >
-        {showPreview ? 'הסתר תצוגה' : 'תצוגה מקדימה'}
-      </button>
+      <div className="md-view-toggle" title="בחר אופן תצוגה: גולמי | פצל עורך+תצוגה | מסמך מרונד">
+        <button
+          className={`md-view-toggle__btn${!showPreview && !isFullPreview ? ' active' : ''}`}
+          onClick={() => { onUserHidePreview?.(); }}
+          disabled={isDisabled}
+          title="הצג את הקוד הגולמי בלבד"
+        >גולמי</button>
+        <button
+          className={`md-view-toggle__btn${showPreview && !isFullPreview ? ' active' : ''}`}
+          onClick={() => { onPreviewToggle?.(true); }}
+          disabled={isDisabled}
+          title="הצג עורך ותצוגה זה לצד זה"
+        >פצל</button>
+        <button
+          className={`md-view-toggle__btn${isFullPreview ? ' active' : ''}`}
+          onClick={() => { onFullPreview?.(); }}
+          disabled={isDisabled}
+          title="הצג את המסמך המעוצב בלבד"
+        >מסמך</button>
+      </div>
 
       <button
         title="בינה מלאכותית תסדר ותארגן את הטקסט שלך באופן אוטומטי"

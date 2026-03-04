@@ -359,18 +359,17 @@ const Editor = forwardRef(({
 
     // Add context menu handler for selected text
     const handleContextMenu = (event) => {
+      event.preventDefault();
       const selection = view.state.selection.main;
-      if (selection.from !== selection.to) {
-        const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
-        if (selectedText && (onSelectedTextPilpulta || isAnnotationMode || onAddBookmark)) { // Show for AI features OR annotation mode OR bookmarks
-          event.preventDefault();
-          setContextMenu({
-            isVisible: true,
-            position: { x: event.clientX, y: event.clientY },
-            selectedText: selectedText
-          });
-        }
-      }
+      const hasSelection = selection.from !== selection.to;
+      const selectedText = hasSelection
+        ? view.state.doc.sliceString(selection.from, selection.to).trim()
+        : '';
+      setContextMenu({
+        isVisible: true,
+        position: { x: event.clientX, y: event.clientY },
+        selectedText,
+      });
     };
 
     // Add the context menu event listener
@@ -583,6 +582,7 @@ const Editor = forwardRef(({
         isVisible={contextMenu.isVisible}
         position={contextMenu.position}
         selectedText={contextMenu.selectedText}
+        editorView={editorViewRef.current}
         onClose={handleContextMenuClose}
         onPilpulta={() => handleSelectedTextAI(onSelectedTextPilpulta)}
         onFindSources={() => handleSelectedTextAI(onSelectedTextFindSources)}

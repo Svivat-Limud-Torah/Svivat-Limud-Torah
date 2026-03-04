@@ -8,6 +8,7 @@ const SelectedTextContextMenu = ({
   isVisible, 
   position, 
   selectedText,
+  editorView,
   onClose,
   onPilpulta,
   onFindSources,
@@ -71,13 +72,38 @@ const SelectedTextContextMenu = ({
     };
   }, [isVisible, onClose]);
 
-  if (!isVisible || !selectedText) {
+  if (!isVisible) {
     return null;
   }
 
-  const truncatedText = selectedText.length > 50 
+  const truncatedText = selectedText && selectedText.length > 50 
     ? selectedText.substring(0, 50) + '...' 
     : selectedText;
+
+  const handleCopy = async () => {
+    if (!selectedText) return;
+    await navigator.clipboard.writeText(selectedText);
+    onClose();
+  };
+
+  const handleCut = async () => {
+    if (!selectedText || !editorView) return;
+    await navigator.clipboard.writeText(selectedText);
+    editorView.dispatch(editorView.state.replaceSelection(''));
+    onClose();
+  };
+
+  const handlePaste = async () => {
+    if (!editorView) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) editorView.dispatch(editorView.state.replaceSelection(text));
+    } catch {
+      // Clipboard read denied — fallback: let browser handle it
+      document.execCommand('paste');
+    }
+    onClose();
+  };
 
   const menuItems = [
     {
@@ -116,12 +142,45 @@ const SelectedTextContextMenu = ({
         opacity: pos.opacity,
       }}
     >
-      <div className="selected-text-info">
-        <div>טקסט נבחר:</div>
-        <div className="selected-text-preview" title={selectedText}>
-          "{truncatedText}"
-        </div>
+      {/* Clipboard operations */}
+      <div className="selected-text-context-menu-clipboard">
+        <button
+          className="selected-text-context-menu-item clipboard-item"
+          onClick={handleCopy}
+          disabled={!selectedText}
+          title="העתק טקסט נבחר (Ctrl+C)"
+        >
+          <span className="icon">⎘</span>
+          העתק
+        </button>
+        <button
+          className="selected-text-context-menu-item clipboard-item"
+          onClick={handleCut}
+          disabled={!selectedText}
+          title="גזור טקסט נבחר (Ctrl+X)"
+        >
+          <span className="icon">✂</span>
+          גזור
+        </button>
+        <button
+          className="selected-text-context-menu-item clipboard-item"
+          onClick={handlePaste}
+          title="הדבק מהלוח (Ctrl+V)"
+        >
+          <span className="icon">📋</span>
+          הדבק
+        </button>
       </div>
+
+      {selectedText && (
+        <>
+          <div style={{ height: '1px', background: 'var(--theme-border-color)', margin: '4px 0' }} />
+          <div className="selected-text-info">
+            <div>טקסט נבחר:</div>
+            <div className="selected-text-preview" title={selectedText}>
+              "{truncatedText}"
+            </div>
+          </div>
       
       {menuItems.map((item, index) => (
         <button
@@ -196,6 +255,8 @@ const SelectedTextContextMenu = ({
               </div>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </div>
