@@ -199,7 +199,7 @@ const MainContentArea = ({
     organizeText,
     cancelProcess,
     resetState
-  } = useTextOrganizationWithProgress();
+  } = useTextOrganizationWithProgress({ showModelOverloadedModal, showQuotaLimitModal });
 
   const handlePreviewToggle = (isPreview) => {
     setShowMarkdownPreview(isPreview);

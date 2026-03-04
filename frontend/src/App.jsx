@@ -1745,6 +1745,9 @@ function App() {
             generateSummaryFromSelectedText={aiFeaturesHook.generateSummaryFromSelectedText}
             organizeSelectedText={aiFeaturesHook.organizeSelectedText}
 
+            showModelOverloadedModal={showModelOverloadedModal}
+            showQuotaLimitModal={showQuotaLimitModal}
+
             searchResults={searchHook.searchResults}
             handleFileSelect={tabsHook.handleFileSelect}
             searchTerm={searchHook.searchTerm}

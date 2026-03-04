@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getApiKeyDetails } from '../components/ApiKeyModal';
-import { DISABLE_ITALIC_FORMATTING_KEY, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
+import { DISABLE_ITALIC_FORMATTING_KEY, API_BASE_URL, IS_WEB_MODE, HEBREW_TEXT } from '../utils/constants';
 import { callAiGenerate } from '../utils/aiProxy';
 
 /**
  * Custom hook for text organization with real-time progress tracking
  */
-export const useTextOrganizationWithProgress = () => {
+export const useTextOrganizationWithProgress = ({ showModelOverloadedModal, showQuotaLimitModal } = {}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processId, setProcessId] = useState(null);
   const [progress, setProgress] = useState({
@@ -210,7 +210,14 @@ export const useTextOrganizationWithProgress = () => {
 
     } catch (error) {
       console.error('Error starting text organization:', error);
-      setError(error.message);
+      // Check for model overloaded / quota errors first — show modal instead of inline error
+      if (HEBREW_TEXT.isModelOverloadedError(error) && showModelOverloadedModal) {
+        showModelOverloadedModal();
+      } else if (HEBREW_TEXT.isQuotaLimitError(error) && showQuotaLimitModal) {
+        showQuotaLimitModal();
+      } else {
+        setError(error.message);
+      }
       setIsProcessing(false);
       cleanup();
     }
