@@ -3,7 +3,7 @@ import { HEBREW_TEXT } from '../utils/constants';
 import { getApiKeyDetails } from '../components/ApiKeyModal';
 import { callAiGenerate } from '../utils/aiProxy';
 
-export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiModel }) { // Added selectedAiModel
+export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiModel, showQuotaLimitModal, showModelOverloadedModal }) {
   const [chatHistory, setChatHistory] = useState([]);
   const [isJudaismChatLoading, setIsJudaismChatLoading] = useState(false);
   const [judaismChatError, setJudaismChatError] = useState(null);
@@ -88,6 +88,12 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
 
     } catch (error) {
       console.error(HEBREW_TEXT.judaismChat.errorSendingMessage, error);
+      // Check for model overloaded (503) or quota limit (429) errors and show the appropriate modal
+      if (HEBREW_TEXT.isModelOverloadedError?.(error)) {
+        showModelOverloadedModal?.();
+      } else if (HEBREW_TEXT.isQuotaLimitError?.(error)) {
+        showQuotaLimitModal?.();
+      }
       const errorMessage = error.message || HEBREW_TEXT.judaismChat.errorMessageFallback;
       setJudaismChatError(errorMessage);
       // Add error message to local history
@@ -99,7 +105,7 @@ export default function useJudaismChat({ setGlobalLoadingMessage, selectedAiMode
         chatInputRef.current.focus();
       }
     }
-  }, [chatHistory, selectedAiModel, setGlobalLoadingMessage]);
+  }, [chatHistory, selectedAiModel, setGlobalLoadingMessage, showQuotaLimitModal, showModelOverloadedModal]);
 
   const clearJudaismChat = useCallback(() => {
     setChatHistory([]);

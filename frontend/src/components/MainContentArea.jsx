@@ -25,7 +25,8 @@ import { EditorView } from '@codemirror/view';
 
 import path from '../utils/pathUtils';
 import { APP_DIRECTION, SUPPORTED_IMAGE_EXTENSIONS_CLIENT, HEBREW_TEXT } from '../utils/constants';
-import { storeFullFileBackup } from '../utils/aiOrganizeBackup';
+import { storeFullFileBackup, getBackupForFile } from '../utils/aiOrganizeBackup';
+import './VersionToggleBanner.css';
 
 
 const MainContentArea = ({
@@ -151,6 +152,11 @@ const MainContentArea = ({
   const [userHiddenPreview, setUserHiddenPreview] = useState(false);
   const [aiOrganizeCompleted, setAiOrganizeCompleted] = useState(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  // Version toggle state for switching between original and organized text
+  const [showVersionToggle, setShowVersionToggle] = useState(false);
+  const [isViewingOriginal, setIsViewingOriginal] = useState(false);
+  const [organizedContentBackup, setOrganizedContentBackup] = useState(null);
+  const [versionToggleFileId, setVersionToggleFileId] = useState(null);
   // Cursor position for status bar
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
@@ -318,6 +324,12 @@ const MainContentArea = ({
       setAiOrganizeCompleted(Date.now());
       handleAutoShowPreview();
 
+      // Enable version toggle so user can compare original vs organized
+      setOrganizedContentBackup(result.organizedText);
+      setVersionToggleFileId(activeTabObject.id);
+      setIsViewingOriginal(false);
+      setShowVersionToggle(true);
+
       // Close progress modal after a short delay
       setTimeout(() => {
         setShowProgressModal(false);
@@ -337,6 +349,42 @@ const MainContentArea = ({
       resetState();
     }
   }, [error, resetState]);
+
+  // Version toggle handlers
+  const handleSwitchToOriginal = useCallback(() => {
+    if (!versionToggleFileId) return;
+    // Save current organized content
+    if (!isViewingOriginal && activeTabObject) {
+      setOrganizedContentBackup(activeTabObject.content);
+    }
+    // Load original from backup
+    const backup = getBackupForFile(versionToggleFileId);
+    if (backup?.full?.original) {
+      handleEditorChange(backup.full.original);
+      setIsViewingOriginal(true);
+    }
+  }, [versionToggleFileId, isViewingOriginal, activeTabObject, handleEditorChange]);
+
+  const handleSwitchToOrganized = useCallback(() => {
+    if (organizedContentBackup) {
+      handleEditorChange(organizedContentBackup);
+      setIsViewingOriginal(false);
+    }
+  }, [organizedContentBackup, handleEditorChange]);
+
+  const handleDismissVersionToggle = useCallback(() => {
+    setShowVersionToggle(false);
+    setIsViewingOriginal(false);
+    setOrganizedContentBackup(null);
+    setVersionToggleFileId(null);
+  }, []);
+
+  // Hide version toggle when switching to a different file
+  React.useEffect(() => {
+    if (versionToggleFileId && activeTabObject && activeTabObject.id !== versionToggleFileId) {
+      handleDismissVersionToggle();
+    }
+  }, [activeTabObject, versionToggleFileId, handleDismissVersionToggle]);
 
   const isAiFeatureActive = ['flashcards', 'summary', 'sourceResults'].includes(mainViewMode);
 
@@ -495,6 +543,39 @@ const MainContentArea = ({
                     toggleFormattingToolbar={toggleFormattingToolbar}
                     toggleShowLineNumbers={toggleShowLineNumbers}
                   />
+                )}
+
+                {/* Version toggle banner — shown after AI text organization */}
+                {showVersionToggle && activeTabObject?.id === versionToggleFileId && (
+                  <div className="version-toggle-banner">
+                    <div className="version-toggle-info">
+                      <span className="version-toggle-icon">🔄</span>
+                      <span className="version-toggle-label">השוואת גרסאות:</span>
+                    </div>
+                    <div className="version-toggle-buttons">
+                      <button
+                        className={`version-toggle-btn ${!isViewingOriginal ? 'active organized' : ''}`}
+                        onClick={handleSwitchToOrganized}
+                        title="הצג את הטקסט המאורגן על ידי AI"
+                      >
+                        ✨ גרסה מאורגנת
+                      </button>
+                      <button
+                        className={`version-toggle-btn ${isViewingOriginal ? 'active original' : ''}`}
+                        onClick={handleSwitchToOriginal}
+                        title="הצג את הטקסט המקורי לפני ארגון"
+                      >
+                        📄 גרסה מקורית
+                      </button>
+                    </div>
+                    <button
+                      className="version-toggle-dismiss"
+                      onClick={handleDismissVersionToggle}
+                      title="סגור השוואת גרסאות"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )}
 
                 {/* Full document preview mode — renders only the MD preview, no editor */}

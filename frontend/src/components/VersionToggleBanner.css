@@ -1,0 +1,104 @@
+/* Version Toggle Banner — shown after AI text organization */
+.version-toggle-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.10));
+  border-bottom: 1px solid rgba(59, 130, 246, 0.25);
+  direction: rtl;
+  flex-shrink: 0;
+  animation: versionToggleSlideIn 0.3s ease-out;
+}
+
+@keyframes versionToggleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.version-toggle-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.version-toggle-icon {
+  font-size: 1.1rem;
+}
+
+.version-toggle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  white-space: nowrap;
+}
+
+.version-toggle-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.version-toggle-btn {
+  padding: 5px 14px;
+  border: 1.5px solid var(--theme-border-color);
+  border-radius: 20px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.version-toggle-btn:hover {
+  background: var(--theme-bg-hover, var(--theme-bg-secondary));
+  color: var(--theme-text-primary);
+  border-color: var(--theme-text-secondary);
+}
+
+.version-toggle-btn.active {
+  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.version-toggle-btn.active.organized {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.15));
+  border-color: rgba(99, 102, 241, 0.5);
+  color: var(--theme-text-primary);
+}
+
+.version-toggle-btn.active.original {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.12));
+  border-color: rgba(245, 158, 11, 0.5);
+  color: var(--theme-text-primary);
+}
+
+.version-toggle-dismiss {
+  margin-right: auto;
+  margin-left: 0;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--theme-text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.version-toggle-dismiss:hover {
+  background: var(--theme-bg-hover, var(--theme-bg-secondary));
+  color: var(--theme-text-primary);
+}

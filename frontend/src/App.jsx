@@ -201,7 +201,7 @@ function App() {
   const repetitionsHook = useRepetitions(setGlobalLoadingMessage);
   const questionnaireHook = useQuestionnaire(setGlobalLoadingMessage); // Pass setGlobalLoadingMessage
   const learningGraphHook = useLearningGraph(); // Initialize Learning Graph Hook
-  const judaismChatHook = useJudaismChat({ setGlobalLoadingMessage, selectedAiModel }); // Pass selected model
+  const judaismChatHook = useJudaismChat({ setGlobalLoadingMessage, selectedAiModel, showQuotaLimitModal, showModelOverloadedModal });
 
   // Initialize backup system on mount
   useEffect(() => {
