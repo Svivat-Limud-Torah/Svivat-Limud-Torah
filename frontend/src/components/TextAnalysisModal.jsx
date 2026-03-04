@@ -88,6 +88,7 @@ const TextAnalysisModal = ({
   flowchartCode,
   isLoading,
   isLoadingFlowchart,
+  flowchartLoadingStage,
   error,
   mode,
   onAnalyze,
@@ -95,6 +96,8 @@ const TextAnalysisModal = ({
   onBackToInput,
   onBackToAnalysis,
 }) => {
+  const [isMaximized, setIsMaximized] = React.useState(false);
+
   if (!isOpen) return null;
 
   const handleKeyDown = (e) => {
@@ -105,11 +108,23 @@ const TextAnalysisModal = ({
 
   return (
     <div className="text-analysis-overlay" onClick={onClose}>
-      <div className="text-analysis-modal" onClick={e => e.stopPropagation()}>
+      <div
+        className={`text-analysis-modal${isMaximized ? ' text-analysis-modal--maximized' : ''}`}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="text-analysis__header">
           <h2>ניתוח טקסט</h2>
-          <button className="text-analysis__close" onClick={onClose}>✕</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="text-analysis__close"
+              title={isMaximized ? 'הקטן' : 'הגדל'}
+              onClick={() => setIsMaximized(v => !v)}
+            >
+              {isMaximized ? '⊟' : '⊞'}
+            </button>
+            <button className="text-analysis__close" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         {/* Body */}
@@ -167,7 +182,13 @@ const TextAnalysisModal = ({
           {isLoadingFlowchart && (
             <div className="text-analysis__loading">
               <div className="text-analysis__spinner" />
-              <span>מייצר תרשים זרימה...</span>
+              <span>
+                {flowchartLoadingStage === 'structure'
+                  ? 'שלב 1: מחלץ מבנה לוגי...'
+                  : flowchartLoadingStage === 'mermaid'
+                  ? 'שלב 2: מייצר תרשים זרימה...'
+                  : 'מייצר תרשים זרימה...'}
+              </span>
             </div>
           )}
 

@@ -37,6 +37,7 @@ export default function useTextAnalysis({ selectedAiModel, showQuotaLimitModal, 
   const [flowchartCode, setFlowchartCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFlowchart, setIsLoadingFlowchart] = useState(false);
+  const [flowchartLoadingStage, setFlowchartLoadingStage] = useState(null); // null | 'structure' | 'mermaid'
   const [error, setError] = useState(null);
   const [mode, setMode] = useState('input'); // 'input' | 'analysis' | 'flowchart'
 
@@ -145,45 +146,51 @@ ${text}
     setIsLoadingFlowchart(true);
     setError(null);
 
-    const prompt = `אתה מומחה בלימוד תורה ותלמוד ובתרשימי זרימה.
-צור תרשים זרימה פשוט וקצר בפורמט Mermaid עבור הטקסט הבא.
-
-כללים חובה:
-- התחל בשורה אחת עם: flowchart TD
-- מקסימום 10-15 צמתים
-- IDs לצמתים: אותיות אנגלית בלבד (A, B, C... או n1, n2...)
-- אורך מקסימלי לתווית כל צמת: 40 תווים
-- עטוף טקסט בסוגריים מרובעים כך: A[טקסט]
-- אסור לחלוטין מיוחדים (לא גרשיים, לא מרכאות, לא גרש, לא נֹקדות) בתוך תוויות הצמת
-- אסור להשתמש במרכאות כפולות (" ") בתוך תוויות הצמת
-- וודא שכל צמת יש לו לפחות קשת אחת יוצאת או נכנסת
-- החזר רק את קוד Mermaid בלבד, ללא הסברות
-
-הטקסט:
----
-${inputText}
----`;
-
     try {
-      const response = await callAiGenerate(selectedAiModel, {
-        contents: [{ parts: [{ text: prompt }] }],
+      // Step 1: Extract the logical structure as a plain numbered list
+      setFlowchartLoadingStage('structure');
+      const structurePrompt = `קרא את הטקסט הבא והוצא ממנו 5 עד 8 שלבים או מושגים מרכזיים בסדר לוגי.
+כתוב רק רשימה ממוספרת. כל פריט: מספר, נקודה, ואז תיאור קצר עד 20 תווים בעברית פשוטה.
+אל תוסיף כותרות, הסברים או כל טקסט אחר.
+
+טקסט:
+${inputText.substring(0, 800)}`;
+
+      const r1 = await callAiGenerate(selectedAiModel, {
+        contents: [{ parts: [{ text: structurePrompt }] }],
       });
+      if (!r1.ok) throw new Error(`שגיאת API שלב 1: ${r1.status}`);
+      const d1 = await r1.json();
+      const structureList = d1.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!structureList) throw new Error('תגובה לא תקינה בשלב 1');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorDetails = '';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorDetails = errorData.error?.message || errorText;
-        } catch {
-          errorDetails = errorText;
-        }
-        throw new Error(`שגיאת API: ${response.status} - ${errorDetails}`);
-      }
+      // Step 2: Convert the list to Mermaid syntax
+      setFlowchartLoadingStage('mermaid');
+      const mermaidPrompt = `המר את הרשימה הבאה לתרשים זרימה Mermaid.
+החזר קוד Mermaid בלבד, ללא הסברים.
 
-      const data = await response.json();
-      const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!textResponse) throw new Error('תגובה לא תקינה מה-AI');
+פורמט חובה:
+flowchart TD
+  A[שם קצר] --> B[שם קצר]
+  B --> C[שם קצר]
+
+כללים:
+- שורה ראשונה: flowchart TD
+- IDs: אותיות לטיניות בלבד (A B C ...)
+- תוויות: בסוגריים מרובעים בלבד
+- אסור מרכאות בתוך תוויות
+- כל שם עד 20 תווים
+
+הרשימה:
+${structureList}`;
+
+      const r2 = await callAiGenerate(selectedAiModel, {
+        contents: [{ parts: [{ text: mermaidPrompt }] }],
+      });
+      if (!r2.ok) throw new Error(`שגיאת API שלב 2: ${r2.status}`);
+      const d2 = await r2.json();
+      const textResponse = d2.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!textResponse) throw new Error('תגובה לא תקינה בשלב 2');
 
       const mermaidCode = extractMermaidCode(textResponse);
       setFlowchartCode(mermaidCode);
@@ -194,6 +201,7 @@ ${inputText}
       }
     } finally {
       setIsLoadingFlowchart(false);
+      setFlowchartLoadingStage(null);
     }
   }, [selectedAiModel, inputText, handleApiError]);
 
@@ -217,6 +225,7 @@ ${inputText}
     flowchartCode,
     isLoading,
     isLoadingFlowchart,
+    flowchartLoadingStage,
     error,
     mode,
     setMode,

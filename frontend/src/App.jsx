@@ -1944,6 +1944,7 @@ function App() {
         flowchartCode={textAnalysisHook.flowchartCode}
         isLoading={textAnalysisHook.isLoading}
         isLoadingFlowchart={textAnalysisHook.isLoadingFlowchart}
+        flowchartLoadingStage={textAnalysisHook.flowchartLoadingStage}
         error={textAnalysisHook.error}
         mode={textAnalysisHook.mode}
         onAnalyze={textAnalysisHook.analyzeText}

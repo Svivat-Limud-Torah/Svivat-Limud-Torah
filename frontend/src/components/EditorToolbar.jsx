@@ -178,15 +178,6 @@ const EditorToolbar = ({
         {HEBREW_TEXT.openOrotHatorahLink}
       </button>
 
-      {/* Smart Discussion */}
-      <button
-        title={HEBREW_TEXT.smartDiscussionButtonTooltip}
-        onClick={() => window.open('https://radiant-heliotrope-e42025.netlify.app', '_blank')}
-        className="btn btn-secondary btn-sm"
-      >
-        {HEBREW_TEXT.smartDiscussionButton}
-      </button>
-
       {/* Aramaic Study */}
       <button
         title={HEBREW_TEXT.aramaicStudyButtonTooltip}
