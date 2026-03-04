@@ -102,8 +102,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                         try {
                             const arrayBuffer = await file.arrayBuffer();
                             const result = await convertFileContent(file.name, arrayBuffer, ext, 'md');
-                            const newName = file.name.replace(/\.[^/.]+$/, '.md');
-                            convertedFiles.push({ name: file.webkitRelativePath?.replace(/[^/]+\//, '') || newName, content: result.convertedContent });
+                            const relativePath = (file.webkitRelativePath?.replace(/[^/]+\//, '') || file.name).replace(/\.[^/.]+$/, '.md');
+                            convertedFiles.push({ name: relativePath, content: result.convertedContent });
                             converted++;
                         } catch (err) {
                             failed.push({ path: file.webkitRelativePath || file.name, error: err.message });
