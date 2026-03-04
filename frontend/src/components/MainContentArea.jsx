@@ -71,6 +71,11 @@ const MainContentArea = ({
   findJewishSourcesFromSelectedText,
   generateFlashcardsFromSelectedText,
   generateSummaryFromSelectedText,
+  organizeSelectedText,
+
+  // Error modals
+  showModelOverloadedModal,
+  showQuotaLimitModal,
 
   // --- Search V2 Props ---
   searchResults,
