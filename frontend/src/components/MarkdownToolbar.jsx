@@ -18,7 +18,9 @@ const MarkdownToolbar = ({
   onAiOrganizeComplete,
   showLineNumbers = true,
   toggleFormattingToolbar,
-  toggleShowLineNumbers
+  toggleShowLineNumbers,
+  showVersionCompareButton = false,
+  onExpandVersionBanner,
 }) => {
 
   const insertMarkdown = (before, after = '', placeholder = '') => {
@@ -184,6 +186,16 @@ const MarkdownToolbar = ({
       >
         {isOrganizing ? 'מארגן את הטקסט...' : 'ארגן טקסט עם AI'}
       </button>
+
+      {showVersionCompareButton && (
+        <button
+          title="הצג השוואת גרסאות (מקורית / מאורגנת)"
+          onClick={onExpandVersionBanner}
+          className="markdown-toolbar-button version-compare-minimized-btn"
+        >
+          השוואת גרסאות
+        </button>
+      )}
     </div>
   );
 };

@@ -9,6 +9,7 @@
 const BACKUP_EXPIRY_HOURS = 24; // Keep backups for 24 hours
 const BACKUP_PREFIX = 'ai_organize_backup_';
 const SELECTED_BACKUP_PREFIX = 'ai_organize_selected_backup_';
+const ORGANIZED_PREFIX = 'ai_organize_organized_';
 
 /**
  * Clean up expired backups from localStorage
@@ -20,7 +21,7 @@ export function cleanupExpiredBackups() {
     
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith(BACKUP_PREFIX) || key.startsWith(SELECTED_BACKUP_PREFIX))) {
+      if (key && (key.startsWith(BACKUP_PREFIX) || key.startsWith(SELECTED_BACKUP_PREFIX) || key.startsWith(ORGANIZED_PREFIX))) {
         try {
           const backup = JSON.parse(localStorage.getItem(key));
           if (backup && backup.timestamp) {
@@ -54,9 +55,11 @@ export function removeBackupForFile(fileId) {
   try {
     const fullBackupKey = `${BACKUP_PREFIX}${fileId}`;
     const selectedBackupKey = `${SELECTED_BACKUP_PREFIX}${fileId}`;
+    const organizedKey = `${ORGANIZED_PREFIX}${fileId}`;
     
     localStorage.removeItem(fullBackupKey);
     localStorage.removeItem(selectedBackupKey);
+    localStorage.removeItem(organizedKey);
   } catch (error) {
     console.error('שגיאה בהסרת גיבוי עבור קובץ:', error);
   }
@@ -122,6 +125,72 @@ export function storeSelectedTextBackup(fileId, selectedText) {
 }
 
 /**
+ * Store organized (AI-processed) content for a file
+ */
+export function storeOrganizedContent(fileId, organizedContent) {
+  try {
+    const key = `${ORGANIZED_PREFIX}${fileId}`;
+    localStorage.setItem(key, JSON.stringify({
+      organized: organizedContent,
+      timestamp: Date.now(),
+      lines: organizedContent.split('\n').length,
+    }));
+  } catch (error) {
+    console.error('שגיאה בשמירת תוכן מאורגן:', error);
+  }
+}
+
+/**
+ * Get organized content for a file
+ */
+export function getOrganizedContent(fileId) {
+  try {
+    const key = `${ORGANIZED_PREFIX}${fileId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('שגיאה בקריאת תוכן מאורגן:', error);
+    return null;
+  }
+}
+
+/**
+ * Remove only the organized content for a file
+ */
+export function removeOrganizedContent(fileId) {
+  try {
+    localStorage.removeItem(`${ORGANIZED_PREFIX}${fileId}`);
+  } catch (error) {
+    console.error('שגיאה במחיקת תוכן מאורגן:', error);
+  }
+}
+
+/**
+ * Remove only the original backup for a file
+ */
+export function removeOriginalBackup(fileId) {
+  try {
+    localStorage.removeItem(`${BACKUP_PREFIX}${fileId}`);
+    localStorage.removeItem(`${SELECTED_BACKUP_PREFIX}${fileId}`);
+  } catch (error) {
+    console.error('שגיאה במחיקת גיבוי מקורי:', error);
+  }
+}
+
+/**
+ * Check if a file has version comparison data (both original and organized)
+ */
+export function hasVersionComparison(fileId) {
+  try {
+    const hasOriginal = !!localStorage.getItem(`${BACKUP_PREFIX}${fileId}`);
+    const hasOrganized = !!localStorage.getItem(`${ORGANIZED_PREFIX}${fileId}`);
+    return hasOriginal && hasOrganized;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Get count of current backups
  */
 export function getBackupCount() {
@@ -129,7 +198,7 @@ export function getBackupCount() {
     let count = 0;
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith(BACKUP_PREFIX) || key.startsWith(SELECTED_BACKUP_PREFIX))) {
+      if (key && (key.startsWith(BACKUP_PREFIX) || key.startsWith(SELECTED_BACKUP_PREFIX) || key.startsWith(ORGANIZED_PREFIX))) {
         count++;
       }
     }

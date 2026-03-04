@@ -25,7 +25,7 @@ import { EditorView } from '@codemirror/view';
 
 import path from '../utils/pathUtils';
 import { APP_DIRECTION, SUPPORTED_IMAGE_EXTENSIONS_CLIENT, HEBREW_TEXT } from '../utils/constants';
-import { storeFullFileBackup, getBackupForFile } from '../utils/aiOrganizeBackup';
+import { storeFullFileBackup, getBackupForFile, storeOrganizedContent, getOrganizedContent, removeOrganizedContent, removeOriginalBackup, hasVersionComparison } from '../utils/aiOrganizeBackup';
 import './VersionToggleBanner.css';
 
 
@@ -153,10 +153,8 @@ const MainContentArea = ({
   const [aiOrganizeCompleted, setAiOrganizeCompleted] = useState(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
   // Version toggle state for switching between original and organized text
-  const [showVersionToggle, setShowVersionToggle] = useState(false);
   const [isViewingOriginal, setIsViewingOriginal] = useState(false);
-  const [organizedContentBackup, setOrganizedContentBackup] = useState(null);
-  const [versionToggleFileId, setVersionToggleFileId] = useState(null);
+  const [isVersionBannerMinimized, setIsVersionBannerMinimized] = useState(false);
   // Cursor position for status bar
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
@@ -304,41 +302,83 @@ const MainContentArea = ({
     setShowProgressModal(false);
   };
 
-  // Version toggle handlers — defined before the completion useEffect that sets toggle state
-  const handleDismissVersionToggle = useCallback(() => {
-    setShowVersionToggle(false);
-    setIsViewingOriginal(false);
-    setOrganizedContentBackup(null);
-    setVersionToggleFileId(null);
-  }, []);
+  // Version toggle handlers
+  // Check if the current file has version comparison data (persisted in localStorage)
+  const currentFileHasVersions = activeTabObject?.id ? hasVersionComparison(activeTabObject.id) : false;
 
   const handleSwitchToOriginal = useCallback(() => {
-    if (!versionToggleFileId) return;
-    // Save current organized content
-    if (!isViewingOriginal && activeTabObject) {
-      setOrganizedContentBackup(activeTabObject.content);
+    if (!activeTabObject?.id) return;
+    // Save current content as organized before switching
+    if (!isViewingOriginal) {
+      storeOrganizedContent(activeTabObject.id, activeTabObject.content);
     }
-    // Load original from backup
-    const backup = getBackupForFile(versionToggleFileId);
+    const backup = getBackupForFile(activeTabObject.id);
     if (backup?.full?.original) {
       handleEditorChange(backup.full.original);
       setIsViewingOriginal(true);
     }
-  }, [versionToggleFileId, isViewingOriginal, activeTabObject, handleEditorChange]);
+  }, [activeTabObject, isViewingOriginal, handleEditorChange]);
 
   const handleSwitchToOrganized = useCallback(() => {
-    if (organizedContentBackup) {
-      handleEditorChange(organizedContentBackup);
+    if (!activeTabObject?.id) return;
+    const organized = getOrganizedContent(activeTabObject.id);
+    if (organized?.organized) {
+      handleEditorChange(organized.organized);
       setIsViewingOriginal(false);
     }
-  }, [organizedContentBackup, handleEditorChange]);
+  }, [activeTabObject, handleEditorChange]);
 
-  // Hide version toggle when switching to a different file
-  React.useEffect(() => {
-    if (versionToggleFileId && activeTabObject && activeTabObject.id !== versionToggleFileId) {
-      handleDismissVersionToggle();
+  const handleDeleteOriginal = useCallback(() => {
+    if (!activeTabObject?.id) return;
+    if (!confirm('האם אתה בטוח שברצונך למחוק את הגרסה המקורית?\nלא ניתן יהיה לשחזר אותה.')) return;
+    // If viewing original, switch to organized first
+    if (isViewingOriginal) {
+      const organized = getOrganizedContent(activeTabObject.id);
+      if (organized?.organized) {
+        handleEditorChange(organized.organized);
+      }
+      setIsViewingOriginal(false);
     }
-  }, [activeTabObject, versionToggleFileId, handleDismissVersionToggle]);
+    removeOriginalBackup(activeTabObject.id);
+    removeOrganizedContent(activeTabObject.id);
+  }, [activeTabObject, isViewingOriginal, handleEditorChange]);
+
+  const handleDeleteOrganized = useCallback(() => {
+    if (!activeTabObject?.id) return;
+    if (!confirm('האם אתה בטוח שברצונך למחוק את הגרסה המאורגנת?\nלא ניתן יהיה לשחזר אותה.')) return;
+    // If viewing organized, switch to original first
+    if (!isViewingOriginal) {
+      const backup = getBackupForFile(activeTabObject.id);
+      if (backup?.full?.original) {
+        handleEditorChange(backup.full.original);
+      }
+      setIsViewingOriginal(false);
+    }
+    removeOrganizedContent(activeTabObject.id);
+    removeOriginalBackup(activeTabObject.id);
+  }, [activeTabObject, isViewingOriginal, handleEditorChange]);
+
+  const handleDismissVersionToggle = useCallback(() => {
+    if (!activeTabObject?.id) return;
+    if (!confirm('האם ברצונך למחוק את נתוני ההשוואה?\nהגרסה הנוכחית שמוצגת בעורך תישמר.')) return;
+    removeOriginalBackup(activeTabObject.id);
+    removeOrganizedContent(activeTabObject.id);
+    setIsViewingOriginal(false);
+    setIsVersionBannerMinimized(false);
+  }, [activeTabObject]);
+
+  const handleMinimizeVersionBanner = useCallback(() => {
+    setIsVersionBannerMinimized(true);
+  }, []);
+
+  const handleExpandVersionBanner = useCallback(() => {
+    setIsVersionBannerMinimized(false);
+  }, []);
+
+  // Reset isViewingOriginal when switching files
+  React.useEffect(() => {
+    setIsViewingOriginal(false);
+  }, [activeTabObject?.id]);
 
   // Handle organization completion
   React.useEffect(() => {
@@ -360,11 +400,10 @@ const MainContentArea = ({
       setAiOrganizeCompleted(Date.now());
       handleAutoShowPreview();
 
-      // Enable version toggle so user can compare original vs organized
-      setOrganizedContentBackup(result.organizedText);
-      setVersionToggleFileId(activeTabObject.id);
+      // Store organized content in localStorage for persistent version comparison
+      storeOrganizedContent(activeTabObject.id, result.organizedText);
       setIsViewingOriginal(false);
-      setShowVersionToggle(true);
+      setIsVersionBannerMinimized(false);
 
       // Close progress modal after a short delay
       setTimeout(() => {
@@ -542,39 +581,59 @@ const MainContentArea = ({
                     showLineNumbers={showLineNumbers}
                     toggleFormattingToolbar={toggleFormattingToolbar}
                     toggleShowLineNumbers={toggleShowLineNumbers}
+                    showVersionCompareButton={currentFileHasVersions && isVersionBannerMinimized}
+                    onExpandVersionBanner={handleExpandVersionBanner}
                   />
                 )}
 
-                {/* Version toggle banner — shown after AI text organization */}
-                {showVersionToggle && activeTabObject?.id === versionToggleFileId && (
+                {/* Version toggle banner — shown when file has backup data, persists across file switches */}
+                {currentFileHasVersions && !isVersionBannerMinimized && (
                   <div className="version-toggle-banner">
                     <div className="version-toggle-info">
-                      <span className="version-toggle-icon">🔄</span>
                       <span className="version-toggle-label">השוואת גרסאות:</span>
                     </div>
                     <div className="version-toggle-buttons">
-                      <button
-                        className={`version-toggle-btn ${!isViewingOriginal ? 'active organized' : ''}`}
-                        onClick={handleSwitchToOrganized}
-                        title="הצג את הטקסט המאורגן על ידי AI"
-                      >
-                        ✨ גרסה מאורגנת
-                      </button>
-                      <button
-                        className={`version-toggle-btn ${isViewingOriginal ? 'active original' : ''}`}
-                        onClick={handleSwitchToOriginal}
-                        title="הצג את הטקסט המקורי לפני ארגון"
-                      >
-                        📄 גרסה מקורית
-                      </button>
+                      <div className="version-toggle-btn-group">
+                        <button
+                          className={`version-toggle-btn ${!isViewingOriginal ? 'active organized' : ''}`}
+                          onClick={handleSwitchToOrganized}
+                          title="הצג את הטקסט המאורגן על ידי AI"
+                        >
+                          גרסה מאורגנת
+                        </button>
+                        <button
+                          className="version-toggle-delete"
+                          onClick={handleDeleteOrganized}
+                          title="מחק את הגרסה המאורגנת"
+                        >🗑</button>
+                      </div>
+                      <div className="version-toggle-btn-group">
+                        <button
+                          className={`version-toggle-btn ${isViewingOriginal ? 'active original' : ''}`}
+                          onClick={handleSwitchToOriginal}
+                          title="הצג את הטקסט המקורי לפני ארגון"
+                        >
+                          גרסה מקורית
+                        </button>
+                        <button
+                          className="version-toggle-delete"
+                          onClick={handleDeleteOriginal}
+                          title="מחק את הגרסה המקורית"
+                        >🗑</button>
+                      </div>
                     </div>
-                    <button
-                      className="version-toggle-dismiss"
-                      onClick={handleDismissVersionToggle}
-                      title="סגור השוואת גרסאות"
-                    >
-                      ✕
-                    </button>
+                    <div className="version-toggle-actions">
+                      <button
+                        className="version-toggle-minimize"
+                        onClick={handleMinimizeVersionBanner}
+                        title="הסתר בנר — יופיע כפתור ליד ארגן טקסט"
+                      >‒</button>
+                      <button
+                        className="version-toggle-dismiss"
+                        onClick={handleDismissVersionToggle}
+                        title="סגור השוואת גרסאות ומחק נתונים"
+                      >✕</button>
+                    </div>
                   </div>
                 )}
 
