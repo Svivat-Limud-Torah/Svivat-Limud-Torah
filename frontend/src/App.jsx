@@ -185,6 +185,23 @@ function App() {
   const [isQuotaLimitModalOpen, setIsQuotaLimitModalOpen] = useState(false);
   const [isModelOverloadedModalOpen, setIsModelOverloadedModalOpen] = useState(false);
 
+  // --- Quota Limit & Model Overloaded Modal callbacks (defined early to avoid TDZ when used in hooks below) ---
+  const showQuotaLimitModal = useCallback(() => {
+    setIsQuotaLimitModalOpen(true);
+  }, []);
+
+  const hideQuotaLimitModal = useCallback(() => {
+    setIsQuotaLimitModalOpen(false);
+  }, []);
+
+  const showModelOverloadedModal = useCallback(() => {
+    setIsModelOverloadedModalOpen(true);
+  }, []);
+
+  const hideModelOverloadedModal = useCallback(() => {
+    setIsModelOverloadedModalOpen(false);
+  }, []);
+
   // Smart Search modal state is managed within useAiFeatures hook
   const [editorFontSize, setEditorFontSize] = useState(DEFAULT_FONT_SIZE_PX);
   const [presentationFontSize, setPresentationFontSize] = useState(DEFAULT_FONT_SIZE_PX);
@@ -352,23 +369,8 @@ function App() {
     // Optionally clear data when hiding: setPilpultaData([]);
   }, []);
 
-  // --- Quota Limit Modal Management ---
-  const showQuotaLimitModal = useCallback(() => {
-    setIsQuotaLimitModalOpen(true);
-  }, []);
-
-  const hideQuotaLimitModal = useCallback(() => {
-    setIsQuotaLimitModalOpen(false);
-  }, []);
-
-  // --- Model Overloaded Modal Management ---
-  const showModelOverloadedModal = useCallback(() => {
-    setIsModelOverloadedModalOpen(true);
-  }, []);
-
-  const hideModelOverloadedModal = useCallback(() => {
-    setIsModelOverloadedModalOpen(false);
-  }, []);
+  // (showQuotaLimitModal / hideQuotaLimitModal / showModelOverloadedModal / hideModelOverloadedModal
+  //  are defined earlier, after useState declarations, to avoid TDZ when passed to hooks)
 
 
   const initialAiFeaturesPlaceholders = {
