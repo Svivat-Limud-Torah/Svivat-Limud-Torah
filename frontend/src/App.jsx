@@ -91,6 +91,7 @@ import TextAnalysisModal from './components/TextAnalysisModal';
 import FocusModePanel from './components/FocusModePanel';
 
 import path from './utils/pathUtils';
+import LocalFileSystemService from './services/LocalFileSystemService';
 import { APP_DIRECTION, API_BASE_URL, IS_WEB_MODE, HEBREW_TEXT, API_KEY_IS_PAID_STORAGE_KEY, DEFAULT_FONT_SIZE_PX } from './utils/constants'; // Import DEFAULT_FONT_SIZE_PX
 import { clearApiKey, setApiKey as restoreApiKey } from './utils/aiProxy';
 
@@ -738,6 +739,52 @@ function App() {
       });
     }
     menuItems.push({ type: 'separator' });
+
+    // Add download option for folders (web mode)
+    if (item.isFolder && IS_WEB_MODE) {
+      menuItems.push({
+        label: 'הורד תיקייה למחשב',
+        action: async () => {
+          try {
+            const parentHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+            const srcHandle = LocalFileSystemService.directoryHandles.get(baseFolder.path);
+            if (!srcHandle) throw new Error('לא נמצא handle לתיקייה');
+
+            // Navigate to the subfolder inside the workspace
+            let folderHandle = srcHandle;
+            const pathParts = item.path.split('/').filter(Boolean);
+            for (const part of pathParts) {
+              folderHandle = await folderHandle.getDirectoryHandle(part);
+            }
+
+            // Recursively copy folder to destination
+            const destFolder = await parentHandle.getDirectoryHandle(item.name, { create: true });
+            const copyDir = async (src, dest) => {
+              for await (const entry of src.values()) {
+                if (entry.kind === 'file') {
+                  const file = await entry.getFile();
+                  const destFile = await dest.getFileHandle(entry.name, { create: true });
+                  const writable = await destFile.createWritable();
+                  await writable.write(await file.arrayBuffer());
+                  await writable.close();
+                } else if (entry.kind === 'directory') {
+                  const subDest = await dest.getDirectoryHandle(entry.name, { create: true });
+                  await copyDir(entry, subDest);
+                }
+              }
+            };
+            await copyDir(folderHandle, destFolder);
+            alert('התיקייה הורדה בהצלחה למחשב!');
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error('Download folder error:', err);
+              alert('שגיאה בהורדת התיקייה: ' + (err.message || err));
+            }
+          }
+        }
+      });
+      menuItems.push({ type: 'separator' });
+    }
 
     // Add conversion option for files only
     if (!item.isFolder) {

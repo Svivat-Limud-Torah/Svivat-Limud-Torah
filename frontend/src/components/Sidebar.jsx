@@ -1,7 +1,8 @@
 ﻿// frontend/src/components/Sidebar.jsx
 import React from 'react';
 import TreeItem from './TreeItem';
-import { APP_DIRECTION, HEBREW_TEXT } from '../utils/constants';
+import { APP_DIRECTION, HEBREW_TEXT, IS_WEB_MODE } from '../utils/constants';
+import LocalFileSystemService from '../services/LocalFileSystemService';
 
 const Sidebar = ({
   workspaceFolders,
@@ -212,6 +213,42 @@ const Sidebar = ({
                       }
                     },
                   });
+
+                  if (IS_WEB_MODE) {
+                    rootItems.push({ type: 'separator' });
+                    rootItems.push({
+                      label: 'הורד תיקייה למחשב',
+                      action: async () => {
+                        try {
+                          const parentHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+                          const srcHandle = LocalFileSystemService.directoryHandles.get(wf.path);
+                          if (!srcHandle) throw new Error('לא נמצא handle לתיקייה');
+                          const destFolder = await parentHandle.getDirectoryHandle(wf.name, { create: true });
+                          const copyDir = async (src, dest) => {
+                            for await (const entry of src.values()) {
+                              if (entry.kind === 'file') {
+                                const file = await entry.getFile();
+                                const destFile = await dest.getFileHandle(entry.name, { create: true });
+                                const writable = await destFile.createWritable();
+                                await writable.write(await file.arrayBuffer());
+                                await writable.close();
+                              } else if (entry.kind === 'directory') {
+                                const subDest = await dest.getDirectoryHandle(entry.name, { create: true });
+                                await copyDir(entry, subDest);
+                              }
+                            }
+                          };
+                          await copyDir(srcHandle, destFolder);
+                          alert('התיקייה הורדה בהצלחה למחשב!');
+                        } catch (err) {
+                          if (err.name !== 'AbortError') {
+                            console.error('Download folder error:', err);
+                            alert('שגיאה בהורדת התיקייה: ' + (err.message || err));
+                          }
+                        }
+                      },
+                    });
+                  }
                 }
 
                 setContextMenuState({

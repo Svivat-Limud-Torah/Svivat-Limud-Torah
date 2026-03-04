@@ -116,14 +116,17 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                     }
                 }
 
-                // Write converted files to real file system and register as workspace folder
+                // Write converted files to OPFS and register as workspace folder
                 const folderName = (selectedFolder || 'קבצים') + ' (מומר)';
                 let autoAdded = false;
+                try {
+                    const opfsRoot = await navigator.storage.getDirectory();
+                    try { await opfsRoot.removeEntry(folderName, { recursive: true }); } catch (_) { /* didn't exist */ }
+                    const convertedFolderHandle = await opfsRoot.getDirectoryHandle(folderName, { create: true });
 
-                const writeFilesToDir = async (dirHandle) => {
                     for (const file of convertedFiles) {
                         const parts = file.name.split('/');
-                        let currentDir = dirHandle;
+                        let currentDir = convertedFolderHandle;
                         for (let i = 0; i < parts.length - 1; i++) {
                             currentDir = await currentDir.getDirectoryHandle(parts[i], { create: true });
                         }
@@ -133,13 +136,6 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                         await writable.write(file.content);
                         await writable.close();
                     }
-                };
-
-                try {
-                    // Ask user to pick a destination on their real file system
-                    const parentHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
-                    const convertedFolderHandle = await parentHandle.getDirectoryHandle(folderName, { create: true });
-                    await writeFilesToDir(convertedFolderHandle);
 
                     if (addWorkspaceFolderFromHandle) {
                         const ok = await addWorkspaceFolderFromHandle(convertedFolderHandle);
@@ -148,27 +144,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                             setFolderAdded(true);
                         }
                     }
-                } catch (pickerErr) {
-                    // User cancelled or browser doesn't support showDirectoryPicker — fall back to OPFS
-                    if (pickerErr.name !== 'AbortError') {
-                        console.warn('File system save failed, falling back to OPFS:', pickerErr);
-                    }
-                    try {
-                        const opfsRoot = await navigator.storage.getDirectory();
-                        try { await opfsRoot.removeEntry(folderName, { recursive: true }); } catch (_) { /* didn't exist */ }
-                        const convertedFolderHandle = await opfsRoot.getDirectoryHandle(folderName, { create: true });
-                        await writeFilesToDir(convertedFolderHandle);
-
-                        if (addWorkspaceFolderFromHandle) {
-                            const ok = await addWorkspaceFolderFromHandle(convertedFolderHandle);
-                            if (ok) {
-                                autoAdded = true;
-                                setFolderAdded(true);
-                            }
-                        }
-                    } catch (opfsErr) {
-                        console.warn('OPFS fallback also failed:', opfsErr);
-                    }
+                } catch (opfsErr) {
+                    console.warn('OPFS auto-save failed:', opfsErr);
                 }
 
                 setWebConvertedFiles(convertedFiles);
@@ -355,7 +332,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
 
                             <div className="fcm-safe-note">
                                 {IS_WEB_MODE
-                                    ? <>🔒 הקבצים המקוריים <strong>לא ישתנו</strong> — תיבחר תיקיית יעד במחשב ובה תיווצר התיקייה המומרת.</>
+                                    ? <>🔒 הקבצים המקוריים <strong>לא ישתנו</strong> — התיקייה המומרת תתווסף אוטומטית לסביבת העבודה.</>
                                     : <>🔒 הקבצים המקוריים <strong>לא יימחקו</strong> — תיווצר תיקייה חדשה עם הגרסאות המומרות.</>
                                 }
                             </div>
@@ -424,7 +401,7 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspace
                             <div className="fcm-results-success">✅ ההמרה הושלמה בהצלחה!</div>
                     <p style={{ fontSize: '0.88rem', color: 'var(--theme-text-secondary)', marginBottom: 16 }}>
                         {IS_WEB_MODE && conversionResults.autoAdded
-                            ? 'התיקייה המומרת נוספה אוטומטית לסייר הקבצים.'
+                            ? 'התיקייה המומרת נוספה לסייר הקבצים. כדי להוריד את התיקייה למחשב — לחץ מקש ימיני על התיקייה בסייר הקבצים ובחר "הורד תיקייה למחשב".'
                             : 'לחץ על הכפתור מטה כדי להוסיף את התיקייה המומרת לסייר הקבצים.'
                         }
                     </p>
