@@ -81,6 +81,46 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     }
   }, [workspaceFolders, setFolderPathInput]);
 
+  /**
+   * Add a workspace folder from an already-obtained FileSystemDirectoryHandle
+   * (e.g. after programmatically creating and writing a converted folder).
+   */
+  const addWorkspaceFolderFromHandle = useCallback(async (directoryHandle) => {
+    if (!directoryHandle) return false;
+    setIsAddingFolder(true);
+    setAddFolderError(null);
+    try {
+      const result = await LocalFileSystemService.registerDirectoryHandle(directoryHandle);
+      if (!result.success) throw new Error(result.error || 'Failed to register folder');
+
+      const { name: folderName, path: folderPath, structure } = result;
+
+      if (workspaceFolders.some(wf => wf.name === folderName)) {
+        setAddFolderError('התיקייה כבר קיימת בסביבת העבודה.');
+        return false;
+      }
+
+      setWorkspaceFolders(prev => [...prev, {
+        path: folderPath,
+        name: folderName,
+        structure,
+        isLoading: false,
+        error: null,
+        id: `wsf-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      }]);
+
+      localStorage.setItem('fileConversionNeverShow', 'true');
+      localStorage.removeItem('fileConversionPostponedTime');
+      return true;
+    } catch (error) {
+      console.error('addWorkspaceFolderFromHandle error:', error);
+      setAddFolderError(error.message);
+      return false;
+    } finally {
+      setIsAddingFolder(false);
+    }
+  }, [workspaceFolders]);
+
   const removeWorkspaceFolder = useCallback(async (folderPathToRemove) => {
     setGlobalLoadingMessage(`מסיר את ${path.basename(folderPathToRemove)} מסביבת העבודה...`);
     const updatedWorkspaceFolders = workspaceFolders.filter(wf => wf.path !== folderPathToRemove);
@@ -301,6 +341,7 @@ export default function useWorkspace(setGlobalLoadingMessage) {
     addFolderError,
     isAddingFolder,
     addWorkspaceFolder,
+    addWorkspaceFolderFromHandle,
     removeWorkspaceFolder,
     updateWorkspaceFolderStructure,
     refreshWorkspaceFolder,

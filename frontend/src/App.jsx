@@ -1998,6 +1998,7 @@ function App() {
         isOpen={isFileConversionModalOpen}
         onClose={handleCloseFileConversionModal}
         addWorkspaceFolder={workspaceHook.addWorkspaceFolder}
+        addWorkspaceFolderFromHandle={workspaceHook.addWorkspaceFolderFromHandle}
       />
 
       {/* Render Single File Conversion Modal */}

@@ -3,7 +3,7 @@ import './FileConversionModal.css';
 import { HEBREW_TEXT, API_BASE_URL, IS_WEB_MODE } from '../utils/constants';
 import { convertFileContent } from '../services/FileConversionWebService';
 
-const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
+const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder, addWorkspaceFolderFromHandle }) => {
     const [currentStep, setCurrentStep] = useState('welcome'); // 'welcome', 'converting', 'results'
     const [selectedFolder, setSelectedFolder] = useState('');
     const [isConverting, setIsConverting] = useState(false);
@@ -13,6 +13,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
     const [folderAdded, setFolderAdded] = useState(false);
     const [isAddingFolder, setIsAddingFolder] = useState(false);
     const [webConvertedFiles, setWebConvertedFiles] = useState([]);
+    const [isSavingToFolder, setIsSavingToFolder] = useState(false);
+    const [saveFolderError, setSaveFolderError] = useState('');
     const fileInputRef = useRef(null);
     const webFilesRef = useRef([]);
 
@@ -28,6 +30,8 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
             setFolderAdded(false);
             setIsAddingFolder(false);
             setWebConvertedFiles([]);
+            setIsSavingToFolder(false);
+            setSaveFolderError('');
             webFilesRef.current = [];
         }
     }, [isOpen]);
@@ -189,6 +193,60 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+    };
+
+    const handleSaveToFolder = async () => {
+        if (!('showDirectoryPicker' in window)) {
+            setSaveFolderError('הדפדפן שלך אינו תומך בשמירה ישירה לתיקייה. נא השתמש ב-Chrome או Edge, או הורד את הקבצים.');
+            return;
+        }
+        if (webConvertedFiles.length === 0) return;
+
+        setIsSavingToFolder(true);
+        setSaveFolderError('');
+
+        try {
+            // Ask user to pick a destination folder
+            const parentHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+
+            // Create a subfolder named after the original folder
+            const subFolderName = (selectedFolder || 'קבצים מומרים') + ' (מומר)';
+            const subDirHandle = await parentHandle.getDirectoryHandle(subFolderName, { create: true });
+
+            // Write all converted files, preserving subfolder structure
+            for (const file of webConvertedFiles) {
+                const parts = file.name.split('/');
+                let currentDir = subDirHandle;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    currentDir = await currentDir.getDirectoryHandle(parts[i], { create: true });
+                }
+                const filename = parts[parts.length - 1];
+                const fileHandle = await currentDir.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file.content);
+                await writable.close();
+            }
+
+            // Register the new subfolder in the workspace sidebar
+            if (addWorkspaceFolderFromHandle) {
+                const ok = await addWorkspaceFolderFromHandle(subDirHandle);
+                if (ok) {
+                    setFolderAdded(true);
+                    onClose('success');
+                    return;
+                }
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                if (err.name === 'NotAllowedError') {
+                    setSaveFolderError('הרשאת גישה לתיקייה נדחתה. נא אשר את ההרשאה בחלון שנפתח ונסה שוב.');
+                } else {
+                    setSaveFolderError('שגיאה בשמירת הקבצים: ' + (err.message || err));
+                }
+            }
+        } finally {
+            setIsSavingToFolder(false);
         }
     };
 
@@ -354,13 +412,23 @@ const FileConversionModal = ({ isOpen, onClose, addWorkspaceFolder }) => {
                                 {IS_WEB_MODE ? (
                                     <>
                                         <button
-                                            onClick={handleDownloadAll}
+                                            onClick={handleSaveToFolder}
                                             className="fcm-btn-primary"
-                                            disabled={webConvertedFiles.length === 0}
+                                            disabled={webConvertedFiles.length === 0 || isSavingToFolder}
                                         >
-                                            📥 הורד קבצים מומרים ({webConvertedFiles.length})
+                                            {isSavingToFolder ? '⏳ שומר...' : '📂 שמור תיקייה בסייר הקבצים'}
                                         </button>
-                                        <button onClick={handleClose} className="fcm-btn-primary" style={{ background: 'var(--theme-bg-tertiary)' }}>סגור</button>
+                                        {saveFolderError && (
+                                            <div className="fcm-error" style={{ marginTop: 4 }}>⚠️ {saveFolderError}</div>
+                                        )}
+                                        <button
+                                            onClick={handleDownloadAll}
+                                            disabled={webConvertedFiles.length === 0 || isSavingToFolder}
+                                            style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}
+                                        >
+                                            📥 הורד קבצים במקום ({webConvertedFiles.length})
+                                        </button>
+                                        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>סגור</button>
                                     </>
                                 ) : !folderAdded ? (
                                     <button

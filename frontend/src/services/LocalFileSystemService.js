@@ -195,6 +195,32 @@ class LocalFileSystemService {
   }
 
   /**
+   * Register an existing FileSystemDirectoryHandle directly (no picker).
+   * Useful after programmatically creating/writing a directory.
+   * @param {FileSystemDirectoryHandle} directoryHandle
+   * @returns {Promise<Object>} { success, name, path, structure }
+   */
+  async registerDirectoryHandle(directoryHandle) {
+    try {
+      const folderName = directoryHandle.name;
+      const folderStructure = await this.scanDirectory(directoryHandle);
+
+      this.directoryHandles.set(folderName, directoryHandle);
+
+      try {
+        await this.saveDirectoryHandle(folderName, directoryHandle);
+      } catch (saveError) {
+        console.warn('Failed to persist directory handle:', saveError);
+      }
+
+      return { success: true, name: folderName, path: folderName, structure: folderStructure };
+    } catch (error) {
+      console.error('registerDirectoryHandle error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Recursively scan directory structure
    * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
    * @param {string} path - Current path
