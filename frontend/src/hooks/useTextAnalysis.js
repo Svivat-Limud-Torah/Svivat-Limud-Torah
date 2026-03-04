@@ -147,14 +147,19 @@ ${text}
     setError(null);
 
     try {
-      // Step 1: Extract the logical structure as a plain numbered list
+      // Step 1: Extract nodes AND their connections as arrow-notation pseudo-chart
       setFlowchartLoadingStage('structure');
-      const structurePrompt = `קרא את הטקסט הבא והוצא ממנו 5 עד 8 שלבים או מושגים מרכזיים בסדר לוגי.
-כתוב רק רשימה ממוספרת. כל פריט: מספר, נקודה, ואז תיאור קצר עד 20 תווים בעברית פשוטה.
-אל תוסיף כותרות, הסברים או כל טקסט אחר.
+      const structurePrompt = `נתח את הטקסט הבא ותאר את מבנה הסוגיה כתרשים זרימה בסימון חצים פשוט.
+כתוב שורות בפורמט: מושג/שלב --> מושג/שלב
+כאשר יש הסתעפות (כן/לא, מחלוקת, שאלה/תשובה) כתוב:
+  מושג --> |כן| מושג אחר
+  מושג --> |לא| מושג אחר
+כל תווית: עברית פשוטה, עד 25 תווים, ללא מרכאות, ללא גרשיים.
+8 עד 15 חצים בסך הכל.
+כתוב רק את שורות החצים, ללא הסברים נוספים.
 
 טקסט:
-${inputText.substring(0, 800)}`;
+${inputText.substring(0, 1200)}`;
 
       const r1 = await callAiGenerate(selectedAiModel, {
         contents: [{ parts: [{ text: structurePrompt }] }],
@@ -164,24 +169,27 @@ ${inputText.substring(0, 800)}`;
       const structureList = d1.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!structureList) throw new Error('תגובה לא תקינה בשלב 1');
 
-      // Step 2: Convert the list to Mermaid syntax
+      // Step 2: Convert the arrow-notation to valid Mermaid syntax
       setFlowchartLoadingStage('mermaid');
-      const mermaidPrompt = `המר את הרשימה הבאה לתרשים זרימה Mermaid.
+      const mermaidPrompt = `המר את תיאור תרשים הזרימה הבא לקוד Mermaid תקני.
 החזר קוד Mermaid בלבד, ללא הסברים.
 
-פורמט חובה:
+חוקים קריטיים:
+- שורה ראשונה בדיוק: flowchart TD
+- IDs לצמתים: אותיות לטיניות בלבד A,B,C,D... (לא מספרים, לא עברית)
+- תוויות: בסוגריים מרובעים בלבד A[טקסט]
+- אסור מרכאות כפולות בתוך תוויות - השתמש בסוגריים מרובעים
+- תוויות על חצים מותרות: A -->|תווית| B
+- אם אותו צומת מופיע פעמיים תן לו אותו ID
+
+דוגמה:
 flowchart TD
-  A[שם קצר] --> B[שם קצר]
-  B --> C[שם קצר]
+  A[שאלת הגמרא] --> B[דעת רש"י]
+  A --> C[דעת תוספות]
+  B --> D[מסקנה]
+  C --> D
 
-כללים:
-- שורה ראשונה: flowchart TD
-- IDs: אותיות לטיניות בלבד (A B C ...)
-- תוויות: בסוגריים מרובעים בלבד
-- אסור מרכאות בתוך תוויות
-- כל שם עד 20 תווים
-
-הרשימה:
+תיאור התרשים:
 ${structureList}`;
 
       const r2 = await callAiGenerate(selectedAiModel, {
