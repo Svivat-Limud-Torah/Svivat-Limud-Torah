@@ -112,6 +112,80 @@
   margin-left: 8px;
 }
 
+/* Current model badge */
+.model-overloaded-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--theme-bg-primary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 2px;
+  font-size: 0.9rem;
+}
+
+.model-overloaded-current-label {
+  color: var(--theme-text-secondary);
+}
+
+.model-overloaded-current-name {
+  color: var(--theme-text-primary);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+/* Switch model section */
+.model-overloaded-switch-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--theme-bg-secondary);
+  border: 1px solid var(--theme-border-color);
+  border-radius: 2px;
+  border-right: 4px solid #22c55e;
+}
+
+.model-overloaded-switch-title {
+  color: var(--theme-text-primary);
+  font-size: 1rem;
+  margin: 0 0 6px 0;
+  font-weight: 600;
+}
+
+.model-overloaded-switch-desc {
+  color: var(--theme-text-secondary);
+  font-size: 0.88rem;
+  margin: 0 0 14px 0;
+  line-height: 1.5;
+}
+
+.model-overloaded-switch-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.model-overloaded-switch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 16px;
+  flex: 1;
+  min-width: 180px;
+  gap: 2px;
+}
+
+.switch-btn-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.switch-btn-desc {
+  font-size: 0.78rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
 .model-overloaded-footer {
   padding: 16px 24px 24px 24px;
   display: flex;

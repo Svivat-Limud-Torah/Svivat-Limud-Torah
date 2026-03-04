@@ -107,6 +107,8 @@ const EditorToolbar = ({
   onOpenAramaicStudy,
   // Text Analysis
   onOpenTextAnalysis,
+  // View mode buttons (focus, split, annotations, bookmarks)
+  viewModeButtons,
 }) => {
   const disabledStyle = { opacity: 0.5, cursor: 'not-allowed' };
   const [isAiToolsOpen, setIsAiToolsOpen] = useState(false);
@@ -227,6 +229,12 @@ const EditorToolbar = ({
       >
         כלים
       </button>
+
+      {viewModeButtons && (
+        <div style={{ marginRight: 'auto', display: 'flex', gap: '8px' }}>
+          {viewModeButtons}
+        </div>
+      )}
 
       {isAiToolsOpen && <AiToolsModal onClose={() => setIsAiToolsOpen(false)} />}
 

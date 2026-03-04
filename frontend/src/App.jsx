@@ -1584,14 +1584,6 @@ function App() {
           )}
           {workspaceHook.addFolderError && <span style={{ color: '#fc8181', marginLeft: '10px' }}>{HEBREW_TEXT.addFolderError}: {workspaceHook.addFolderError}</span>}
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-          <>
-            <button data-tutorial="focus-button" className={`btn ${focusHook.isFocusMode ? 'btn-primary' : 'btn-subtle'}`} onClick={() => focusHook.isFocusMode ? focusHook.exitFocusMode() : focusHook.enterFocusMode()} disabled={isAnyModalOpen} title="מצב מיקוד עם טיימר פומודורו">{focusHook.isFocusMode ? 'מיקוד ✓' : 'מיקוד'}</button>
-            <button data-tutorial="split-button" className={`btn ${isSplitMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleSplitMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="פצל עורך — הצג שני קבצים זה לצד זה">{isSplitMode ? 'פצל ✓' : 'פצל'}</button>
-            <button data-tutorial="annotations-button" className={`btn ${annotationsHook.isAnnotationMode ? 'btn-primary' : 'btn-subtle'}`} onClick={annotationsHook.toggleAnnotationMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="הערות שוליים — סמן טקסט והוסף הערות">{annotationsHook.isAnnotationMode ? 'הערות ✓' : 'הערות'}</button>
-            <button data-tutorial="bookmarks-button" className={`btn ${bookmarksHook.isPanelOpen ? 'btn-primary' : 'btn-subtle'}`} onClick={bookmarksHook.togglePanel} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="סימניות — שמור קטעי טקסט ממקורות שונים">סימניות{bookmarksHook.isPanelOpen ? ' ✓' : ''}</button>
-          </>
-        </div>
       </div>
 
       {mainViewMode === 'editor' && (
@@ -1613,6 +1605,14 @@ function App() {
             isLoadingQuestionnaire={questionnaireHook.isLoadingQuestionnaire}
             onOpenAramaicStudy={aramaicStudyHook.openModal}
             onOpenTextAnalysis={textAnalysisHook.openModal}
+            viewModeButtons={(
+              <>
+                <button data-tutorial="focus-button" className={`btn btn-sm ${focusHook.isFocusMode ? 'btn-primary' : 'btn-subtle'}`} onClick={() => focusHook.isFocusMode ? focusHook.exitFocusMode() : focusHook.enterFocusMode()} disabled={isAnyModalOpen} title="מצב מיקוד עם טיימר פומודורו">{focusHook.isFocusMode ? 'מיקוד ✓' : 'מיקוד'}</button>
+                <button data-tutorial="split-button" className={`btn btn-sm ${isSplitMode ? 'btn-primary' : 'btn-subtle'}`} onClick={toggleSplitMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="פצל עורך — הצג שני קבצים זה לצד זה">{isSplitMode ? 'פצל ✓' : 'פצל'}</button>
+                <button data-tutorial="annotations-button" className={`btn btn-sm ${annotationsHook.isAnnotationMode ? 'btn-primary' : 'btn-subtle'}`} onClick={annotationsHook.toggleAnnotationMode} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="הערות שוליים — סמן טקסט והוסף הערות">{annotationsHook.isAnnotationMode ? 'הערות ✓' : 'הערות'}</button>
+                <button data-tutorial="bookmarks-button" className={`btn btn-sm ${bookmarksHook.isPanelOpen ? 'btn-primary' : 'btn-subtle'}`} onClick={bookmarksHook.togglePanel} disabled={isAnyModalOpen || mainViewMode !== 'editor'} title="סימניות — שמור קטעי טקסט ממקורות שונים">סימניות{bookmarksHook.isPanelOpen ? ' ✓' : ''}</button>
+              </>
+            )}
           />
         </ErrorBoundary>
       )}
@@ -2075,6 +2075,8 @@ function App() {
       <ModelOverloadedModal
         isOpen={isModelOverloadedModalOpen}
         onClose={hideModelOverloadedModal}
+        currentModel={selectedAiModel}
+        onSwitchModel={handleSelectAiModel}
       />
 
       {/* Guided Tour */}

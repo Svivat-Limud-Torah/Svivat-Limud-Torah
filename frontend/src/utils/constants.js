@@ -149,6 +149,10 @@ export const HEBREW_TEXT = {
   modelOverloadedTip3: "• במקרה של בעיה מתמשכת, נסה מודל אחר",
   modelOverloadedCloseButton: "הבנתי",
   modelOverloadedTryLaterButton: "אנסה מאוחר יותר",
+  modelOverloadedCurrentModel: "מודל נוכחי:",
+  modelOverloadedSwitchTitle: "קיים פתרון מיידי — עבור למודל אחר:",
+  modelOverloadedSwitchDesc: "לחיצה על אחד הבאים תעביר אותך אוטומטית למודל זה ותוכל לנסות שוב מיד:",
+  modelOverloadedSwitchButtonPrefix: "עבור ל-",
 
   // Function to check if error is quota related
   isQuotaLimitError: (error) => {
@@ -217,12 +221,13 @@ export const HEBREW_TEXT = {
       'try again later',
     ];
 
+    const lowerMessage = errorMessage.toLowerCase();
+
     // Also detect "503" embedded in error message strings
     if (lowerMessage.includes('503')) return true;
     // Detect timeout/abort
     if (lowerMessage.includes('בזמן') || lowerMessage.includes('timeout') || lowerMessage.includes('aborted') || lowerMessage.includes('abort')) return true;
 
-    const lowerMessage = errorMessage.toLowerCase();
     return overloadedKeywords.some(keyword => lowerMessage.includes(keyword));
   },
 
