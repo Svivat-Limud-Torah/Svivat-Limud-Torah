@@ -8,11 +8,17 @@ const FRONTEND_KEYS = [
   'torah-ide-bookmarks',
   'autoSaveEnabled',
   'selectedAiModel',
+  'customAiModels',
   'disable_italic_formatting',
   'fileConversionNeverShow',
   'uploadedFonts',
   'gemini_has_key',
   'gemini_api_key_is_paid',
+  'gemini_api_key_val',
+  'editorFontSize',
+  'presentationFontSize',
+  'appFont',
+  'editorFont',
 ];
 
 const FRONTEND_PREFIXES = [

@@ -13,7 +13,12 @@ const LS = {
   recentFiles: 'web_recent_files',
   frequentFiles: 'web_frequent_files',
   lastOpenedFolders: 'web_last_opened_folders',
+  fileUsageStats: 'web_file_usage_stats',
+  activityLog: 'web_activity_log',
 };
+
+// Keys whose default (empty) value is an object, not an array
+const LS_OBJECT_KEYS = new Set(['questionnaires', 'fileUsageStats']);
 
 function lsGet(key, fallback = null) {
   try {
@@ -992,7 +997,7 @@ ${text}
   exportUserData: async () => {
     const data = {};
     for (const [key, lsKey] of Object.entries(LS)) {
-      data[key] = lsGet(lsKey, key === 'questionnaires' ? {} : []);
+      data[key] = lsGet(lsKey, LS_OBJECT_KEYS.has(key) ? {} : []);
     }
     return data;
   },
