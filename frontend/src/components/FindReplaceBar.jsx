@@ -1,6 +1,6 @@
 // frontend/src/components/FindReplaceBar.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { SearchQuery, setSearchQuery, findNext, findPrevious, replaceNext, replaceAll } from '@codemirror/search';
+import { SearchQuery, setSearchQuery, findNext, findPrevious, replaceNext, replaceAll, openSearchPanel } from '@codemirror/search';
 import './FindReplaceBar.css';
 
 const FindReplaceBar = ({ editorViewRef, isVisible, initialMode, isRtl, onClose }) => {
@@ -65,6 +65,9 @@ const FindReplaceBar = ({ editorViewRef, isVisible, initialMode, isRtl, onClose 
       return;
     }
 
+    // Ensure CodeMirror's internal search panel is "open" so it renders match decorations.
+    // Our createPanel returns a hidden div, so this is invisible to the user.
+    openSearchPanel(view);
     view.dispatch({ effects: setSearchQuery.of(query) });
     requestAnimationFrame(() => refreshMatchInfo(view));
   }, [editorViewRef]);

@@ -757,8 +757,11 @@ function App() {
               folderHandle = await folderHandle.getDirectoryHandle(part);
             }
 
-            // Sanitize name for Windows file system (remove invalid characters)
-            const sanitizeName = (name) => name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || '_file';
+            // Sanitize name for Windows file system (remove invalid chars, trailing dots/spaces)
+            const sanitizeName = (name) => {
+              const s = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/[. ]+$/, '').trim();
+              return s || '_file';
+            };
 
             // Recursively copy folder to destination
             const destFolder = await parentHandle.getDirectoryHandle(sanitizeName(item.name), { create: true });

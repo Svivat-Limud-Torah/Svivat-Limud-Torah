@@ -223,7 +223,10 @@ const Sidebar = ({
                           const parentHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
                           const srcHandle = LocalFileSystemService.directoryHandles.get(wf.path);
                           if (!srcHandle) throw new Error('לא נמצא handle לתיקייה');
-                          const sanitizeName = (name) => name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || '_file';
+                          const sanitizeName = (name) => {
+                            const s = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/[. ]+$/, '').trim();
+                            return s || '_file';
+                          };
                           const destFolder = await parentHandle.getDirectoryHandle(sanitizeName(wf.name), { create: true });
                           const copyDir = async (src, dest) => {
                             for await (const entry of src.values()) {
